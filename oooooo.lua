@@ -1,16 +1,34 @@
--- oooooo v0.1.0
+-- hoops v0.1
+-- asynchronous tape loops
+--
+-- llllllll.co/t/hoops
+--
+--
+--
+--    ▼ instructions below ▼
+--
+-- K1 shifts
+-- K2 stops
+-- K2 again resets loop
+-- K3 plays
+-- shift+K2 clears
+-- shift+K3 records
+-- E1 changes loops
+-- E2 selects parameters
+-- E3 adjusts parameters
 --
 
 -- user parameters
 uP={
+  -- initialized in init
 }
 
 -- user state
 uS={
   updateUI=false,
-  updateParams=false,
   shift=false,
   loopNum=1,-- 0 = all loops
+  selectedPar=1,
 }
 
 -- user constants
@@ -35,12 +53,13 @@ uC={
     {0,0},
     {0,0},
   },
+  parms={"loopstart","loopend","vol","rate","pan"},
 }
 
-flag_update_ui=false
-flag_update_params=false
+PATH=_path.audio..'hoops/'
 
 function init()
+  
   -- initialize user parameters
   for i=1,6 do
     uP[i]={}
@@ -54,9 +73,14 @@ function init()
     uP[i].pan=0
   end
   
-  -- TODO: load parameters from file?
+  -- make data directory
+  if not util.file_exists(PATH) then util.make_dir(PATH) end
   
-  -- TODO: load buffer from file
+  -- load buffer from file
+  if util.file_exists(PATH.."hoops.wav") then
+    softcut.buffer_read_stereo(PATH.."hoops.wav",0,0,-1)
+  end
+  -- TODO: load parameters from file?
   
   -- update softcut
   for i=1,6 do
@@ -128,6 +152,9 @@ function tape_stop_reset(n)
         -- move to beginning of loop
         uP[i].position=0
         softcut.position(i,uP[i].position+uC.bufferMinMax[i][2]+uP[i].loopStart)
+      else
+        -- save tape
+        softcut.buffer_write_stereo(PATH.."hoops.wav",0,-1)
       end
     else
       -- stop playing
@@ -200,8 +227,8 @@ function tape_change_loop(n,lstart,llength)
     i2=n
   end
   for i=i1,i2 do
-    uP[i].loopStart=lstart
-    uP[i].loopLength=llength
+    uP[i].loopStart=util.clamp(uP[i].loopStart+lstart/10,0,uC.loopMinMax[2])
+    uP[i].loopLength=util.clamp(uP[i].loopLength+llength/10,0,uC.loopMinMax[2])
     if uP[i].loopLength+uP[i].loopStart>uC.loopMinMax[2] then
       -- loop length is too long, shorten it
       uP[i].loopLength=uC.loopMinMax[2]-uP[i].loopStart
@@ -211,8 +238,47 @@ function tape_change_loop(n,lstart,llength)
       uP[i].position=uP[i].loopStart
       softcut.position(i,uP[i].position+uC.bufferMinMax[i][2])
     end
-    sofcut.loop_start(i,uP[i].loopStart+uC.bufferMinMax[i][2])
+    sofcut.loop_start(i,1+uP[i].loopStart+uC.bufferMinMax[i][2])
     sofcut.loop_end(i,uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength)
+  end
+end
+
+function tape_delta_volume(n,x)
+  i1=1
+  i2=6
+  if n>0 then
+    i1=n
+    i2=n
+  end
+  for i=i1,i2 do
+    uP[i].vol=util.clamp(uP[i].vol+x/100,0,1)
+    softcut.level(i,uP[i].vol)
+  end
+end
+
+function tape_delta_rate(n,x)
+  i1=1
+  i2=6
+  if n>0 then
+    i1=n
+    i2=n
+  end
+  for i=i1,i2 do
+    uP[i].rate=util.clamp(uP[i].rate+x/10,-4,4)
+    softcut.rate(i,uP[i].rate)
+  end
+end
+
+function tape_delta_pan(n,x)
+  i1=1
+  i2=6
+  if n>0 then
+    i1=n
+    i2=n
+  end
+  for i=i1,i2 do
+    uP[i].pan=util.clamp(uP[i].pan+x/10,-1,1)
+    softcut.pan(i,uP[i].pan)
   end
 end
 
@@ -221,7 +287,21 @@ end
 --
 function enc(n,d)
   if n==1 then
-    uS.loopNum=util.clamp(uS.loopNum+d,0,6)
+    uS.loopNum=util.clamp(uS.loopNum+d,1,6)
+  elseif n==2 then
+    uS.selectedPar=utils.clamp(uS.selectedPar+d,1,5)
+  elseif n==3 then
+    if uS.selectedPar==1 then
+      tape_change_loop(uS.loopNum,d,0)
+    elseif uS.selectedPar==2 then
+      tape_change_loop(uS.loopNum,0,d)
+    elseif uS.selectedPar==3 then
+      tape_delta_volume(uS.loopNum,d)
+    elseif uS.selectedPar==4 then
+      tape_delta_rate(uS.loopNum,d)
+    elseif uS.selectedPar==5 then
+      tape_delta_pan(uS.loopNum,d)
+    end
   end
   uS.updateUI=true
 end
@@ -262,7 +342,67 @@ function redraw()
   screen.move(2+shift_amount,8+shift_amount)
   screen.text("oooooo")
   
-  -- draw circles and position markers
+  -- show recording symbol
+  if uP[uS.loopNum].isRecording then
+    screen.move(70,8)
+    screen.text("REC")
+  end
+  
+  -- show loop info
+  x=2
+  y=16
+  screen.move(x,y)
+  screen.text(uS.loopNum)
+  
+  screen.move(x+16,y)
+  if uS.selectedPar==1 then
+    screen.level(15)
+  else
+    screen.level(5)
+  end
+  screen.text(uP[uS.loopNum].loopStart)
+  
+  screen.move(x+20,y)
+  screen.level(5)
+  screen.text("-")
+  
+  screen.move(x+28,y)
+  if uS.selectedPar==2 then
+    screen.level(15)
+  else
+    screen.level(5)
+  end
+  screen.text(uP[uS.loopNum].loopLength)
+  
+  screen.move(x+32,y)
+  screen.level(5)
+  screen.text("s")
+  
+  screen.move(x+38,y)
+  if uS.selectedPar==3 then
+    screen.level(15)
+  else
+    screen.level(5)
+  end
+  screen.text(uP[uS.loopNum].vol)
+  
+  screen.move(x+44,y)
+  if uS.selectedPar==4 then
+    screen.level(15)
+  else
+    screen.level(5)
+  end
+  screen.text(uP[uS.loopNum].rate)
+  
+  screen.move(x+55,y)
+  if uS.selectedPar==5 then
+    screen.level(15)
+  else
+    screen.level(5)
+  end
+  screen.text(uP[uS.loopNum].pan)
+  
+  -- draw representation of current loop states
   for i=1,6 do
     -- draw circles
     r=(uC.radiiMinMax[2]-uC.radiiMinMax[1])*uP[i].vol+uC.radiiMinMax[1]
