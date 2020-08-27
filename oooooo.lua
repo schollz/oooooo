@@ -50,12 +50,12 @@ uC={
   widthMinMax={8,120},
   heightMinMax={20,60},
   centerOffsets={
-    {0,0},
-    {0,0},
-    {0,0},
-    {0,0},
-    {0,0},
-    {0,0},
+    {1,-2},
+    {2,0},
+    {1,2},
+    {-1,2},
+    {-2,0},
+    {-1,-2},
   },
   parms={"loopstart","loopend","vol","rate","pan"},
 }
@@ -132,6 +132,16 @@ function init()
   softcut.phase_quant(1,0.025)
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
+  
+  -- TODO: experiment with record priming
+  -- and starting on incoming audio
+  -- set time low when primed, set time high when done
+  -- p_amp_in=poll.set("amp_in_l")
+  -- p_amp_in.time=0.1
+  -- p_amp_in.callback=function(val)
+  --   print(val)
+  -- end
+  -- p_amp_in:start()
 end
 
 --

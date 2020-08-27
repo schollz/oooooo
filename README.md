@@ -1,8 +1,14 @@
-## hoooooops
+## loooooops
 
-six asynchronous tape hoops.
+six asynchronous tape loops.
 
+i've been seeing tape loops circulating all over the place. sometimes several different loops,
+with different sizes, played on a different tape players with different eccentricities. 
+i don't have any tapes but i have norns so i decided to try to make digital tape loops: *loooooops*.
 
+this is inspired by musicians like [amulets](https://www.youtube.com/watch?v=hER3s1NPr_U), [hainbach](https://www.youtube.com/watch?v=cVy9ABT5-iY) and inspired by norns scripts like [reels](https://llllllll.co/t/reels/21030), [cranes](https://llllllll.co/t/cranes), and my previous script [barcode](https://llllllll.co/t/script).
+
+the goal is to have a ui show all six loops simultaneously with their length, rate, and pan information stored in the design on the ui.
 
 ### Requirements
 
