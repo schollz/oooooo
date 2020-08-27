@@ -25,6 +25,8 @@ uC={
   },
   loopMinMax={1,78},
   radiiMinMax={10,40},
+  widthMinMax={8,120},
+  heightMinMax={20,60},
   centerOffsets={
     {0,0},
     {0,0},
@@ -249,6 +251,36 @@ end
 function redraw()
   uS.updateUI=false
   screen.clear()
+  
+  -- check shift
+  shift_amount=0
+  if state.shift then
+    shift_amount=4
+  end
+  
+  -- show header
+  screen.move(2+shift_amount,8+shift_amount)
+  screen.text("oooooo")
+  
+  -- draw circles and position markers
+  for i=1,6 do
+    -- draw circles
+    r=(uC.radiiMinMax[2]-uC.radiiMinMax[1])*uP[i].vol+uC.radiiMinMax[1]
+    x=uC.centerOffsets[i][1]+(uC.widthMinMax[2]-uC.heightMinMax[1])*(uP[i].pan+1)/2+uC.widthMinMax[1]
+    y=uC.centerOffsets[i][2]+(uC.heightMinMax[2]-uC.widthMinMax[1])*(uP[i].rate+4)/8+uC.heightMinMax[1]
+    if uS.loopNum==0 or uS.loopNum==i then
+      screen.level(15)
+    else
+      screen.level(5)
+    end
+    screen.circle(x,y,r)
+    screen.stroke()
+    
+    -- draw arc at position
+    angle=360*(uP[i].position/uP[i].loopLength)
+    screen.arc(x,y,r,angle-5,angle+5)
+    screen.stroke()
+  end
   
   screen.update()
 end
