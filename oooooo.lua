@@ -171,11 +171,11 @@ end
 -- tape functions
 --
 function tape_stop_reset(n)
-  i1=1
-  i2=6
-  if n~=7 then
-    i1=n
-    i2=n
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
   end
   for i=i1,i2 do
     if uP[i].isStopped then
@@ -195,11 +195,11 @@ function tape_stop_reset(n)
 end
 
 function tape_clear(n)
-  i1=1
-  i2=6
-  if n~=7 then
-    i1=n
-    i2=n
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
   end
   for i=i1,i2 do
     softcut.buffer_clear_region_channel(
@@ -211,11 +211,11 @@ function tape_clear(n)
 end
 
 function tape_play(n)
-  i1=1
-  i2=6
-  if n~=7 then
-    i1=n
-    i2=n
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
   end
   for i=i1,i2 do
     if uP[i].isRecording then
@@ -223,7 +223,6 @@ function tape_play(n)
       uP[i].isRecording=false
       softcut.rec(i,0)
     end
-    
     -- start playing
     softcut.rate(i,uP[i].rate)
     softcut.play(i,1)
@@ -232,11 +231,11 @@ function tape_play(n)
 end
 
 function tape_rec(n)
-  i1=1
-  i2=6
-  if n~=7 then
-    i1=n
-    i2=n
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
   end
   for i=i1,i2 do
     if uP[i].isStopped then
@@ -250,11 +249,11 @@ function tape_rec(n)
 end
 
 function tape_change_loop(n,lstart,llength)
-  i1=1
-  i2=6
-  if n~=7 then
-    i1=n
-    i2=n
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
   end
   for i=i1,i2 do
     if lstart>0 then
@@ -279,39 +278,42 @@ function tape_change_loop(n,lstart,llength)
 end
 
 function tape_update_volume(n,x)
-  i1=1
-  i2=6
-  if n~=7 then
-    i1=n
-    i2=n
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
   end
   for i=i1,i2 do
+    uP[i].vol=x
     softcut.level(i,x)
   end
   uS.updateParams=uS.updateParams+1
 end
 
 function tape_update_rate(n,x)
-  i1=1
-  i2=6
-  if n~=7 then
-    i1=n
-    i2=n
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
   end
   for i=i1,i2 do
+    uP[i].rate=x
     softcut.rate(i,x)
   end
   uS.updateParams=uS.updateParams+1
 end
 
 function tape_update_pan(n,x)
-  i1=1
-  i2=6
-  if n~=7 then
-    i1=n
-    i2=n
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
   end
   for i=i1,i2 do
+    uP[i].pan=x
     softcut.pan(i,x)
   end
   uS.updateParams=uS.updateParams+1
@@ -392,7 +394,11 @@ function redraw()
   x=2
   y=16
   screen.move(x,y)
-  screen.text(uS.loopNum)
+  if uS.loopNum==7 then
+    screen.text("all")
+  else
+    screen.text(uS.loopNum)
+  end
   
   screen.move(x+16,y)
   if uS.selectedPar==1 then
