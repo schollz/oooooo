@@ -136,7 +136,7 @@ function init_loops(n)
   end
   
   -- initialize user parameters
-  for i=1,7 do
+  for i=i1,i2 do
     uP[i]={}
     uP[i].position=0
     uP[i].loopStart=0
@@ -155,7 +155,7 @@ function init_loops(n)
     i2=6
   end
   -- update softcut
-  for i=1,6 do
+  for i=i1,i2 do
     softcut.level(i,1)
     softcut.level_input_cut(1,i,1)
     softcut.level_input_cut(2,i,1)
