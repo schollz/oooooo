@@ -47,8 +47,8 @@ uC={
   },
   loopMinMax={1,78},
   radiiMinMax={6,120},
-  widthMinMax={8,120},
-  heightMinMax={20,64},
+  widthMinMax={8,124},
+  heightMinMax={12,64},
   centerOffsets={
     {0,0},
     {0,0},
@@ -87,9 +87,9 @@ function init()
   if not util.file_exists(PATH) then util.make_dir(PATH) end
   
   -- load buffer from file
-  if util.file_exists(PATH.."hoops.wav") then
-    softcut.buffer_read_stereo(PATH.."hoops.wav",0,0,-1)
-  end
+  -- if util.file_exists(PATH.."hoops.wav") then
+  --   softcut.buffer_read_stereo(PATH.."hoops.wav",0,0,-1)
+  -- end
   
   -- -- load parameters from file
   -- if util.file_exists(PATH.."hoops.json") then
@@ -151,6 +151,7 @@ function init()
   --   print(val)
   -- end
   -- p_amp_in:start()
+  redraw()
 end
 
 --
@@ -290,18 +291,20 @@ function tape_rec(n)
   end
   for i=i1,i2 do
     -- start recording
-    -- move to beginning of loop
+    -- move to beginning of loop using stop/reset
     tape_stop_reset(i)
     tape_stop_reset(i)
     uP[i].isStopped=false
     uP[i].isRecording=true
     uP[i].lastPosition=0
+    redraw()
     softcut.rate(i,uP[i].rate)
     softcut.rec(i,0)
     softcut.play(i,1)
     for j=1,10 do
       softcut.rec(i,j/10)
       sleep(0.04)
+      redraw()
     end
   end
 end
@@ -442,11 +445,9 @@ function redraw()
   
   -- show header
   screen.level(15)
-  screen.move(2+shift_amount,8+shift_amount)
-  screen.text("hoooooops")
   
   -- show recording symbol
-  screen.move(70,8)
+  screen.move(116,8)
   if uP[uS.loopNum].isRecording then
     screen.text("REC")
   elseif uP[uS.loopNum].isStopped then
@@ -456,58 +457,72 @@ function redraw()
   end
   
   -- show loop info
-  x=2
-  y=18
+  x=7+shift_amount
+  y=9+shift_amount
   screen.move(x,y)
   if uS.loopNum==7 then
-    screen.text("all")
+    screen.text("A")
   else
     screen.text(uS.loopNum)
   end
+  screen.move(x,y)
+  screen.rect(x-3,y-7,10,10)
+  screen.stroke()
   
-  screen.move(x+10,y)
-  if uS.selectedPar==1 then
-    screen.level(15)
-  else
+  if uS.selectedPar==1 or uS.selectedPar==2 then
+    screen.move(x+10,y)
+    if uS.selectedPar==1 then
+      screen.level(15)
+    else
+      screen.level(1)
+    end
+    screen.text(string.format("%1.1f",uP[uS.loopNum].loopStart))
+    
+    screen.move(x+24,y)
     screen.level(1)
+    screen.text("-")
+    
+    screen.move(x+30,y)
+    if uS.selectedPar==2 then
+      screen.level(15)
+    else
+      screen.level(1)
+    end
+    screen.text(string.format("%1.1fs",uP[uS.loopNum].loopStart+uP[uS.loopNum].loopLength))
+  elseif uS.selectedPar==3 then
+    screen.move(x+15,y)
+    screen.text("level")
+  elseif uS.selectedPar==4 then
+    screen.move(x+15,y)
+    screen.text(string.format("rate %1.2f",uP[uS.loopNum].rate))
+  elseif uS.selectedPar==5 then
+    screen.move(x+15,y)
+    screen.text("pan")
   end
-  screen.text(string.format("%1.1f",uP[uS.loopNum].loopStart))
   
-  screen.move(x+24,y)
-  screen.level(1)
-  screen.text("-")
+  -- screen.move(x+55,y)
+  -- if uS.selectedPar==3 then
+  --   screen.level(15)
+  -- else
+  --   screen.level(1)
+  -- end
+  -- screen.text(string.format("%1.2f",uP[uS.loopNum].vol))
   
-  screen.move(x+28,y)
-  if uS.selectedPar==2 then
-    screen.level(15)
-  else
-    screen.level(1)
-  end
-  screen.text(string.format("%1.1fs",uP[uS.loopNum].loopStart+uP[uS.loopNum].loopLength))
+  -- screen.move(x+80,y)
+  -- if uS.selectedPar==4 then
+  --   screen.level(15)
+  -- else
+  --   screen.level(1)
+  -- end
+  -- screen.text(string.format("%1.2f",uP[uS.loopNum].rate))
   
-  screen.move(x+55,y)
-  if uS.selectedPar==3 then
-    screen.level(15)
-  else
-    screen.level(1)
-  end
-  screen.text(string.format("%1.2f",uP[uS.loopNum].vol))
-  
-  screen.move(x+80,y)
-  if uS.selectedPar==4 then
-    screen.level(15)
-  else
-    screen.level(1)
-  end
-  screen.text(string.format("%1.2f",uP[uS.loopNum].rate))
-  
-  screen.move(x+105,y)
-  if uS.selectedPar==5 then
-    screen.level(15)
-  else
-    screen.level(1)
-  end
-  screen.text(string.format("%1.2f",uP[uS.loopNum].pan))
+  -- screen.move(x+105,y)
+  -- if uS.selectedPar==5 then
+  --   screen.level(15)
+  -- else
+  --   screen.level(1)
+  -- end
+  -- screen.text(string.format("%1.2f",uP[uS.loopNum].pan))
   
   -- draw representation of current loop states
   for i=1,6 do
@@ -525,12 +540,19 @@ function redraw()
     screen.move(x+r,y)
     screen.circle(x,y,r)
     screen.stroke()
-    if not uP[i].isStopped then
-      -- draw arc at position
-      angle=360*(uP[i].position)/(uP[i].loopLength)
-      screen.move(x,y)
-      screen.arc(x,y,r,math.rad(angle-5),math.rad(angle+5))
-      screen.stroke()
+    
+    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+180
+    
+    -- if not uP[i].isStopped then
+    --   -- draw arc at position
+    --   screen.move(x,y)
+    --   screen.arc(x,y,r,math.rad(angle-5),math.rad(angle+5))
+    --   screen.stroke()
+    -- end
+    
+    -- draw pixels at position
+    for j=-1,1 do
+      screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
     end
   end
   
