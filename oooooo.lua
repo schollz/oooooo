@@ -38,17 +38,18 @@ uS={
   flagClearing=true,
   flagSaveLoad=0,
   message="",
+  tempo=60,-- tempo is used to initialize all the loops to specific number of beats
 }
 
 -- user constants
 uC={
   bufferMinMax={
     {1,1,80},
-    {1,81,160},
-    {1,161,240},
+    {1,82,161},
+    {1,163,243},
     {2,1,80},
-    {2,81,160},
-    {2,161,240},
+    {2,82,161},
+    {2,163,243},
   },
   loopMinMax={1,78},
   radiiMinMax={4,180},
@@ -113,7 +114,7 @@ function init_loops(i)
   uP[i]={}
   uP[i].loopStart=0
   uP[i].position=uP[i].loopStart
-  uP[i].loopLength=2*i
+  uP[i].loopLength=(60/uC.tempo)*i
   uP[i].isStopped=true
   uP[i].isEmpty=true
   uP[i].vol=0.5
