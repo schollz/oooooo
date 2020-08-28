@@ -33,11 +33,10 @@ uS={
   updateUI=false,
   updateParams=0,
   updateTape=false,
-  loopCleared=false,
-  isCleared=true,
   shift=false,
   loopNum=1,-- 7 = all loops
   selectedPar=1,
+  flagClearing=true,
 }
 
 -- user constants
@@ -207,7 +206,7 @@ end
 --
 -- tape functions
 --
-function tape_reset_clear(j)
+function tape_stop_reset(j)
   -- if uS.loopNum == 7 then stop all
   i1=j
   i2=j
@@ -255,11 +254,11 @@ end
 function tape_clear(j)
   print("tape_clear "..j)
   -- prevent double clear
-  if uS.loopCleared and j~=7 then
+  if uS.flagClearing then
     do return end
   end
   -- signal clearing
-  uS.loopCleared=true
+  uS.flagClearing=true
   redraw()
   i1=j
   i2=j
@@ -275,20 +274,27 @@ function tape_clear(j)
     -- reinitialize
     init_loops(i)
   end
-  sleep(0.5)
-  uS.loopCleared=false
+  sleep(0.2)
+  uS.flagClearing=false
   redraw()
-  uS.isCleared=true
 end
 
-function tape_play(i)
-  print("tape_play "..i)
+function tape_play(j)
+  print("tape_play "..j)
   if uS.recording>0 then
-    tape_stop_rec(i)
+    tape_stop_rec(j)
   end
-  softcut.play(i,1)
-  softcut.rate(i,uP[i].rate)
-  uP[i].isStopped=false
+  i1=j
+  i2=j
+  if j==7 then
+    i1=1
+    i2=6
+  end
+  for i=i1,i2 do
+    softcut.play(i,1)
+    softcut.rate(i,uP[i].rate)
+    uP[i].isStopped=false
+  end
 end
 
 function tape_arm_rec(i)
@@ -306,7 +312,6 @@ function tape_rec(i)
     tape_play(i)
   end
   p_amp_in.time=1
-  uS.isCleared=false
   uS.recordingTime=0
   uS.recording=2 -- recording is live
   softcut.rec_level(i,1)
@@ -364,16 +369,14 @@ function key(n,z)
   if n==1 then
     uS.shift=not uS.shift
   elseif n==2 and z==1 then
+    -- this key works on one or all
     if uS.shift then
-      if uS.isCleared then
-        -- clear all
-        tape_clear(7)
-      else
-        -- clear current
-        tape_clear(uS.loopNum)
-      end
+      -- clear
+      tape_clear(uS.loopNum)
     else
-      tape_reset_clear(uS.loopNum)
+      -- stop tape
+      -- if stopped, then reset to 0
+      tape_stop_reset(uS.loopNum)
     end
   elseif n==3 and z==1 then
     if uS.shift and uS.loopNum~=7 then
@@ -407,7 +410,7 @@ function redraw()
   
   -- show recording symbol
   screen.move(116,8)
-  if uS.loopCleared then
+  if uS.flagClearing then
     screen.text("CLR")
   elseif uS.recording==2 then
     screen.text("REC")
