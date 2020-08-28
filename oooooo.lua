@@ -31,6 +31,7 @@ uS={
   updateParams=0,
   updateTape=false,
   loopCleared=false,
+  isCleared=true,
   shift=false,
   loopNum=1,-- 7 = all loops
   selectedPar=1,
@@ -70,19 +71,7 @@ uC={
 PATH=_path.audio..'hoops/'
 
 function init()
-  -- initialize user parameters
-  for i=1,7 do
-    uP[i]={}
-    uP[i].position=0
-    uP[i].loopStart=0
-    uP[i].loopLength=2*i
-    uP[i].isStopped=true
-    uP[i].isRecording=false
-    uP[i].vol=0.5
-    uP[i].rate=1
-    uP[i].pan=0
-    uP[i].lastPosition=0
-  end
+  init_loops()
   
   -- make data directory
   if not util.file_exists(PATH) then util.make_dir(PATH) end
@@ -98,6 +87,56 @@ function init()
   --   print(filecontents)
   --   uP=json.parse(filecontents)
   -- end
+  
+  -- initialize timer for updating screen
+  timer=metro.init()
+  timer.time=0.05
+  timer.count=-1
+  timer.event=update_timer
+  timer:start()
+  
+  -- initialize timer for updating parameters
+  -- and tape on disk
+  filewriter=metro.init()
+  filewriter.time=0.25
+  filewriter.count=-1
+  filewriter.event=update_parameter_file
+  filewriter:start()
+  
+  -- position poll
+  softcut.event_phase(update_positions)
+  softcut.poll_start_phase()
+  
+  -- TODO: experiment with record priming
+  -- and starting on incoming audio
+  -- set time low when primed, set time high when done
+  p_amp_in=poll.set("amp_in_l")
+  p_amp_in.time=1
+  p_amp_in.callback=function(val)
+    if uP[uS.loopNum].isRecordingArmed and not uP[uS.loopNum].isRecording and val>0.0015then
+      tape_rec(uS.loopNum)
+    end
+  end
+  p_amp_in:start()
+  
+  redraw()
+end
+
+function init_loops()
+  -- initialize user parameters
+  for i=1,7 do
+    uP[i]={}
+    uP[i].position=0
+    uP[i].loopStart=0
+    uP[i].loopLength=2*i
+    uP[i].isStopped=true
+    uP[i].isRecording=false
+    uP[i].isRecordingArmed=false
+    uP[i].vol=0.5
+    uP[i].rate=1
+    uP[i].pan=0
+    uP[i].lastPosition=0
+  end
   
   -- update softcut
   for i=1,6 do
@@ -123,36 +162,6 @@ function init()
     softcut.enable(i,1)
     softcut.phase_quant(i,0.025)
   end
-  
-  -- initialize timer for updating screen
-  timer=metro.init()
-  timer.time=0.05
-  timer.count=-1
-  timer.event=update_timer
-  timer:start()
-  
-  -- initialize timer for updating parameters
-  -- and tape on disk
-  filewriter=metro.init()
-  filewriter.time=0.25
-  filewriter.count=-1
-  filewriter.event=update_parameter_file
-  filewriter:start()
-  
-  -- position poll
-  softcut.event_phase(update_positions)
-  softcut.poll_start_phase()
-  
-  -- TODO: experiment with record priming
-  -- and starting on incoming audio
-  -- set time low when primed, set time high when done
-  -- p_amp_in=poll.set("amp_in_l")
-  -- p_amp_in.time=0.1
-  -- p_amp_in.callback=function(val)
-  --   print(val)
-  -- end
-  -- p_amp_in:start()
-  redraw()
 end
 
 --
@@ -231,6 +240,11 @@ function tape_stop_reset(n)
 end
 
 function tape_clear(n)
+  if uS.isCleared==true then
+    init_loops()
+    do return end
+  end
+  uS.isCleared=true
   uS.loopCleared=true
   redraw()
   i1=n
@@ -269,6 +283,8 @@ function tape_play(n)
 end
 
 function tape_stop_rec(n)
+  p_amp_in.time=1
+  
   i1=n
   i2=n
   if n==7 then
@@ -276,19 +292,21 @@ function tape_stop_rec(n)
     i2=6
   end
   for i=i1,i2 do
-    if uP[i].isRecording then
-      -- stop recording, if recording
-      for j=1,10 do
-        softcut.rec(i,(10-j)/10)
-        sleep(0.05)
-      end
-      softcut.rec(i,0)
-      uP[i].isRecording=false
+    uP[i].isRecordingArmed=false
+    uP[i].isRecording=false
+    redraw()
+    -- stop recording, if recording
+    for j=1,10 do
+      softcut.rec(i,(10-j)/10)
+      sleep(0.05)
     end
+    softcut.rec(i,0)
   end
 end
 
-function tape_rec(n)
+function tape_arm_rec(n)
+  -- monitor input
+  p_amp_in.time=0.05
   i1=n
   i2=n
   if n==7 then
@@ -301,17 +319,32 @@ function tape_rec(n)
     tape_stop_reset(i)
     tape_stop_reset(i)
     uP[i].isStopped=false
-    uP[i].isRecording=true
+    uP[i].isRecordingArmed=true
     uP[i].lastPosition=0
     redraw()
-    softcut.rate(i,uP[i].rate)
-    softcut.rec(i,0)
+  end
+end
+
+function tape_rec(n)
+  uS.isCleared=false
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
+  end
+  for i=i1,i2 do
+    uP[i].isRecording=true
+    redraw()
     softcut.play(i,1)
-    for j=1,10 do
-      softcut.rec(i,j/10)
-      sleep(0.04)
-      redraw()
-    end
+    softcut.rec(i,1)
+    softcut.rate(i,uP[i].rate)
+    -- softcut.rec(i,0)
+    -- for j=1,10 do
+    --   softcut.rec(i,j/10)
+    --   sleep(0.04)
+    --   redraw()
+    -- end
   end
 end
 
@@ -428,7 +461,7 @@ function key(n,z)
     end
   elseif n==3 and z==1 then
     if uS.shift and uS.loopNum~=7 then
-      tape_rec(uS.loopNum)
+      tape_arm_rec(uS.loopNum)
     else
       tape_play(uS.loopNum)
     end
@@ -458,6 +491,10 @@ function redraw()
     screen.text("CLR")
   elseif uP[uS.loopNum].isRecording then
     screen.text("REC")
+  elseif uP[uS.loopNum].isRecordingArmed then
+    screen.level(1)
+    screen.text("REC")
+    screen.level(15)
   elseif uP[uS.loopNum].isStopped then
     screen.text("||")
   else
