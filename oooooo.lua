@@ -252,22 +252,29 @@ function tape_stop_rec(i)
   softcut.rec(i,0)
 end
 
-function tape_clear(i)
-  print("tape_clear "..i)
+function tape_clear(j)
+  print("tape_clear "..j)
   -- prevent double clear
-  if uS.loopCleared then
+  if uS.loopCleared and j~=7 then
     do return end
   end
   -- signal clearing
   uS.loopCleared=true
   redraw()
-  softcut.buffer_clear_region_channel(
-    uC.bufferMinMax[i][1],
-    uC.bufferMinMax[i][2],
-  uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
-  
-  -- reinitialize
-  init_loops(i)
+  i1=j
+  i2=j
+  if j==7 then
+    i1=1
+    i2=6
+  end
+  for i=i1,i2 do
+    softcut.buffer_clear_region_channel(
+      uC.bufferMinMax[i][1],
+      uC.bufferMinMax[i][2],
+    uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
+    -- reinitialize
+    init_loops(i)
+  end
   sleep(0.5)
   uS.loopCleared=false
   redraw()
@@ -359,7 +366,8 @@ function key(n,z)
   elseif n==2 and z==1 then
     if uS.shift then
       if uS.isCleared then
-        -- TODO: clear all
+        -- clear all
+        tape_clear(7)
       else
         -- clear current
         tape_clear(uS.loopNum)
