@@ -48,7 +48,7 @@ uC={
   loopMinMax={1,78},
   radiiMinMax={8,20},
   widthMinMax={8,120},
-  heightMinMax={10,60},
+  heightMinMax={10,40},
   centerOffsets={
     -- {-48,0},
     -- {-24,0},
@@ -74,7 +74,7 @@ function init()
     uP[i]={}
     uP[i].position=0
     uP[i].loopStart=0
-    uP[i].loopLength=2
+    uP[i].loopLength=16
     uP[i].isStopped=true
     uP[i].isRecording=false
     uP[i].vol=1
@@ -295,8 +295,8 @@ function tape_rec(n)
     uP[i].isRecording=true
     uP[i].position=0
     uP[i].lastPosition=0
-    softcut.rec(i,0)
     softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
+    softcut.rec(i,0)
     softcut.play(i,1)
     for j=1,10 do
       softcut.rec(i,j/10)
@@ -388,10 +388,10 @@ function enc(n,d)
     uS.selectedPar=util.clamp(uS.selectedPar+d,1,5)
   elseif n==3 then
     if uS.selectedPar==1 then
-      uP[uS.loopNum].loopStart=util.clamp(uP[uS.loopNum].loopStart+d/100,0,uC.loopMinMax[2])
+      uP[uS.loopNum].loopStart=util.clamp(uP[uS.loopNum].loopStart+d/10,0,uC.loopMinMax[2])
       tape_change_loop(uS.loopNum,uP[uS.loopNum].loopStart,0)
     elseif uS.selectedPar==2 then
-      uP[uS.loopNum].loopLength=util.clamp(uP[uS.loopNum].loopLength+d/100,0,uC.loopMinMax[2])
+      uP[uS.loopNum].loopLength=util.clamp(uP[uS.loopNum].loopLength+d/10,uC.loopMinMax[1],uC.loopMinMax[2])
       tape_change_loop(uS.loopNum,0,uP[uS.loopNum].loopLength)
     elseif uS.selectedPar==3 then
       uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
@@ -469,21 +469,21 @@ function redraw()
   else
     screen.level(1)
   end
-  screen.text(string.format("%1.2f",uP[uS.loopNum].loopStart))
+  screen.text(string.format("%1.1f",uP[uS.loopNum].loopStart))
   
-  screen.move(x+28,y)
+  screen.move(x+24,y)
   screen.level(1)
   screen.text("-")
   
-  screen.move(x+33,y)
+  screen.move(x+28,y)
   if uS.selectedPar==2 then
     screen.level(15)
   else
     screen.level(1)
   end
-  screen.text(string.format("%1.2fs",uP[uS.loopNum].loopStart+uP[uS.loopNum].loopLength))
+  screen.text(string.format("%1.1fs",uP[uS.loopNum].loopStart+uP[uS.loopNum].loopLength))
   
-  screen.move(x+70,y)
+  screen.move(x+55,y)
   if uS.selectedPar==3 then
     screen.level(15)
   else
@@ -491,7 +491,7 @@ function redraw()
   end
   screen.text(string.format("%1.2f",uP[uS.loopNum].vol))
   
-  screen.move(x+90,y)
+  screen.move(x+80,y)
   if uS.selectedPar==4 then
     screen.level(15)
   else
@@ -499,7 +499,7 @@ function redraw()
   end
   screen.text(string.format("%1.2f",uP[uS.loopNum].rate))
   
-  screen.move(x+110,y)
+  screen.move(x+105,y)
   if uS.selectedPar==5 then
     screen.level(15)
   else
@@ -511,8 +511,8 @@ function redraw()
   for i=1,6 do
     -- draw circles
     r=(uC.radiiMinMax[2]-uC.radiiMinMax[1])*uP[i].loopLength/(uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])+uC.radiiMinMax[1]
-    x=uC.centerOffsets[i][1]+(uC.widthMinMax[2]-uC.heightMinMax[1])*(uP[i].pan+1)/2+uC.widthMinMax[1]
-    y=uC.centerOffsets[i][2]+(uC.heightMinMax[2]-uC.widthMinMax[1])*(uP[i].rate+4)/8+uC.heightMinMax[1]
+    x=uC.centerOffsets[i][1]+(uC.widthMinMax[2]-uC.widthMinMax[1])*(uP[i].pan+1)/2+uC.widthMinMax[1]
+    y=uC.centerOffsets[i][2]+(uC.heightMinMax[2]-uC.heightMinMax[1])*(1-uP[i].vol)+uC.heightMinMax[2]
     if uS.loopNum==i then
       screen.line_width(1)
       screen.level(15)
