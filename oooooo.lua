@@ -486,7 +486,12 @@ function key(n,z)
     end
   elseif n==3 and z==1 then
     if uS.shift and uS.loopNum~=7 then
-      tape_arm_rec(uS.loopNum)
+      if not uP[uS.loopNum].isRecordingArmed then
+        tape_arm_rec(uS.loopNum)
+      else
+        uP[uS.loopNum].isRecordingArmed=false
+        tape_rec(uS.loopNum)
+      end
     else
       tape_play(uS.loopNum)
     end
