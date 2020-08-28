@@ -48,7 +48,7 @@ uC={
     {2,161,240},
   },
   loopMinMax={1,78},
-  radiiMinMax={6,120},
+  radiiMinMax={4,180},
   widthMinMax={8,124},
   heightMinMax={12,64},
   centerOffsets={
@@ -71,7 +71,7 @@ uC={
 PATH=_path.audio..'hoops/'
 
 function init()
-  init_loops()
+  init_loops(7)
   
   -- make data directory
   if not util.file_exists(PATH) then util.make_dir(PATH) end
@@ -113,8 +113,12 @@ function init()
   p_amp_in=poll.set("amp_in_l")
   p_amp_in.time=1
   p_amp_in.callback=function(val)
-    if uP[uS.loopNum].isRecordingArmed and not uP[uS.loopNum].isRecording and val>0.0015then
-      tape_rec(uS.loopNum)
+    if uP[uS.loopNum].isRecordingArmed and not uP[uS.loopNum].isRecording then
+      print(val)
+      if val>0.003 then
+        uP[uS.loopNum].isRecordingArmed=false
+        tape_rec(uS.loopNum)
+      end
     end
   end
   p_amp_in:start()
@@ -122,7 +126,15 @@ function init()
   redraw()
 end
 
-function init_loops()
+function init_loops(n)
+  print("reinitializing "..n)
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=7
+  end
+  
   -- initialize user parameters
   for i=1,7 do
     uP[i]={}
@@ -138,6 +150,10 @@ function init_loops()
     uP[i].lastPosition=0
   end
   
+  if n==7 then
+    i1=1
+    i2=6
+  end
   -- update softcut
   for i=1,6 do
     softcut.level(i,1)
@@ -174,7 +190,8 @@ function update_positions(i,x)
   uP[i].position=x-uP[i].loopStart-uC.bufferMinMax[i][2]
   if uP[i].lastPosition>0 and uP[i].position<uP[i].lastPosition and uP[i].isRecording then
     -- stop recording
-    tape_stop_rec(i)
+    -- tape_stop_rec(i)
+    tape_stop_reset(i)
     tape_play(i)
   end
   -- print("uC.bufferMinMax[i][2]",uC.bufferMinMax[i][2])
@@ -213,6 +230,7 @@ end
 -- tape functions
 --
 function tape_stop_reset(n)
+  print("tape_stop_reset "..n)
   i1=n
   i2=n
   if n==7 then
@@ -220,10 +238,11 @@ function tape_stop_reset(n)
     i2=6
   end
   for i=i1,i2 do
-    if uP[i].isRecording then
+    if uP[i].isRecording or uP[i].isRecordingArmed then
       tape_stop_rec(i)
     end
     if uP[i].isStopped then
+      print("tape_stop_reset moving to 0 for "..n)
       -- reset to 0 position
       if uP[i].position~=0 then
         -- move to beginning of loop
@@ -231,6 +250,7 @@ function tape_stop_reset(n)
         softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
       end
     else
+      print("tape_stop_reset stop playing "..n)
       -- stop playing
       softcut.rate(i,0)
       softcut.play(i,0)
@@ -240,13 +260,11 @@ function tape_stop_reset(n)
 end
 
 function tape_clear(n)
-  if uS.isCleared==true then
-    init_loops()
-    do return end
-  end
+  print("tape_clear "..n)
   uS.isCleared=true
   uS.loopCleared=true
   redraw()
+  init_loops(n)
   i1=n
   i2=n
   if n==7 then
@@ -265,6 +283,7 @@ function tape_clear(n)
 end
 
 function tape_play(n)
+  print("tape_play "..n)
   i1=n
   i2=n
   if n==7 then
@@ -272,8 +291,8 @@ function tape_play(n)
     i2=6
   end
   for i=i1,i2 do
-    if uP[i].isRecording then
-      tape_stop_rec(i)
+    if uP[i].isRecording or uP[i].isRecordingArmed then
+      tape_stop_reset(i)
     end
     -- start playing
     softcut.rate(i,uP[i].rate)
@@ -283,6 +302,7 @@ function tape_play(n)
 end
 
 function tape_stop_rec(n)
+  print("stopping recording "..n)
   p_amp_in.time=1
   
   i1=n
@@ -295,7 +315,7 @@ function tape_stop_rec(n)
     uP[i].isRecordingArmed=false
     uP[i].isRecording=false
     redraw()
-    -- stop recording, if recording
+    -- slowly stop
     for j=1,10 do
       softcut.rec(i,(10-j)/10)
       sleep(0.05)
@@ -305,6 +325,7 @@ function tape_stop_rec(n)
 end
 
 function tape_arm_rec(n)
+  print("arming recording "..n)
   -- monitor input
   p_amp_in.time=0.05
   i1=n
@@ -318,7 +339,6 @@ function tape_arm_rec(n)
     -- move to beginning of loop using stop/reset
     tape_stop_reset(i)
     tape_stop_reset(i)
-    uP[i].isStopped=false
     uP[i].isRecordingArmed=true
     uP[i].lastPosition=0
     redraw()
@@ -326,6 +346,7 @@ function tape_arm_rec(n)
 end
 
 function tape_rec(n)
+  print("starting recording on "..n)
   uS.isCleared=false
   i1=n
   i2=n
@@ -334,8 +355,11 @@ function tape_rec(n)
     i2=6
   end
   for i=i1,i2 do
+    print("softcut.rec(i,1) "..n)
     uP[i].isRecording=true
     redraw()
+    softcut.rec_level(i,1)
+    softcut.pre_level(i,1)
     softcut.play(i,1)
     softcut.rec(i,1)
     softcut.rate(i,uP[i].rate)
@@ -349,6 +373,7 @@ function tape_rec(n)
 end
 
 function tape_change_loop(n,lstart,llength)
+  print("tape_change_loop on "..n)
   i1=n
   i2=n
   if n==7 then
@@ -586,7 +611,7 @@ function redraw()
     screen.circle(x,y,r)
     screen.stroke()
     
-    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+180
+    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
     
     -- if not uP[i].isStopped then
     --   -- draw arc at position
@@ -598,6 +623,7 @@ function redraw()
     -- draw pixels at position
     for j=-1,1 do
       screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
+      screen.stroke()
     end
   end
   
