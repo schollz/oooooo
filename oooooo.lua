@@ -18,7 +18,7 @@
 -- E3 adjusts parameters
 --
 
-local json=import "json"
+local json=include "lib/json"
 
 -- user parameters
 uP={
@@ -31,7 +31,7 @@ uS={
   updateParams=0,
   updateTape=false,
   shift=false,
-  loopNum=1,-- 0 = all loops
+  loopNum=1,-- 7 = all loops
   selectedPar=1,
 }
 
@@ -46,16 +46,22 @@ uC={
     {2,161,240},
   },
   loopMinMax={1,78},
-  radiiMinMax={10,40},
+  radiiMinMax={8,20},
   widthMinMax={8,120},
-  heightMinMax={20,60},
+  heightMinMax={10,60},
   centerOffsets={
-    {1,-2},
-    {2,0},
-    {1,2},
-    {-1,2},
-    {-2,0},
-    {-1,-2},
+    -- {-48,0},
+    -- {-24,0},
+    -- {-8,0},
+    -- {8,0},
+    -- {60,0},
+    -- {90,0},
+    {3*1,3*-2},
+    {3*2,0},
+    {3*1,3*2},
+    {3*-1,3*2},
+    {3*-2,0},
+    {3*-1,3*-2},
   },
   parms={"loopstart","loopend","vol","rate","pan"},
 }
@@ -68,12 +74,13 @@ function init()
     uP[i]={}
     uP[i].position=0
     uP[i].loopStart=0
-    uP[i].loopLength=uC.loopMinMax[2]-uC.loopMinMax[1]
+    uP[i].loopLength=2
     uP[i].isStopped=true
     uP[i].isRecording=false
     uP[i].vol=1
     uP[i].rate=1
     uP[i].pan=0
+    uP[i].lastPosition=0
   end
   
   -- make data directory
@@ -85,9 +92,11 @@ function init()
   end
   
   -- load parameters from file
-  if util.file_exists(PATH.."hoops.json") then
-    uP=json.parse(readAll(PATH.."hoops.json"))
-  end
+  -- if util.file_exists(PATH.."hoops.json") then
+  --   filecontents=readAll(PATH.."hoops.json")
+  --   print(filecontents)
+  --   uP=json.parse(filecontents)
+  -- end
   
   -- update softcut
   for i=1,6 do
@@ -98,19 +107,20 @@ function init()
     softcut.play(i,0)
     softcut.rate(i,1)
     softcut.loop_start(i,uC.bufferMinMax[i][2])
-    softcut.loop_end(i,uC.bufferMinMax[i][3])
+    softcut.loop_end(i,uC.bufferMinMax[i][2]+uP[i].loopLength)
     softcut.loop(i,1)
     softcut.rec(i,0)
     
     softcut.fade_time(i,0.01)
-    softcut.level_slew_time(i,0.5)
-    softcut.rate_slew_time(i,0.5)
+    softcut.level_slew_time(i,0.2)
+    softcut.rate_slew_time(i,0.2)
     
     softcut.rec_level(i,1)
     softcut.pre_level(i,1)
     softcut.position(i,uC.bufferMinMax[i][2])
     softcut.buffer(i,uC.bufferMinMax[i][1])
     softcut.enable(i,1)
+    softcut.phase_quant(i,0.025)
   end
   
   -- initialize timer for updating screen
@@ -123,13 +133,12 @@ function init()
   -- initialize timer for updating parameters
   -- and tape on disk
   filewriter=metro.init()
-  filewriter.time=0.1
+  filewriter.time=0.25
   filewriter.count=-1
   filewriter.event=update_parameter_file
   filewriter:start()
   
   -- position poll
-  softcut.phase_quant(1,0.025)
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
   
@@ -150,7 +159,19 @@ end
 function update_positions(i,x)
   -- adjust position so it is relative to loop start
   -- TODO: check that this is right
+  uP[i].lastPosition=uP[i].position
   uP[i].position=x-uP[i].loopStart-uC.bufferMinMax[i][2]
+  if uP[i].position<uP[i].lastPosition and uP[i].isRecording then
+    -- stop recording
+    tape_stop_rec(i)
+    tape_play(i)
+  end
+  -- print("uC.bufferMinMax[i][2]",uC.bufferMinMax[i][2])
+  -- print("uC.bufferMinMax[i][2]",uC.bufferMinMax[i][3])
+  -- print("uP[i].position",i,uP[i].position)
+  -- print("uP[i].loopStart",i,uP[i].loopStart)
+  -- print("uP[i].loopLength",i,uP[i].loopLength)
+  -- print("x",i,x)
   uS.updateUI=true
 end
 
@@ -188,12 +209,15 @@ function tape_stop_reset(n)
     i2=6
   end
   for i=i1,i2 do
+    if uP[i].isRecording then
+      tape_stop_rec(i)
+    end
     if uP[i].isStopped then
       -- reset to 0 position
       if uP[i].position~=0 then
         -- move to beginning of loop
         uP[i].position=0
-        softcut.position(j,uP[i].position+uC.bufferMinMax[i][2]+uP[i].loopStart)
+        softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
       end
     else
       -- stop playing
@@ -215,8 +239,7 @@ function tape_clear(n)
     softcut.buffer_clear_region_channel(
       uC.bufferMinMax[i][1],
       uC.bufferMinMax[i][2],
-      uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2],
-    )
+    uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
   end
 end
 
@@ -229,14 +252,32 @@ function tape_play(n)
   end
   for i=i1,i2 do
     if uP[i].isRecording then
-      -- stop recording, if recording
-      uP[i].isRecording=false
-      softcut.rec(i,0)
+      tape_stop_rec(i)
     end
     -- start playing
     softcut.rate(i,uP[i].rate)
     softcut.play(i,1)
     uP[i].isStopped=false
+  end
+end
+
+function tape_stop_rec(n)
+  i1=n
+  i2=n
+  if n==7 then
+    i1=1
+    i2=6
+  end
+  for i=i1,i2 do
+    if uP[i].isRecording then
+      -- stop recording, if recording
+      for j=1,10 do
+        softcut.rec(i,(10-j)/10)
+        sleep(0.05)
+      end
+      softcut.rec(i,0)
+      uP[i].isRecording=false
+    end
   end
 end
 
@@ -248,13 +289,19 @@ function tape_rec(n)
     i2=6
   end
   for i=i1,i2 do
-    if uP[i].isStopped then
-      softcut.play(i,1)
-      uP[i].isStopped=false
-    end
     -- start recording
-    softcut.rec(i,1)
+    -- move to beginning of loop
+    uP[i].isStopped=false
     uP[i].isRecording=true
+    uP[i].position=0
+    uP[i].lastPosition=0
+    softcut.rec(i,0)
+    softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
+    softcut.play(i,1)
+    for j=1,10 do
+      softcut.rec(i,j/10)
+      sleep(0.04)
+    end
   end
 end
 
@@ -281,8 +328,10 @@ function tape_change_loop(n,lstart,llength)
       uP[i].position=uP[i].loopStart
       softcut.position(i,uP[i].position+uC.bufferMinMax[i][2])
     end
-    sofcut.loop_start(i,1+uP[i].loopStart+uC.bufferMinMax[i][2])
-    sofcut.loop_end(i,uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength)
+    print("uP[i].loopStart",uP[i].loopStart)
+    print("uC.bufferMinMax[i][2]",uC.bufferMinMax[i][2])
+    softcut.loop_start(i,uP[i].loopStart+uC.bufferMinMax[i][2])
+    softcut.loop_end(i,uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength)
   end
   uS.updateParams=uS.updateParams+1
 end
@@ -336,22 +385,22 @@ function enc(n,d)
   if n==1 then
     uS.loopNum=util.clamp(uS.loopNum+d,1,7)
   elseif n==2 then
-    uS.selectedPar=utils.clamp(uS.selectedPar+d,1,5)
+    uS.selectedPar=util.clamp(uS.selectedPar+d,1,5)
   elseif n==3 then
     if uS.selectedPar==1 then
-      uP[uS.loopNum].loopStart=util.clamp(uP[uS.loopNum].loopStart+d/10,0,uC.loopMinMax[2])
-      tape_change_loop(uS.loopNum,uP[uS.loopNum],0)
+      uP[uS.loopNum].loopStart=util.clamp(uP[uS.loopNum].loopStart+d/100,0,uC.loopMinMax[2])
+      tape_change_loop(uS.loopNum,uP[uS.loopNum].loopStart,0)
     elseif uS.selectedPar==2 then
-      uP[uS.loopNum].loopLength=util.clamp(uP[uS.loopNum].loopLength+d/10,0,uC.loopMinMax[2])
+      uP[uS.loopNum].loopLength=util.clamp(uP[uS.loopNum].loopLength+d/100,0,uC.loopMinMax[2])
       tape_change_loop(uS.loopNum,0,uP[uS.loopNum].loopLength)
     elseif uS.selectedPar==3 then
       uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
       tape_update_volume(uS.loopNum,uP[uS.loopNum].vol)
     elseif uS.selectedPar==4 then
-      uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/10,-4,4)
+      uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
       tape_update_rate(uS.loopNum,uP[uS.loopNum].rate)
     elseif uS.selectedPar==5 then
-      uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+x/10,-1,1)
+      uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
       tape_update_pan(uS.loopNum,uP[uS.loopNum].pan)
     end
   end
@@ -360,7 +409,7 @@ end
 
 function key(n,z)
   if n==1 then
-    uS.shift=z
+    uS.shift=not uS.shift
   elseif n==2 and z==1 then
     if uS.shift then
       tape_clear(uS.loopNum)
@@ -386,7 +435,7 @@ function redraw()
   
   -- check shift
   shift_amount=0
-  if state.shift then
+  if uS.shift then
     shift_amount=4
   end
   
@@ -395,9 +444,13 @@ function redraw()
   screen.text("hoooooops")
   
   -- show recording symbol
+  screen.move(70,8)
   if uP[uS.loopNum].isRecording then
-    screen.move(70,8)
     screen.text("REC")
+  elseif uP[uS.loopNum].isStopped then
+    screen.text("||")
+  else
+    screen.text(">")
   end
   
   -- show loop info
@@ -410,73 +463,73 @@ function redraw()
     screen.text(uS.loopNum)
   end
   
-  screen.move(x+16,y)
+  screen.move(x+10,y)
   if uS.selectedPar==1 then
     screen.level(15)
   else
-    screen.level(5)
+    screen.level(1)
   end
-  screen.text(uP[uS.loopNum].loopStart)
-  
-  screen.move(x+20,y)
-  screen.level(5)
-  screen.text("-")
+  screen.text(string.format("%1.2f",uP[uS.loopNum].loopStart))
   
   screen.move(x+28,y)
+  screen.level(1)
+  screen.text("-")
+  
+  screen.move(x+33,y)
   if uS.selectedPar==2 then
     screen.level(15)
   else
-    screen.level(5)
+    screen.level(1)
   end
-  screen.text(uP[uS.loopNum].loopLength)
+  screen.text(string.format("%1.2fs",uP[uS.loopNum].loopStart+uP[uS.loopNum].loopLength))
   
-  screen.move(x+32,y)
-  screen.level(5)
-  screen.text("s")
-  
-  screen.move(x+38,y)
+  screen.move(x+70,y)
   if uS.selectedPar==3 then
     screen.level(15)
   else
-    screen.level(5)
+    screen.level(1)
   end
-  screen.text(uP[uS.loopNum].vol)
+  screen.text(string.format("%1.2f",uP[uS.loopNum].vol))
   
-  screen.move(x+44,y)
+  screen.move(x+90,y)
   if uS.selectedPar==4 then
     screen.level(15)
   else
-    screen.level(5)
+    screen.level(1)
   end
-  screen.text(uP[uS.loopNum].rate)
+  screen.text(string.format("%1.2f",uP[uS.loopNum].rate))
   
-  screen.move(x+55,y)
+  screen.move(x+110,y)
   if uS.selectedPar==5 then
     screen.level(15)
   else
-    screen.level(5)
+    screen.level(1)
   end
-  screen.text(uP[uS.loopNum].pan)
+  screen.text(string.format("%1.2f",uP[uS.loopNum].pan))
   
   -- draw representation of current loop states
   for i=1,6 do
     -- draw circles
-    screen.level(15)
-    r=(uC.radiiMinMax[2]-uC.radiiMinMax[1])*uP[i].vol+uC.radiiMinMax[1]
+    r=(uC.radiiMinMax[2]-uC.radiiMinMax[1])*uP[i].loopLength/(uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])+uC.radiiMinMax[1]
     x=uC.centerOffsets[i][1]+(uC.widthMinMax[2]-uC.heightMinMax[1])*(uP[i].pan+1)/2+uC.widthMinMax[1]
     y=uC.centerOffsets[i][2]+(uC.heightMinMax[2]-uC.widthMinMax[1])*(uP[i].rate+4)/8+uC.heightMinMax[1]
-    if uS.loopNum==7 or uS.loopNum==i then
-      screen.line_width(2)
+    if uS.loopNum==i then
+      screen.line_width(1)
+      screen.level(15)
     else
       screen.line_width(1)
+      screen.level(1)
     end
+    screen.move(x+r,y)
     screen.circle(x,y,r)
     screen.stroke()
-    
-    -- draw arc at position
-    angle=360*(uP[i].position/uP[i].loopLength)
-    screen.arc(x,y,r,angle-5,angle+5)
-    screen.stroke()
+    if not uP[i].isStopped then
+      -- draw arc at position
+      angle=360*(uP[i].position)/(uP[i].loopLength)
+      screen.move(x,y)
+      screen.arc(x,y,r,math.rad(angle-5),math.rad(angle+5))
+      screen.stroke()
+    end
   end
   
   screen.update()
@@ -490,4 +543,10 @@ function readAll(file)
   local content=f:read("*all")
   f:close()
   return content
+end
+
+local clock=os.clock
+function sleep(n) -- seconds
+  local t0=clock()
+  while clock()-t0<=n do end
 end
