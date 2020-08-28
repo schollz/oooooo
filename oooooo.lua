@@ -46,22 +46,22 @@ uC={
     {2,161,240},
   },
   loopMinMax={1,78},
-  radiiMinMax={8,20},
+  radiiMinMax={6,120},
   widthMinMax={8,120},
-  heightMinMax={10,42},
+  heightMinMax={20,64},
   centerOffsets={
-    -- {-48,0},
-    -- {-24,0},
-    -- {-8,0},
-    -- {8,0},
-    -- {60,0},
-    -- {90,0},
-    {3*1,3*-2},
-    {3*2,0},
-    {3*1,3*2},
-    {3*-1,3*2},
-    {3*-2,0},
-    {3*-1,3*-2},
+    {0,0},
+    {0,0},
+    {0,0},
+    {0,0},
+    {0,0},
+    {0,0},
+    -- {3*1,3*-2},
+    -- {3*2,0},
+    -- {3*1,3*2},
+    -- {3*-1,3*2},
+    -- {3*-2,0},
+    -- {3*-1,3*-2},
   },
   parms={"loopstart","loopend","vol","rate","pan"},
 }
@@ -74,10 +74,10 @@ function init()
     uP[i]={}
     uP[i].position=0
     uP[i].loopStart=0
-    uP[i].loopLength=16
+    uP[i].loopLength=2*i
     uP[i].isStopped=true
     uP[i].isRecording=false
-    uP[i].vol=1
+    uP[i].vol=0.5
     uP[i].rate=1
     uP[i].pan=0
     uP[i].lastPosition=0
@@ -91,7 +91,7 @@ function init()
     softcut.buffer_read_stereo(PATH.."hoops.wav",0,0,-1)
   end
   
-  -- load parameters from file
+  -- -- load parameters from file
   -- if util.file_exists(PATH.."hoops.json") then
   --   filecontents=readAll(PATH.."hoops.json")
   --   print(filecontents)
@@ -161,7 +161,7 @@ function update_positions(i,x)
   -- TODO: check that this is right
   uP[i].lastPosition=uP[i].position
   uP[i].position=x-uP[i].loopStart-uC.bufferMinMax[i][2]
-  if uP[i].position<uP[i].lastPosition and uP[i].isRecording then
+  if uP[i].lastPosition>0 and uP[i].position<uP[i].lastPosition and uP[i].isRecording then
     -- stop recording
     tape_stop_rec(i)
     tape_play(i)
@@ -291,11 +291,12 @@ function tape_rec(n)
   for i=i1,i2 do
     -- start recording
     -- move to beginning of loop
+    tape_stop_reset(i)
+    tape_stop_reset(i)
     uP[i].isStopped=false
     uP[i].isRecording=true
-    uP[i].position=0
     uP[i].lastPosition=0
-    softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
+    softcut.rate(i,uP[i].rate)
     softcut.rec(i,0)
     softcut.play(i,1)
     for j=1,10 do
@@ -513,7 +514,7 @@ function redraw()
     -- draw circles
     r=(uC.radiiMinMax[2]-uC.radiiMinMax[1])*uP[i].loopLength/(uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])+uC.radiiMinMax[1]
     x=uC.centerOffsets[i][1]+(uC.widthMinMax[2]-uC.widthMinMax[1])*(uP[i].pan+1)/2+uC.widthMinMax[1]
-    y=uC.centerOffsets[i][2]+(uC.heightMinMax[2]-uC.heightMinMax[1])*(1-uP[i].vol)+uC.heightMinMax[2]
+    y=uC.centerOffsets[i][2]+(uC.heightMinMax[2]-uC.heightMinMax[1])*(1-uP[i].vol)+uC.heightMinMax[1]
     if uS.loopNum==i then
       screen.line_width(1)
       screen.level(15)
