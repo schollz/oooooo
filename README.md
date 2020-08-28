@@ -9,6 +9,7 @@ i've been seeing tape loops circulating (pun sorta intended) all over the place.
 
 future directions:
 
+- allow parameter to reset loops to different tempos
 - lean into the "tape loop" idea and add some lfos for tape *warbling*
 
 ### Requirements

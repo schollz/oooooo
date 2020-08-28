@@ -36,7 +36,7 @@ uS={
   loopNum=1,-- 7 = all loops
   selectedPar=1,
   flagClearing=true,
-  flagSaveLoad=0,
+  flagSpecial=0,
   message="",
   tempo=60,-- tempo is used to initialize all the loops to specific number of beats
 }
@@ -351,7 +351,12 @@ function enc(n,d)
     -- do not allow changing loops if recording
     uS.loopNum=util.clamp(uS.loopNum+d,1,7)
   elseif n==2 then
-    uS.selectedPar=util.clamp(uS.selectedPar+d,1,5)
+    if uS.loopNum~=7 then
+      uS.selectedPar=util.clamp(uS.selectedPar+d,1,5)
+    else
+      -- toggle between saving / loading / tempo managmenet
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,1,3)
+    end
   elseif n==3 then
     if uS.loopNum~=7 then
       if uS.selectedPar==1 then
@@ -371,8 +376,10 @@ function enc(n,d)
         softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
       end
     else
-      -- toggle between saving and loading
-      uS.flagSaveLoad=1-uS.flagSaveLoad
+      if uS.flagSpecial==3 then
+        -- modify clearing tempo
+        uC.tempo=util.clamp(uC.tempo+d,40,300)
+      end
     end
   end
   uS.updateUI=true
@@ -401,10 +408,10 @@ function key(n,z)
         end
       else
         -- save/load functionality
-        if uS.flagSaveLoad==0 then
+        if uS.flagSpecial==0 then
           -- save
           backup_save()
-        else
+        elseif uS.flagSpecial==1 then
           -- load
           backup_load()
         end
@@ -463,7 +470,7 @@ function redraw()
   
   if uS.loopNum==7 then
     screen.move(x+10,y)
-    if uS.flagSaveLoad==0 then
+    if uS.flagSpecial==0 then
       screen.text("save")
     else
       screen.text("load")
