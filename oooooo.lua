@@ -85,10 +85,10 @@ function init()
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
   
-  -- ecord priming
-  -- and starting on incoming audio
-  -- set time low when primed, set time high when done
+  -- listen to audio
+  -- and initiate recording on incoming audio
   p_amp_in=poll.set("amp_in_l")
+  -- set period low when primed, default 1 second
   p_amp_in.time=1
   p_amp_in.callback=function(val)
     if uS.recording==1 then
@@ -262,13 +262,15 @@ function tape_clear(i)
   if uS.flagClearing then
     do return end
   end
-  -- signal clearing
+  -- signal clearing to prevent double clear
   uS.flagClearing=true
   redraw()
   
   if i==7 then
+    -- clear everything
     softcut.buffer_clear()
   else
+    -- clear a specific section of buffer
     uP[i].isEmpty=true
     softcut.buffer_clear_region_channel(
       uC.bufferMinMax[i][1],
@@ -278,9 +280,11 @@ function tape_clear(i)
   end
   init_loops(i)
   
+  -- TODO: maybe this is not nessecary?
+  -- sleep to make sure the clear indicator was shown
   sleep(0.2)
+  
   uS.flagClearing=false
-  redraw()
 end
 
 function tape_play(j)
@@ -307,7 +311,6 @@ function tape_arm_rec(i)
   uS.recording=1
   -- monitor input
   p_amp_in.time=0.05
-  redraw()
 end
 
 function tape_rec(i)
@@ -322,7 +325,6 @@ function tape_rec(i)
   softcut.pre_level(i,1)
   softcut.rec(i,1)
   uP[i].isEmpty=false
-  redraw()
 end
 
 function tape_change_loop(i)
@@ -546,8 +548,9 @@ function redraw()
     --   screen.stroke()
     -- end
     
-    -- draw pixels at position if it has data
-    if not uP[i].isEmpty then
+    -- draw pixels at position if it has data or
+    -- its being recorded/primed
+    if uP[i].isEmpty==false or (i==uS.loopNum and uS.recording>0) then
       for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
         screen.stroke()
