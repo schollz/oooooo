@@ -60,15 +60,9 @@ uC={
     {0,0},
     {0,0},
     {0,0},
-    -- {3*1,3*-2},
-    -- {3*2,0},
-    -- {3*1,3*2},
-    -- {3*-1,3*2},
-    -- {3*-2,0},
-    -- {3*-1,3*-2},
   },
-  parms={"loopstart","loopend","vol","rate","pan"},
   updateTimerInterval=0.05,
+  recArmThreshold=0.03,
 }
 
 PATH=_path.audio..'hoops/'
@@ -118,7 +112,7 @@ function init()
   p_amp_in.callback=function(val)
     if uS.recording==1 then
       print(val)
-      if val>0.003 then
+      if val>uC.recArmThreshold then
         uS.recording==2
         tape_rec(uS.loopNum)
       end
@@ -136,6 +130,7 @@ function init_loops(i)
   uP[i].position=uP[i].loopStart
   uP[i].loopLength=2*i
   uP[i].isStopped=true
+  uP[i].isEmpty=true
   uP[i].vol=0.5
   uP[i].rate=1
   uP[i].pan=0
@@ -240,6 +235,7 @@ function tape_stop(i)
 end
 
 function tape_stop_rec(i)
+  print("tape_stop_rec "..i)
   p_amp_in.time=1
   uS.recording=0
   uS.recordingTime=0
@@ -267,6 +263,7 @@ function tape_clear(j)
     i2=6
   end
   for i=i1,i2 do
+    uP[i].isEmpty=true
     softcut.buffer_clear_region_channel(
       uC.bufferMinMax[i][1],
       uC.bufferMinMax[i][2],
@@ -317,6 +314,7 @@ function tape_rec(i)
   softcut.rec_level(i,1)
   softcut.pre_level(i,1)
   softcut.rec(i,1)
+  uP[i].isEmpty=false
   redraw()
 end
 
@@ -462,7 +460,7 @@ function redraw()
     screen.text("level")
   elseif uS.selectedPar==4 then
     screen.move(x+15,y)
-    screen.text(string.format("rate %1.2f",uP[uS.loopNum].rate))
+    screen.text(string.format("rate %d%%",(uP[uS.loopNum].rate)*100))
   elseif uS.selectedPar==5 then
     screen.move(x+15,y)
     screen.text("pan")
@@ -518,10 +516,12 @@ function redraw()
     --   screen.stroke()
     -- end
     
-    -- draw pixels at position
-    for j=-1,1 do
-      screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
-      screen.stroke()
+    -- draw pixels at position if it has data
+    if not uP[i].isEmpty then
+      for j=-1,1 do
+        screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
+        screen.stroke()
+      end
     end
   end
   
