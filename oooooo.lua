@@ -48,7 +48,7 @@ uC={
   loopMinMax={1,78},
   radiiMinMax={8,20},
   widthMinMax={8,120},
-  heightMinMax={10,40},
+  heightMinMax={10,42},
   centerOffsets={
     -- {-48,0},
     -- {-24,0},
@@ -440,6 +440,7 @@ function redraw()
   end
   
   -- show header
+  screen.level(15)
   screen.move(2+shift_amount,8+shift_amount)
   screen.text("hoooooops")
   
@@ -455,7 +456,7 @@ function redraw()
   
   -- show loop info
   x=2
-  y=16
+  y=18
   screen.move(x,y)
   if uS.loopNum==7 then
     screen.text("all")
