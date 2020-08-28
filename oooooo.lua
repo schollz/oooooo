@@ -27,6 +27,9 @@ uP={
 
 -- user state
 uS={
+  clearing=0,-- 1, clears current, 2 clears all
+  recording=0,-- 0 = not recording, 1 = armed, 2 = recording
+  recordingTime=0,
   updateUI=false,
   updateParams=0,
   updateTape=false,
@@ -66,6 +69,7 @@ uC={
     -- {3*-1,3*-2},
   },
   parms={"loopstart","loopend","vol","rate","pan"},
+  updateTimerInterval=0.05,
 }
 
 PATH=_path.audio..'hoops/'
@@ -90,18 +94,18 @@ function init()
   
   -- initialize timer for updating screen
   timer=metro.init()
-  timer.time=0.05
+  timer.time=updateTimerInterval
   timer.count=-1
   timer.event=update_timer
   timer:start()
   
-  -- initialize timer for updating parameters
-  -- and tape on disk
-  filewriter=metro.init()
-  filewriter.time=0.25
-  filewriter.count=-1
-  filewriter.event=update_parameter_file
-  filewriter:start()
+  -- -- initialize timer for updating parameters
+  -- -- and tape on disk
+  -- filewriter=metro.init()
+  -- filewriter.time=0.25
+  -- filewriter.count=-1
+  -- filewriter.event=update_parameter_file
+  -- filewriter:start()
   
   -- position poll
   softcut.event_phase(update_positions)
@@ -113,10 +117,10 @@ function init()
   p_amp_in=poll.set("amp_in_l")
   p_amp_in.time=1
   p_amp_in.callback=function(val)
-    if uP[uS.loopNum].isRecordingArmed and not uP[uS.loopNum].isRecording then
+    if uS.recording==1 then
       print(val)
       if val>0.003 then
-        uP[uS.loopNum].isRecordingArmed=false
+        uS.recording==2
         tape_rec(uS.loopNum)
       end
     end
@@ -126,58 +130,39 @@ function init()
   redraw()
 end
 
-function init_loops(n)
-  print("reinitializing "..n)
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=7
-  end
+function init_loops(i)
+  print("initializing  "..i)
+  uP[i]={}
+  uP[i].loopStart=0
+  uP[i].position=uP[i].loopStart
+  uP[i].loopLength=2*i
+  uP[i].isStopped=true
+  uP[i].vol=0.5
+  uP[i].rate=1
+  uP[i].pan=0
   
-  -- initialize user parameters
-  for i=i1,i2 do
-    uP[i]={}
-    uP[i].position=0
-    uP[i].loopStart=0
-    uP[i].loopLength=2*i
-    uP[i].isStopped=true
-    uP[i].isRecording=false
-    uP[i].isRecordingArmed=false
-    uP[i].vol=0.5
-    uP[i].rate=1
-    uP[i].pan=0
-    uP[i].lastPosition=0
-  end
-  
-  if n==7 then
-    i1=1
-    i2=6
-  end
   -- update softcut
-  for i=i1,i2 do
-    softcut.level(i,1)
-    softcut.level_input_cut(1,i,1)
-    softcut.level_input_cut(2,i,1)
-    softcut.pan(i,0)
-    softcut.play(i,0)
-    softcut.rate(i,1)
-    softcut.loop_start(i,uC.bufferMinMax[i][2])
-    softcut.loop_end(i,uC.bufferMinMax[i][2]+uP[i].loopLength)
-    softcut.loop(i,1)
-    softcut.rec(i,0)
-    
-    softcut.fade_time(i,0.01)
-    softcut.level_slew_time(i,0.2)
-    softcut.rate_slew_time(i,0.2)
-    
-    softcut.rec_level(i,1)
-    softcut.pre_level(i,1)
-    softcut.position(i,uC.bufferMinMax[i][2])
-    softcut.buffer(i,uC.bufferMinMax[i][1])
-    softcut.enable(i,1)
-    softcut.phase_quant(i,0.025)
-  end
+  softcut.level(i,1)
+  softcut.level_input_cut(1,i,1)
+  softcut.level_input_cut(2,i,1)
+  softcut.pan(i,0)
+  softcut.play(i,0)
+  softcut.rate(i,1)
+  softcut.loop_start(i,uC.bufferMinMax[i][2])
+  softcut.loop_end(i,uC.bufferMinMax[i][2]+uP[i].loopLength)
+  softcut.loop(i,1)
+  softcut.rec(i,0)
+  
+  softcut.fade_time(i,0.01)
+  softcut.level_slew_time(i,0.2)
+  softcut.rate_slew_time(i,0.2)
+  
+  softcut.rec_level(i,1)
+  softcut.pre_level(i,1)
+  softcut.position(i,uC.bufferMinMax[i][2])
+  softcut.buffer(i,uC.bufferMinMax[i][1])
+  softcut.enable(i,1)
+  softcut.phase_quant(i,0.025)
 end
 
 --
@@ -185,27 +170,20 @@ end
 --
 function update_positions(i,x)
   -- adjust position so it is relative to loop start
-  -- TODO: check that this is right
-  uP[i].lastPosition=uP[i].position
-  uP[i].position=x-uP[i].loopStart-uC.bufferMinMax[i][2]
-  if uP[i].lastPosition>0 and uP[i].position<uP[i].lastPosition and uP[i].isRecording then
-    -- stop recording
-    -- tape_stop_rec(i)
-    tape_stop_reset(i)
-    tape_play(i)
-  end
-  -- print("uC.bufferMinMax[i][2]",uC.bufferMinMax[i][2])
-  -- print("uC.bufferMinMax[i][2]",uC.bufferMinMax[i][3])
-  -- print("uP[i].position",i,uP[i].position)
-  -- print("uP[i].loopStart",i,uP[i].loopStart)
-  -- print("uP[i].loopLength",i,uP[i].loopLength)
-  -- print("x",i,x)
+  uP[i].position=x-uC.bufferMinMax[i][2]
   uS.updateUI=true
 end
 
 function update_timer()
   if uS.updateUI then
     redraw()
+  end
+  if uS.recording==2 then
+    uS.recordingTime=uS.recordingTime+updateTimerInterval
+    if uS.recordingTime>=uP[i].loopLength then
+      -- stop recording
+      tape_stop_rec(uS.loopNum)
+    end
   end
 end
 
@@ -229,247 +207,147 @@ end
 --
 -- tape functions
 --
-function tape_stop_reset(n)
-  print("tape_stop_reset "..n)
-  i1=n
-  i2=n
-  if n==7 then
+function tape_reset_clear(j)
+  -- if uS.loopNum == 7 then stop all
+  i1=j
+  i2=j
+  if j==7 then
     i1=1
     i2=6
   end
   for i=i1,i2 do
-    if uP[i].isRecording or uP[i].isRecordingArmed then
-      tape_stop_rec(i)
-    end
     if uP[i].isStopped then
-      print("tape_stop_reset moving to 0 for "..n)
-      -- reset to 0 position
-      if uP[i].position~=0 then
-        -- move to beginning of loop
-        uP[i].position=0
-        softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
-      end
+      tape_reset(i)
     else
-      print("tape_stop_reset stop playing "..n)
-      -- stop playing
-      softcut.rate(i,0)
-      softcut.play(i,0)
-      uP[i].isStopped=true
+      tape_stop(i)
     end
   end
 end
 
-function tape_clear(n)
-  print("tape_clear "..n)
-  uS.isCleared=true
+function tape_reset(i)
+  print("tape_reset "..i)
+  uP[i].position=0
+  softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
+end
+
+function tape_stop(i)
+  print("tape_stop "..i)
+  if uS.recording>0 then
+    tape_stop_rec(i)
+  end
+  softcut.rate(i,0)
+  softcut.play(i,0)
+  uP[i].isStopped=true
+end
+
+function tape_stop_rec(i)
+  p_amp_in.time=1
+  uS.recording=0
+  uS.recordingTime=0
+  --   -- slowly stop
+  -- for j=1,10 do
+  --   softcut.rec(i,(10-j)/10)
+  --   sleep(0.05)
+  -- end
+  softcut.rec(i,0)
+end
+
+function tape_clear(i)
+  print("tape_clear "..i)
+  -- prevent double clear
+  if uS.loopCleared then
+    do return end
+  end
+  -- signal clearing
   uS.loopCleared=true
   redraw()
-  init_loops(n)
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=6
-  end
-  for i=i1,i2 do
-    softcut.buffer_clear_region_channel(
-      uC.bufferMinMax[i][1],
-      uC.bufferMinMax[i][2],
-    uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
-  end
+  softcut.buffer_clear_region_channel(
+    uC.bufferMinMax[i][1],
+    uC.bufferMinMax[i][2],
+  uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
+  
+  -- reinitialize
+  init_loops(i)
   sleep(0.5)
   uS.loopCleared=false
   redraw()
+  uS.isCleared=true
 end
 
-function tape_play(n)
-  print("tape_play "..n)
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=6
+function tape_play(i)
+  print("tape_play "..i)
+  if uS.recording>0 then
+    tape_stop_rec(i)
   end
-  for i=i1,i2 do
-    if uP[i].isRecording or uP[i].isRecordingArmed then
-      tape_stop_reset(i)
-    end
-    -- start playing
-    softcut.rate(i,uP[i].rate)
-    softcut.play(i,1)
-    uP[i].isStopped=false
-  end
+  softcut.play(i,1)
+  softcut.rate(i,uP[i].rate)
+  uP[i].isStopped=false
 end
 
-function tape_stop_rec(n)
-  print("stopping recording "..n)
-  p_amp_in.time=1
-  
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=6
-  end
-  for i=i1,i2 do
-    uP[i].isRecordingArmed=false
-    uP[i].isRecording=false
-    redraw()
-    -- slowly stop
-    for j=1,10 do
-      softcut.rec(i,(10-j)/10)
-      sleep(0.05)
-    end
-    softcut.rec(i,0)
-  end
-end
-
-function tape_arm_rec(n)
+function tape_arm_rec(i)
   print("arming recording "..n)
+  -- arm  recording
+  uS.recording=1
   -- monitor input
   p_amp_in.time=0.05
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=6
-  end
-  for i=i1,i2 do
-    -- start recording
-    -- move to beginning of loop using stop/reset
-    tape_stop_reset(i)
-    tape_stop_reset(i)
-    uP[i].isRecordingArmed=true
-    uP[i].lastPosition=0
-    redraw()
-  end
+  redraw()
 end
 
-function tape_rec(n)
-  print("starting recording on "..n)
+function tape_rec(i)
+  print("starting recording on "..i)
+  if uP[i].isStopped then
+    tape_play(i)
+  end
+  p_amp_in.time=1
   uS.isCleared=false
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=6
-  end
-  for i=i1,i2 do
-    print("softcut.rec(i,1) "..n)
-    uP[i].isRecording=true
-    redraw()
-    softcut.rec_level(i,1)
-    softcut.pre_level(i,1)
-    softcut.play(i,1)
-    softcut.rec(i,1)
-    softcut.rate(i,uP[i].rate)
-    -- softcut.rec(i,0)
-    -- for j=1,10 do
-    --   softcut.rec(i,j/10)
-    --   sleep(0.04)
-    --   redraw()
-    -- end
-  end
+  uS.recordingTime=0
+  uS.recording=2 -- recording is live
+  softcut.rec_level(i,1)
+  softcut.pre_level(i,1)
+  softcut.rec(i,1)
+  redraw()
 end
 
-function tape_change_loop(n,lstart,llength)
-  print("tape_change_loop on "..n)
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=6
+function tape_change_loop(i)
+  print("tape_change_loop on "..i)
+  if uP[i].loopLength+uP[i].loopStart>uC.loopMinMax[2] then
+    -- loop length is too long, shorten it
+    uP[i].loopLength=uC.loopMinMax[2]-uP[i].loopStart
   end
-  for i=i1,i2 do
-    if lstart>0 then
-      uP[i].loopStart=lstart
-    end
-    if llength>0 then
-      uP[i].loopLength=llength
-    end
-    if uP[i].loopLength+uP[i].loopStart>uC.loopMinMax[2] then
-      -- loop length is too long, shorten it
-      uP[i].loopLength=uC.loopMinMax[2]-uP[i].loopStart
-    end
-    -- move to start of loop if position is outside of loop
-    if uP[i].position<uP[i].loopStart or uP[i].position>uP[i].loopStart+uP[i].loopLength then
-      uP[i].position=uP[i].loopStart
-      softcut.position(i,uP[i].position+uC.bufferMinMax[i][2])
-    end
-    print("uP[i].loopStart",uP[i].loopStart)
-    print("uC.bufferMinMax[i][2]",uC.bufferMinMax[i][2])
-    softcut.loop_start(i,uP[i].loopStart+uC.bufferMinMax[i][2])
-    softcut.loop_end(i,uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength)
+  -- move to start of loop if position is outside of loop
+  if uP[i].position<uP[i].loopStart or uP[i].position>uP[i].loopStart+uP[i].loopLength then
+    uP[i].position=uP[i].loopStart
+    softcut.position(i,uP[i].position+uC.bufferMinMax[i][2])
   end
-  uS.updateParams=uS.updateParams+1
-end
-
-function tape_update_volume(n,x)
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=6
-  end
-  for i=i1,i2 do
-    uP[i].vol=x
-    softcut.level(i,x)
-  end
-  uS.updateParams=uS.updateParams+1
-end
-
-function tape_update_rate(n,x)
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=6
-  end
-  for i=i1,i2 do
-    uP[i].rate=x
-    softcut.rate(i,x)
-  end
-  uS.updateParams=uS.updateParams+1
-end
-
-function tape_update_pan(n,x)
-  i1=n
-  i2=n
-  if n==7 then
-    i1=1
-    i2=6
-  end
-  for i=i1,i2 do
-    uP[i].pan=x
-    softcut.pan(i,x)
-  end
-  uS.updateParams=uS.updateParams+1
+  softcut.loop_start(i,uP[i].loopStart+uC.bufferMinMax[i][2])
+  softcut.loop_end(i,uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength)
 end
 
 --
 -- encoders
 --
 function enc(n,d)
-  if n==1 then
+  if n==1 and uS.recording==0 then
+    -- do not allow changing loops if recording
     uS.loopNum=util.clamp(uS.loopNum+d,1,7)
   elseif n==2 then
     uS.selectedPar=util.clamp(uS.selectedPar+d,1,5)
   elseif n==3 and uS.loopNum~=7 then
     if uS.selectedPar==1 then
       uP[uS.loopNum].loopStart=util.clamp(uP[uS.loopNum].loopStart+d/10,0,uC.loopMinMax[2])
-      tape_change_loop(uS.loopNum,uP[uS.loopNum].loopStart,0)
+      tape_change_loop(uS.loopNum)
     elseif uS.selectedPar==2 then
       uP[uS.loopNum].loopLength=util.clamp(uP[uS.loopNum].loopLength+d/10,uC.loopMinMax[1],uC.loopMinMax[2])
-      tape_change_loop(uS.loopNum,0,uP[uS.loopNum].loopLength)
+      tape_change_loop(uS.loopNum)
     elseif uS.selectedPar==3 then
       uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
-      tape_update_volume(uS.loopNum,uP[uS.loopNum].vol)
+      softcut.level(uS.loopNum,uP[uS.loopNum].vol)
     elseif uS.selectedPar==4 then
       uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
-      tape_update_rate(uS.loopNum,uP[uS.loopNum].rate)
+      softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
     elseif uS.selectedPar==5 then
       uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
-      tape_update_pan(uS.loopNum,uP[uS.loopNum].pan)
+      softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
     end
   end
   uS.updateUI=true
@@ -480,16 +358,20 @@ function key(n,z)
     uS.shift=not uS.shift
   elseif n==2 and z==1 then
     if uS.shift then
-      tape_clear(uS.loopNum)
+      if uS.isCleared then
+        -- TODO: clear all
+      else
+        -- clear current
+        tape_clear(uS.loopNum)
+      end
     else
-      tape_stop_reset(uS.loopNum)
+      tape_reset_clear(uS.loopNum)
     end
   elseif n==3 and z==1 then
     if uS.shift and uS.loopNum~=7 then
-      if not uP[uS.loopNum].isRecordingArmed then
+      if uS.recording==0 then
         tape_arm_rec(uS.loopNum)
-      else
-        uP[uS.loopNum].isRecordingArmed=false
+      elseif uS.recording==1 then
         tape_rec(uS.loopNum)
       end
     else
@@ -519,9 +401,9 @@ function redraw()
   screen.move(116,8)
   if uS.loopCleared then
     screen.text("CLR")
-  elseif uP[uS.loopNum].isRecording then
+  elseif uS.recording==2 then
     screen.text("REC")
-  elseif uP[uS.loopNum].isRecordingArmed then
+  elseif uS.recording==1 then
     screen.level(1)
     screen.text("REC")
     screen.level(15)
