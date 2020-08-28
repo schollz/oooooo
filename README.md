@@ -3,9 +3,10 @@
 6 x digital tape loop.
 
 
-i've been seeing tape loops circulating (pun sorta intended) all over the place. i like the idea of having multiple independent different loops, with different sizes, played on a different tape players with different eccentricities. i don't have any tapes but i have norns so i wrote this script to try to make digital tape loops. i call it *"oooooo"*.
+i've been seeing tape loops circulating (pun sorta intended) all over the place. i like the idea of having multiple independent different loops, with different sizes, played on a different tape players with different eccentricities. i don't have any cassette tapes but i have norns so i wrote this script to try to make digital tape loops. i call it *"oooooo"*.
 
-*oooooo* is inspired by musicians like [amulets](https://www.youtube.com/watch?v=hER3s1NPr_U), [hainbach](https://www.youtube.com/watch?v=cVy9ABT5-iY), [andrew black](https://www.instagram.com/andy_____black) and inspired by norns scripts like [reels](https://llllllll.co/t/reels), [cranes](https://llllllll.co/t/cranes), and my previous script [barcode](https://llllllll.co/t/barcode).
+*oooooo* is inspired by musicians like [amulets](https://www.youtube.com/watch?v=hER3s1NPr_U), [hainbach](https://www.youtube.com/watch?v=cVy9ABT5-iY), [andrew black](https://www.instagram.com/andy_____black) and inspired by norns scripts like [reels](https://llllllll.co/t/reels), [cranes](https://llllllll.co/t/cranes), and my previous script [barcode](https://llllllll.co/t/barcode). 
+
 
 future directions:
 
@@ -29,13 +30,23 @@ future directions:
 - E2 selects parameters
 - E3 adjusts parameters
 
-*oooooo* eccentricities:
+**recording:**
 
-- allow *arming* record which to start recording on audio input
-- recording defaults to one loop (can be stopped earlier)
-- you can adjust loop *length* instead of loop *endpoint*
+- the first time you hit shift+K3 to record it will "prime". when "primed" recording will start automatically with incoming audio. you can force recording by hitting shift+K3 a second time.
+- recording stops when it iterates over the whole loop (but can be stopped earlier)
 
-the ui is also minimal but attempts to show the main information at a glance - the tape loop size, speed, pan, volume are all encoded in the ui.
+
+**special functions:**
+
+if you change the loop to "A" using E2 there are several special functions available.
+
+- K2/K3 stops/plays on *all* loops
+- pressing shift+K2 clears *all* loops
+- if you select the parameter "save" and press K3 it will save the current state. this will overwrite the previous save, so make sure to backup the audio files yourself.
+- if you select the parameter "load" and press K2 it will load the previous state.
+- if you select the parameter "tempo" you can modify a tempo that will be used to calculate loop lengths when clearing all loops.
+
+
 
 ## demo 
 
