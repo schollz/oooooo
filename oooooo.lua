@@ -30,6 +30,7 @@ uS={
   updateUI=false,
   updateParams=0,
   updateTape=false,
+  loopCleared=false,
   shift=false,
   loopNum=1,-- 7 = all loops
   selectedPar=1,
@@ -230,6 +231,8 @@ function tape_stop_reset(n)
 end
 
 function tape_clear(n)
+  uS.loopCleared=true
+  redraw()
   i1=n
   i2=n
   if n==7 then
@@ -242,6 +245,9 @@ function tape_clear(n)
       uC.bufferMinMax[i][2],
     uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
   end
+  sleep(0.5)
+  uS.loopCleared=false
+  redraw()
 end
 
 function tape_play(n)
@@ -390,7 +396,7 @@ function enc(n,d)
     uS.loopNum=util.clamp(uS.loopNum+d,1,7)
   elseif n==2 then
     uS.selectedPar=util.clamp(uS.selectedPar+d,1,5)
-  elseif n==3 then
+  elseif n==3 and uS.loopNum~=7 then
     if uS.selectedPar==1 then
       uP[uS.loopNum].loopStart=util.clamp(uP[uS.loopNum].loopStart+d/10,0,uC.loopMinMax[2])
       tape_change_loop(uS.loopNum,uP[uS.loopNum].loopStart,0)
@@ -421,7 +427,7 @@ function key(n,z)
       tape_stop_reset(uS.loopNum)
     end
   elseif n==3 and z==1 then
-    if uS.shift then
+    if uS.shift and uS.loopNum~=7 then
       tape_rec(uS.loopNum)
     else
       tape_play(uS.loopNum)
@@ -448,7 +454,9 @@ function redraw()
   
   -- show recording symbol
   screen.move(116,8)
-  if uP[uS.loopNum].isRecording then
+  if uS.loopCleared then
+    screen.text("CLR")
+  elseif uP[uS.loopNum].isRecording then
     screen.text("REC")
   elseif uP[uS.loopNum].isStopped then
     screen.text("||")
