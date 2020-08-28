@@ -1,7 +1,7 @@
--- hoooooops v0.1
--- six persistant autonomous tapes
+-- oooooo v0.1
+-- 6 x digital tape loops
 --
--- llllllll.co/t/hoops
+-- llllllll.co/t/oooooo
 --
 --
 --
@@ -27,7 +27,6 @@ uP={
 
 -- user state
 uS={
-  clearing=0,-- 1, clears current, 2 clears all
   recording=0,-- 0 = not recording, 1 = armed, 2 = recording
   recordingTime=0,
   updateUI=false,
@@ -175,7 +174,7 @@ function update_timer()
   if uS.recording==2 then
     uS.recordingTime=uS.recordingTime+updateTimerInterval
     if uS.recordingTime>=uP[i].loopLength then
-      -- stop recording
+      -- stop recording when reached a full loop
       tape_stop_rec(uS.loopNum)
     end
   end
@@ -406,7 +405,7 @@ function redraw()
   -- show header
   screen.level(15)
   
-  -- show recording symbol
+  -- show state symbol
   screen.move(116,8)
   if uS.flagClearing then
     screen.text("CLR")
