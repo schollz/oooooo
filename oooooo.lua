@@ -36,6 +36,8 @@ uS={
   loopNum=1,-- 7 = all loops
   selectedPar=1,
   flagClearing=true,
+  flagSaveLoad=0,
+  message="",
 }
 
 -- user constants
@@ -72,18 +74,6 @@ function init()
   -- make data directory
   if not util.file_exists(PATH) then util.make_dir(PATH) end
   
-  -- load buffer from file
-  -- if util.file_exists(PATH.."hoops.wav") then
-  --   softcut.buffer_read_stereo(PATH.."hoops.wav",0,0,-1)
-  -- end
-  
-  -- -- load parameters from file
-  -- if util.file_exists(PATH.."hoops.json") then
-  --   filecontents=readAll(PATH.."hoops.json")
-  --   print(filecontents)
-  --   uP=json.parse(filecontents)
-  -- end
-  
   -- initialize timer for updating screen
   timer=metro.init()
   timer.time=updateTimerInterval
@@ -91,19 +81,11 @@ function init()
   timer.event=update_timer
   timer:start()
   
-  -- -- initialize timer for updating parameters
-  -- -- and tape on disk
-  -- filewriter=metro.init()
-  -- filewriter.time=0.25
-  -- filewriter.count=-1
-  -- filewriter.event=update_parameter_file
-  -- filewriter:start()
-  
   -- position poll
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
   
-  -- TODO: experiment with record priming
+  -- ecord priming
   -- and starting on incoming audio
   -- set time low when primed, set time high when done
   p_amp_in=poll.set("amp_in_l")
@@ -123,6 +105,10 @@ function init()
 end
 
 function init_loops(i)
+  audio.level_adc(1) -- input volume 1
+  audio.level_adc_cut(1) -- ADC to Softcut input
+  audio.level_cut(1) -- Softcut master level (same as in LEVELS screen)
+  
   print("initializing  "..i)
   uP[i]={}
   uP[i].loopStart=0
@@ -135,7 +121,7 @@ function init_loops(i)
   uP[i].pan=0
   
   -- update softcut
-  softcut.level(i,1)
+  softcut.level(i,0.5)
   softcut.level_input_cut(1,i,1)
   softcut.level_input_cut(2,i,1)
   softcut.pan(i,0)
@@ -152,8 +138,8 @@ function init_loops(i)
   
   softcut.rec_level(i,1)
   softcut.pre_level(i,1)
-  softcut.position(i,uC.bufferMinMax[i][2])
   softcut.buffer(i,uC.bufferMinMax[i][1])
+  softcut.position(i,uC.bufferMinMax[i][2])
   softcut.enable(i,1)
   softcut.phase_quant(i,0.025)
 end
@@ -180,21 +166,45 @@ function update_timer()
   end
 end
 
-function update_parameter_file()
-  if uS.updateParams>0 then
-    uS.updateParams=uS.updateParams-1
-    if uS.updateParams==0 then
-      -- write file
-      file=io.open(PATH.."hoops.json","w+")
-      io.output(file)
-      io.write(json.stringify(uP))
-      io.close(file)
-    end
+--
+-- saving and loading
+--
+function backup_save()
+  print("backup_save")
+  uS.message="saved"
+  redraw()
+  -- write file of user data
+  file=io.open(PATH.."hoops.json","w+")
+  io.output(file)
+  io.write(json.stringify(uP))
+  io.close(file)
+  
+  -- save tape
+  softcut.buffer_write_stereo(PATH.."hoops.wav",0,-1)
+  
+  sleep(0.5)
+  uS.message=""
+end
+
+function backup_load()
+  print("backup_load")
+  uS.message="loaded"
+  
+  -- -- load parameters from file
+  if util.file_exists(PATH.."hoops.json") then
+    filecontents=readAll(PATH.."hoops.json")
+    print(filecontents)
+    uP=json.parse(filecontents)
   end
-  if uS.updateTape then
-    -- save tape
-    softcut.buffer_write_stereo(PATH.."hoops.wav",0,-1)
+  
+  -- load buffer from file
+  if util.file_exists(PATH.."hoops.wav") then
+    softcut.buffer_clear()
+    softcut.buffer_read_stereo(PATH.."hoops.wav",0,0,-1)
   end
+  
+  sleep(0.5)
+  uS.message=""
 end
 
 --
@@ -246,8 +256,8 @@ function tape_stop_rec(i)
   softcut.rec(i,0)
 end
 
-function tape_clear(j)
-  print("tape_clear "..j)
+function tape_clear(i)
+  print("tape_clear "..i)
   -- prevent double clear
   if uS.flagClearing then
     do return end
@@ -255,21 +265,19 @@ function tape_clear(j)
   -- signal clearing
   uS.flagClearing=true
   redraw()
-  i1=j
-  i2=j
-  if j==7 then
-    i1=1
-    i2=6
-  end
-  for i=i1,i2 do
+  
+  if i==7 then
+    softcut.buffer_clear()
+  else
     uP[i].isEmpty=true
     softcut.buffer_clear_region_channel(
       uC.bufferMinMax[i][1],
       uC.bufferMinMax[i][2],
     uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
     -- reinitialize
-    init_loops(i)
   end
+  init_loops(i)
+  
   sleep(0.2)
   uS.flagClearing=false
   redraw()
@@ -341,22 +349,27 @@ function enc(n,d)
     uS.loopNum=util.clamp(uS.loopNum+d,1,7)
   elseif n==2 then
     uS.selectedPar=util.clamp(uS.selectedPar+d,1,5)
-  elseif n==3 and uS.loopNum~=7 then
-    if uS.selectedPar==1 then
-      uP[uS.loopNum].loopStart=util.clamp(uP[uS.loopNum].loopStart+d/10,0,uC.loopMinMax[2])
-      tape_change_loop(uS.loopNum)
-    elseif uS.selectedPar==2 then
-      uP[uS.loopNum].loopLength=util.clamp(uP[uS.loopNum].loopLength+d/10,uC.loopMinMax[1],uC.loopMinMax[2])
-      tape_change_loop(uS.loopNum)
-    elseif uS.selectedPar==3 then
-      uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
-      softcut.level(uS.loopNum,uP[uS.loopNum].vol)
-    elseif uS.selectedPar==4 then
-      uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
-      softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
-    elseif uS.selectedPar==5 then
-      uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
-      softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
+  elseif n==3 then
+    if uS.loopNum~=7 then
+      if uS.selectedPar==1 then
+        uP[uS.loopNum].loopStart=util.clamp(uP[uS.loopNum].loopStart+d/10,0,uC.loopMinMax[2])
+        tape_change_loop(uS.loopNum)
+      elseif uS.selectedPar==2 then
+        uP[uS.loopNum].loopLength=util.clamp(uP[uS.loopNum].loopLength+d/10,uC.loopMinMax[1],uC.loopMinMax[2])
+        tape_change_loop(uS.loopNum)
+      elseif uS.selectedPar==3 then
+        uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
+        softcut.level(uS.loopNum,uP[uS.loopNum].vol)
+      elseif uS.selectedPar==4 then
+        uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
+        softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
+      elseif uS.selectedPar==5 then
+        uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
+        softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
+      end
+    else
+      -- toggle between saving and loading
+      uS.flagSaveLoad=1-uS.flagSaveLoad
     end
   end
   uS.updateUI=true
@@ -376,11 +389,22 @@ function key(n,z)
       tape_stop_reset(uS.loopNum)
     end
   elseif n==3 and z==1 then
-    if uS.shift and uS.loopNum~=7 then
-      if uS.recording==0 then
-        tape_arm_rec(uS.loopNum)
-      elseif uS.recording==1 then
-        tape_rec(uS.loopNum)
+    if uS.shift then
+      if uS.loopNum~=7 then
+        if uS.recording==0 then
+          tape_arm_rec(uS.loopNum)
+        elseif uS.recording==1 then
+          tape_rec(uS.loopNum)
+        end
+      else
+        -- save/load functionality
+        if uS.flagSaveLoad==0 then
+          -- save
+          backup_save()
+        else
+          -- load
+          backup_load()
+        end
       end
     else
       tape_play(uS.loopNum)
@@ -434,7 +458,14 @@ function redraw()
   screen.rect(x-3,y-7,10,10)
   screen.stroke()
   
-  if uS.selectedPar==1 or uS.selectedPar==2 then
+  if uS.loopNum==7 then
+    screen.move(x+10,y)
+    if uS.flagSaveLoad==0 then
+      screen.text("save")
+    else
+      screen.text("load")
+    end
+  elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
     if uS.selectedPar==1 then
       screen.level(15)
@@ -522,6 +553,10 @@ function redraw()
         screen.stroke()
       end
     end
+  end
+  
+  if uS.message~="" then
+    screen.text_center(uS.message)
   end
   
   screen.update()
