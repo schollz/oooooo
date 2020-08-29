@@ -399,7 +399,7 @@ function enc(n,d)
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
     else
       -- toggle between saving / loading / tempo managmenet
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,2)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,3)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -420,7 +420,7 @@ function enc(n,d)
         softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
       end
     else
-      if uS.flagSpecial==2 then
+      if uS.flagSpecial==3 then
         -- modify clearing tempo
         uC.tempo=util.clamp(uC.tempo+d,40,300)
       end
@@ -452,10 +452,10 @@ function key(n,z)
         end
       else
         -- save/load functionality
-        if uS.flagSpecial==0 then
+        if uS.flagSpecial==1 then
           -- save
           backup_save()
-        elseif uS.flagSpecial==1 then
+        elseif uS.flagSpecial==2 then
           -- load
           backup_load()
         end
@@ -525,11 +525,11 @@ function redraw()
   y=60
   if uS.loopNum==7 then
     screen.move(x+10,y)
-    if uS.flagSpecial==0 then
+    if uS.flagSpecial==1 then
       screen.text("save")
-    elseif uS.flagSpecial==1 then
-      screen.text("load")
     elseif uS.flagSpecial==2 then
+      screen.text("load")
+    elseif uS.flagSpecial==3 then
       screen.text(string.format("%d bpm",uC.tempo))
     end
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
@@ -557,7 +557,7 @@ function redraw()
     screen.text("level")
   elseif uS.selectedPar==4 then
     screen.move(x+10,y)
-    screen.text(string.format("rate %1.0f%%",uP[uS.loopNum].rate*100))
+    screen.text(string.format("rate %1.1f%%",uP[uS.loopNum].rate*100))
   elseif uS.selectedPar==5 then
     screen.move(x+10,y)
     screen.text("pan")
