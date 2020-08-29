@@ -1,13 +1,12 @@
 ## oooooo
 
-6 x digital tape loop.
+digital tape loops x 6.
 
 ![Image](https://user-images.githubusercontent.com/6550035/91628872-c47b8c80-e978-11ea-9d07-df79ef337a0f.gif)
 
-i've been seeing tape loops circulating (pun sorta intended) all over the place. i like the idea of having multiple independent different loops, with different sizes, played on a different tape players with different eccentricities. i don't have any cassette tapes but i have norns so i wrote this script to try to make digital tape loops. 
+i call this script *"oooooo"* because it is composed of six loops. they are like digital tape loops - you can level, pan, speed, slow, shorten, lengthen, dub, overdub any loop at any time.
 
-i call this script *"oooooo"* because it is composed of six loops. you can level, pan, speed, slow, shorten, lengthen, dub, overdub any loop at any time.
-
+i was inspired to make this after seeing tape loops circulating (pun sorta intended) all over the place. i like the idea of having multiple independent different loops, with different sizes, played on a different tape players with different eccentricities. i don't have any cassette tapes but i have norns so i wrote this script to try to make digital tape loops. 
 
 future directions:
 
