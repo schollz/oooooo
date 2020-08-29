@@ -34,8 +34,8 @@ uS={
   updateTape=false,
   shift=false,
   loopNum=1,-- 7 = all loops
-  selectedPar=1,
-  flagClearing=true,
+  selectedPar=0,
+  flagClearing=false,
   flagSpecial=0,
   message="",
   tempo=60,-- tempo is used to initialize all the loops to specific number of beats
@@ -54,7 +54,7 @@ uC={
   loopMinMax={1,78},
   radiiMinMax={4,180},
   widthMinMax={8,124},
-  heightMinMax={12,64},
+  heightMinMax={0,64},
   centerOffsets={
     {0,0},
     {0,0},
@@ -65,9 +65,10 @@ uC={
   },
   updateTimerInterval=0.05,
   recArmThreshold=0.03,
+  tempo=120,
 }
 
-PATH=_path.audio..'hoops/'
+PATH=_path.audio..'oooooo/'
 
 function init()
   init_loops(7)
@@ -77,7 +78,7 @@ function init()
   
   -- initialize timer for updating screen
   timer=metro.init()
-  timer.time=updateTimerInterval
+  timer.time=uC.updateTimerInterval
   timer.count=-1
   timer.event=update_timer
   timer:start()
@@ -93,9 +94,8 @@ function init()
   p_amp_in.time=1
   p_amp_in.callback=function(val)
     if uS.recording==1 then
-      print(val)
+      -- print("incoming signal = "..val)
       if val>uC.recArmThreshold then
-        uS.recording==2
         tape_rec(uS.loopNum)
       end
     end
@@ -105,44 +105,54 @@ function init()
   redraw()
 end
 
-function init_loops(i)
+function init_loops(j)
   audio.level_adc(1) -- input volume 1
   audio.level_adc_cut(1) -- ADC to Softcut input
   audio.level_cut(1) -- Softcut master level (same as in LEVELS screen)
   
-  print("initializing  "..i)
-  uP[i]={}
-  uP[i].loopStart=0
-  uP[i].position=uP[i].loopStart
-  uP[i].loopLength=(60/uC.tempo)*i
-  uP[i].isStopped=true
-  uP[i].isEmpty=true
-  uP[i].vol=0.5
-  uP[i].rate=1
-  uP[i].pan=0
-  
-  -- update softcut
-  softcut.level(i,0.5)
-  softcut.level_input_cut(1,i,1)
-  softcut.level_input_cut(2,i,1)
-  softcut.pan(i,0)
-  softcut.play(i,0)
-  softcut.rate(i,1)
-  softcut.loop_start(i,uC.bufferMinMax[i][2])
-  softcut.loop_end(i,uC.bufferMinMax[i][2]+uP[i].loopLength)
-  softcut.loop(i,1)
-  softcut.rec(i,0)
-  
-  softcut.fade_time(i,0.01)
-  softcut.level_slew_time(i,0.2)
-  softcut.rate_slew_time(i,0.2)
-  
-  softcut.rec_level(i,1)
-  softcut.pre_level(i,1)
-  softcut.buffer(i,uC.bufferMinMax[i][1])
-  softcut.position(i,uC.bufferMinMax[i][2])
-  softcut.enable(i,1)
-  softcut.phase_quant(i,0.025)
+  i1=j
+  i2=j
+  if j==7 then
+    i1=1
+    i2=7
+  end
+  for i=i1,i2 do
+    print("initializing  "..i)
+    uP[i]={}
+    uP[i].loopStart=0
+    uP[i].position=uP[i].loopStart
+    uP[i].loopLength=(60/uC.tempo)*i*4
+    uP[i].isStopped=true
+    uP[i].isEmpty=true
+    uP[i].vol=0.5
+    uP[i].rate=1
+    uP[i].pan=0
+    
+    if i<7 then
+      -- update softcut
+      softcut.level(i,0.5)
+      softcut.level_input_cut(1,i,1)
+      softcut.level_input_cut(2,i,1)
+      softcut.pan(i,0)
+      softcut.play(i,0)
+      softcut.rate(i,1)
+      softcut.loop_start(i,uC.bufferMinMax[i][2])
+      softcut.loop_end(i,uC.bufferMinMax[i][2]+uP[i].loopLength)
+      softcut.loop(i,1)
+      softcut.rec(i,0)
+      
+      softcut.fade_time(i,0.01)
+      softcut.level_slew_time(i,0.02)
+      softcut.rate_slew_time(i,0.02)
+      
+      softcut.rec_level(i,1)
+      softcut.pre_level(i,1)
+      softcut.buffer(i,uC.bufferMinMax[i][1])
+      softcut.position(i,uC.bufferMinMax[i][2])
+      softcut.enable(i,1)
+      softcut.phase_quant(i,0.025)
+    end
+  end
 end
 
 --
@@ -159,8 +169,8 @@ function update_timer()
     redraw()
   end
   if uS.recording==2 then
-    uS.recordingTime=uS.recordingTime+updateTimerInterval
-    if uS.recordingTime>=uP[i].loopLength then
+    uS.recordingTime=uS.recordingTime+uC.updateTimerInterval
+    if uS.recordingTime>=uP[uS.loopNum].loopLength then
       -- stop recording when reached a full loop
       tape_stop_rec(uS.loopNum)
     end
@@ -175,13 +185,13 @@ function backup_save()
   uS.message="saved"
   redraw()
   -- write file of user data
-  file=io.open(PATH.."hoops.json","w+")
+  file=io.open(PATH.."oooooo.json","w")
   io.output(file)
   io.write(json.stringify(uP))
   io.close(file)
   
   -- save tape
-  softcut.buffer_write_stereo(PATH.."hoops.wav",0,-1)
+  softcut.buffer_write_stereo(PATH.."oooooo.wav",0,-1)
   
   sleep(0.5)
   uS.message=""
@@ -192,16 +202,16 @@ function backup_load()
   uS.message="loaded"
   
   -- -- load parameters from file
-  if util.file_exists(PATH.."hoops.json") then
-    filecontents=readAll(PATH.."hoops.json")
+  if util.file_exists(PATH.."oooooo.json") then
+    filecontents=readAll(PATH.."oooooo.json")
     print(filecontents)
     uP=json.parse(filecontents)
   end
   
   -- load buffer from file
-  if util.file_exists(PATH.."hoops.wav") then
+  if util.file_exists(PATH.."oooooo.wav") then
     softcut.buffer_clear()
-    softcut.buffer_read_stereo(PATH.."hoops.wav",0,0,-1)
+    softcut.buffer_read_stereo(PATH.."oooooo.wav",0,0,-1)
   end
   
   sleep(0.5)
@@ -220,7 +230,7 @@ function tape_stop_reset(j)
     i2=6
   end
   for i=i1,i2 do
-    if uP[i].isStopped then
+    if uP[i].isStopped and uS.recording==0 then
       tape_reset(i)
     else
       tape_stop(i)
@@ -229,35 +239,48 @@ function tape_stop_reset(j)
 end
 
 function tape_reset(i)
+  if uP[i].position==0 then
+    do return end
+  end
   print("tape_reset "..i)
   uP[i].position=0
   softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
 end
 
 function tape_stop(i)
+  if uP[i].isStopped==true and uS.recording==0 then
+    do return end
+  end
   print("tape_stop "..i)
   if uS.recording>0 then
     tape_stop_rec(i)
   end
-  softcut.rate(i,0)
+  -- ?????
+  -- if this runs as softcut.rate(i,0) though, then overdubbing stops working
   softcut.play(i,0)
   uP[i].isStopped=true
 end
 
 function tape_stop_rec(i)
+  if uS.recording==0 then
+    do return end
+  end
   print("tape_stop_rec "..i)
   p_amp_in.time=1
   uS.recording=0
   uS.recordingTime=0
-  --   -- slowly stop
-  -- for j=1,10 do
-  --   softcut.rec(i,(10-j)/10)
-  --   sleep(0.05)
-  -- end
+  -- slowly stop
+  for j=1,10 do
+    softcut.rec(i,(10-j)*0.1)
+    sleep(0.02)
+  end
   softcut.rec(i,0)
 end
 
 function tape_clear(i)
+  if i<7 and uP[i].isEmpty==true then
+    do return end
+  end
   print("tape_clear "..i)
   -- prevent double clear
   if uS.flagClearing then
@@ -289,6 +312,9 @@ function tape_clear(i)
 end
 
 function tape_play(j)
+  if j<7 and uP[j].isStopped==false then
+    do return end
+  end
   print("tape_play "..j)
   if uS.recording>0 then
     tape_stop_rec(j)
@@ -301,13 +327,17 @@ function tape_play(j)
   end
   for i=i1,i2 do
     softcut.play(i,1)
+    softcut.level(i,uP[i].vol)
     softcut.rate(i,uP[i].rate)
     uP[i].isStopped=false
   end
 end
 
 function tape_arm_rec(i)
-  print("arming recording "..n)
+  if uS.recording==1 then
+    do return end
+  end
+  print("tape_arm_rec "..i)
   -- arm  recording
   uS.recording=1
   -- monitor input
@@ -315,15 +345,27 @@ function tape_arm_rec(i)
 end
 
 function tape_rec(i)
-  print("starting recording on "..i)
+  if uS.recording==2 then
+    do return end
+  end
+  print("tape_rec "..i)
   if uP[i].isStopped then
-    tape_play(i)
+    softcut.play(i,1)
+    print("setting rate to "..uP[i].rate)
+    softcut.rate(i,uP[i].rate)
+    softcut.level(i,uP[i].vol)
+    uP[i].isStopped=false
   end
   p_amp_in.time=1
   uS.recordingTime=0
   uS.recording=2 -- recording is live
   softcut.rec_level(i,1)
   softcut.pre_level(i,1)
+  -- ease in recording signal to avoid clicks near loop points
+  for j=1,10 do
+    softcut.rec(i,j*0.1)
+    sleep(0.02)
+  end
   softcut.rec(i,1)
   uP[i].isEmpty=false
 end
@@ -352,10 +394,10 @@ function enc(n,d)
     uS.loopNum=util.clamp(uS.loopNum+d,1,7)
   elseif n==2 then
     if uS.loopNum~=7 then
-      uS.selectedPar=util.clamp(uS.selectedPar+d,1,5)
+      uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
     else
       -- toggle between saving / loading / tempo managmenet
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,1,3)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,2)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -376,7 +418,7 @@ function enc(n,d)
         softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
       end
     else
-      if uS.flagSpecial==3 then
+      if uS.flagSpecial==2 then
         -- modify clearing tempo
         uC.tempo=util.clamp(uC.tempo+d,40,300)
       end
@@ -440,18 +482,27 @@ function redraw()
   screen.level(15)
   
   -- show state symbol
-  screen.move(116,8)
   if uS.flagClearing then
+    screen.rect(108,1,20,10)
+    screen.move(111,8)
     screen.text("CLR")
   elseif uS.recording==2 then
+    screen.rect(108,1,20,10)
+    screen.move(111,8)
     screen.text("REC")
   elseif uS.recording==1 then
+    screen.rect(108,1,20,10)
     screen.level(1)
+    screen.move(111,8)
     screen.text("REC")
     screen.level(15)
   elseif uP[uS.loopNum].isStopped then
+    screen.rect(113,1,10,10)
+    screen.move(116,8)
     screen.text("||")
   else
+    screen.rect(113,1,10,10)
+    screen.move(116,8)
     screen.text(">")
   end
   
@@ -468,12 +519,16 @@ function redraw()
   screen.rect(x-3,y-7,10,10)
   screen.stroke()
   
+  x=-7
+  y=60
   if uS.loopNum==7 then
     screen.move(x+10,y)
     if uS.flagSpecial==0 then
       screen.text("save")
-    else
+    elseif uS.flagSpecial==1 then
       screen.text("load")
+    elseif uS.flagSpecial==2 then
+      screen.text(string.format("%d bpm",uC.tempo))
     end
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
@@ -496,13 +551,13 @@ function redraw()
     end
     screen.text(string.format("%1.1fs",uP[uS.loopNum].loopStart+uP[uS.loopNum].loopLength))
   elseif uS.selectedPar==3 then
-    screen.move(x+15,y)
+    screen.move(x+10,y)
     screen.text("level")
   elseif uS.selectedPar==4 then
-    screen.move(x+15,y)
-    screen.text(string.format("rate %d%%",(uP[uS.loopNum].rate)*100))
+    screen.move(x+10,y)
+    screen.text(string.format("rate %1.0f%%",uP[uS.loopNum].rate*100))
   elseif uS.selectedPar==5 then
-    screen.move(x+15,y)
+    screen.move(x+10,y)
     screen.text("pan")
   end
   
@@ -567,6 +622,7 @@ function redraw()
   end
   
   if uS.message~="" then
+    screen.move(7,9)
     screen.text_center(uS.message)
   end
   
