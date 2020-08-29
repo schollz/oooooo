@@ -102,6 +102,10 @@ function init()
   end
   p_amp_in:start()
   
+  -- add variables into main menu
+  params:add_control("rec_thresh","rec_thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,uC.recArmThreshold*1000,'amp/1k'))
+  params:set_action("rec_thresh",function(x) uC.recArmThreshold=x/1000 end)
+  
   redraw()
 end
 
