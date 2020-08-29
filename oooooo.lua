@@ -51,8 +51,8 @@ uC={
     {2,82,161},
     {2,163,243},
   },
-  loopMinMax={1,78},
-  radiiMinMax={4,180},
+  loopMinMax={0.2,78},
+  radiiMinMax={3,160},
   widthMinMax={8,124},
   heightMinMax={0,64},
   centerOffsets={
@@ -141,9 +141,9 @@ function init_loops(j)
       softcut.loop(i,1)
       softcut.rec(i,0)
       
-      softcut.fade_time(i,0.01)
-      softcut.level_slew_time(i,0.02)
-      softcut.rate_slew_time(i,0.02)
+      softcut.fade_time(i,0.2)
+      softcut.level_slew_time(i,0.8)
+      softcut.rate_slew_time(i,0.8)
       
       softcut.rec_level(i,1)
       softcut.pre_level(i,1)
@@ -272,7 +272,7 @@ function tape_stop_rec(i)
   -- slowly stop
   for j=1,10 do
     softcut.rec(i,(10-j)*0.1)
-    sleep(0.02)
+    sleep(0.05)
   end
   softcut.rec(i,0)
 end
@@ -361,13 +361,15 @@ function tape_rec(i)
   uS.recording=2 -- recording is live
   softcut.rec_level(i,1)
   softcut.pre_level(i,1)
+  uP[i].isEmpty=false
+  redraw()
+  -- slowly init recording
   -- ease in recording signal to avoid clicks near loop points
   for j=1,10 do
     softcut.rec(i,j*0.1)
-    sleep(0.02)
+    sleep(0.05)
   end
   softcut.rec(i,1)
-  uP[i].isEmpty=false
 end
 
 function tape_change_loop(i)
