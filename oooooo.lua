@@ -499,12 +499,12 @@ function redraw()
     screen.text("REC")
     screen.level(15)
   elseif uP[uS.loopNum].isStopped then
-    screen.rect(113,1,10,10)
-    screen.move(116,8)
+    screen.rect(118,1,10,10)
+    screen.move(121,8)
     screen.text("||")
   else
-    screen.rect(113,1,10,10)
-    screen.move(116,8)
+    screen.rect(118,1,10,10)
+    screen.move(121,8)
     screen.text(">")
   end
   
