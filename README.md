@@ -42,8 +42,8 @@ if you change the loop to "A" using E2 there are several special functions avail
 
 - K2/K3 stops/plays on *all* loops,
 - pressing shift+K2 clears and resets *all* loops,
-- if you select the parameter "save" and press K3 it will save the current state. this will overwrite the previous save, so make sure to backup the audio files yourself.
-- if you select the parameter "load" and press K2 it will load the previous state.,
+- if you select the parameter "save" and hold K1+press K3 it will save the current state. this will overwrite the previous save, so make sure to backup the audio files yourself.
+- if you select the parameter "load" and hold K1+press K3 it will load the previous state.
 - if you select the parameter "tempo" you can modify a tempo that will be used to calculate loop lengths when clearing all loops.
 
 
