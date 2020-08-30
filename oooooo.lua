@@ -337,11 +337,10 @@ function tape_clear(i)
       uC.bufferMinMax[i][1],
       uC.bufferMinMax[i][2],
     uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
-    -- reinitialize
   end
-  init_loops(i)
+  -- reinitialize?
+  -- init_loops(i)
   
-  -- TODO: maybe this is not nessecary?
   -- sleep to make sure the clear indicator was shown
   sleep(0.2)
   uS.message=""
