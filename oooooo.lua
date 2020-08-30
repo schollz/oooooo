@@ -106,8 +106,8 @@ function init()
   -- add variables into main menu
   params:add_control("rec_thresh","rec_thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,uC.recArmThreshold*1000,'amp/1k'))
   params:set_action("rec_thresh",function(x) uC.recArmThreshold=x/1000 end)
-  params:add(type="number",id="tempo",min=1,max=8,default=1,
-  action=function(x) uC.backupNumber=x end)
+  params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
+  params:set_action("backup",function(x) uC.backupNumber=x/1000 end)
   
   redraw()
 end
