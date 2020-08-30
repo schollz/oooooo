@@ -66,6 +66,7 @@ uC={
   updateTimerInterval=0.05,
   recArmThreshold=0.03,
   tempo=120,
+  backupNumber=1,
 }
 
 PATH=_path.audio..'oooooo/'
@@ -105,6 +106,8 @@ function init()
   -- add variables into main menu
   params:add_control("rec_thresh","rec_thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,uC.recArmThreshold*1000,'amp/1k'))
   params:set_action("rec_thresh",function(x) uC.recArmThreshold=x/1000 end)
+  params:add(type="number",id="tempo",min=1,max=8,default=1,
+  action=function(x) uC.backupNumber=x end)
   
   redraw()
 end
@@ -189,13 +192,13 @@ function backup_save()
   uS.message="saved"
   redraw()
   -- write file of user data
-  file=io.open(PATH.."oooooo.json","w")
+  file=io.open(PATH.."oooooo"..uC.backupNumber..".json","w")
   io.output(file)
   io.write(json.stringify(uP))
   io.close(file)
   
   -- save tape
-  softcut.buffer_write_stereo(PATH.."oooooo.wav",0,-1)
+  softcut.buffer_write_stereo(PATH.."oooooo"..uC.backupNumber..".wav",0,-1)
   
   sleep(0.5)
   uS.message=""
@@ -206,16 +209,16 @@ function backup_load()
   uS.message="loaded"
   
   -- -- load parameters from file
-  if util.file_exists(PATH.."oooooo.json") then
-    filecontents=readAll(PATH.."oooooo.json")
+  if util.file_exists(PATH.."oooooo"..uC.backupNumber..".json") then
+    filecontents=readAll(PATH.."oooooo"..uC.backupNumber..".json")
     print(filecontents)
     uP=json.parse(filecontents)
   end
   
   -- load buffer from file
-  if util.file_exists(PATH.."oooooo.wav") then
+  if util.file_exists(PATH.."oooooo"..uC.backupNumber..".wav") then
     softcut.buffer_clear()
-    softcut.buffer_read_stereo(PATH.."oooooo.wav",0,0,-1)
+    softcut.buffer_read_stereo(PATH.."oooooo"..uC.backupNumber..".wav",0,0,-1)
   end
   
   sleep(0.5)

@@ -10,6 +10,7 @@ i was inspired to make this after seeing tape loops circulating (pun sorta inten
 
 future directions:
 
+- allow saving/loading to multiple files
 - add lfos for tape *warbling*
 - fix all the 🐛🐛🐛
 
