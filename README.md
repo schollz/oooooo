@@ -10,7 +10,6 @@ i was inspired to make this after seeing tape loops circulating (pun sorta inten
 
 future directions:
 
-- allow saving/loading to multiple files
 - add lfos for tape *warbling*
 - fix all the 🐛🐛🐛
 
@@ -35,6 +34,7 @@ future directions:
 
 - the first time you hit shift+K3 to record it will "prime". when "primed", recording will automatically begin when incoming audio asserts itself. you can always force recording by hitting shift+K3 a second time.
 - recording stops when it iterates over the whole loop (but can be stopped earlier use K2 or K3)
+- adjust the recording threshold by going into global `PARAMETERS` menu and adjust `rec_thresh`.
 
 
 **special functions:**
@@ -43,9 +43,10 @@ if you change the loop to "A" using E2 there are several special functions avail
 
 - K2/K3 stops/plays on *all* loops,
 - pressing shift+K2 clears and resets *all* loops,
-- if you select the parameter "save" and hold K1+press K3 it will save the current state. this will overwrite the previous save, so make sure to backup the audio files yourself.
+- if you select the parameter "save" and hold K1+press K3 it will save the current state. this will overwrite the previous save, so make sure to backup the audio files yourself. you can change which save by changing the `backup` parameter in the global parameters menu.
 - if you select the parameter "load" and hold K1+press K3 it will load the previous state.
 - if you select the parameter "tempo" you can modify a tempo that will be used to calculate loop lengths when clearing all loops.
+
 
 
 ## demo 
