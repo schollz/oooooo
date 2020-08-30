@@ -295,6 +295,7 @@ function tape_clear(i)
   end
   -- signal clearing to prevent double clear
   uS.flagClearing=true
+  uS.message="clearing"
   redraw()
   
   if i==7 then
@@ -314,7 +315,7 @@ function tape_clear(i)
   -- TODO: maybe this is not nessecary?
   -- sleep to make sure the clear indicator was shown
   sleep(0.2)
-  
+  uS.message=""
   uS.flagClearing=false
 end
 
@@ -491,11 +492,7 @@ function redraw()
   screen.level(15)
   
   -- show state symbol
-  if uS.flagClearing then
-    screen.rect(108,1,20,10)
-    screen.move(111,8)
-    screen.text("CLR")
-  elseif uS.recording==2 then
+  if uS.recording==2 then
     screen.rect(108,1,20,10)
     screen.move(111,8)
     screen.text("REC")
@@ -634,7 +631,16 @@ function redraw()
   end
   
   if uS.message~="" then
-    screen.move(7,9)
+    screen.level(0)
+    x=34
+    y=28
+    w=65
+    screen.rect(x,y,w,10)
+    screen.fill()
+    screen.level(15)
+    screen.rect(x,y,w,10)
+    screen.stroke()
+    screen.move(x+w/2,y+7)
     screen.text_center(uS.message)
   end
   
