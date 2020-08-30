@@ -67,6 +67,7 @@ uC={
   recArmThreshold=0.03,
   tempo=120,
   backupNumber=1,
+  lfoTime=1,
 }
 
 PATH=_path.audio..'oooooo/'
@@ -107,7 +108,7 @@ function init()
   params:add_control("rec_thresh","rec_thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,uC.recArmThreshold*1000,'amp/1k'))
   params:set_action("rec_thresh",function(x) uC.recArmThreshold=x/1000 end)
   params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
-  params:set_action("backup",function(x) uC.backupNumber=x/1000 end)
+  params:set_action("backup",function(x) uC.backupNumber=round(x) end)
   
   redraw()
 end
@@ -134,6 +135,10 @@ function init_loops(j)
     uP[i].vol=0.5
     uP[i].rate=1
     uP[i].pan=0
+    uP[i].lfoWarble={}
+    for j=1,3 do
+      uP[i].lfoWarble[j]=math.random(1,60)
+    end
     
     if i<7 then
       -- update softcut
@@ -172,6 +177,13 @@ function update_positions(i,x)
 end
 
 function update_timer()
+  -- -- update the count for the lfos
+  -- uC.lfoTime=uC.lfoTime+uC.updateTimerInterval
+  -- if uC.lfoTime>376.99 then -- 60 * 2 * pi
+  --   uC.lfoTime=0
+  -- end
+  -- tape_warble()
+  
   if uS.updateUI then
     redraw()
   end
@@ -223,6 +235,23 @@ function backup_load()
   
   sleep(0.5)
   uS.message=""
+end
+
+--
+-- tape effects
+--
+function tape_warble()
+  for i=1,6 do
+    if uP[i].isStopped or uS.recording>0 then
+      -- do nothing
+    else
+      warblePercent=0
+      for j=1,3 do
+        warblePercent=warblePercent+math.sin(2*math.pi*uC.lfoTime/uP[i].lfoWarble[j])
+      end
+      softcut.rate(i,uP[i].rate*(1+warblePercent/200))
+    end
+  end
 end
 
 --
@@ -661,4 +690,16 @@ local clock=os.clock
 function sleep(n) -- seconds
   local t0=clock()
   while clock()-t0<=n do end
+end
+
+function calculate_lfo(current_time,period,offset)
+  if period==0 then
+    return 1
+  else
+    return math.sin(2*math.pi*current_time/period+offset)
+  end
+end
+
+function round(x)
+  return x>=0 and math.floor(x+0.5) or math.ceil(x-0.5)
 end
