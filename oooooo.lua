@@ -39,6 +39,7 @@ uS={
   flagSpecial=0,
   message="",
   tapeNum=1,
+  volumePinch=500, -- pinch time in milliseconds
 }
 
 -- user constants
@@ -104,10 +105,12 @@ function init()
   p_amp_in:start()
   
   -- add variables into main menu
-  params:add_control("rec_thresh","rec_thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,uC.recArmThreshold*1000,'amp/1k'))
-  params:set_action("rec_thresh",function(x) uC.recArmThreshold=x/1000 end)
+  params:add_control("rec thresh","rec thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,uC.recArmThreshold*1000,'amp/1k'))
+  params:set_action("rec thresh",function(x) uC.recArmThreshold=x/1000 end)
   params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
   params:set_action("backup",function(x) uS.tapeNum=round(x) end)
+  params:add_control("vol pinch","vol pinch",controlspec.new(10,1000,'lin',1,500,'ms'))
+  params:set_action("vol pinch",function(x) uS.volumePinch=round(x) end)
   
   redraw()
 end
@@ -129,6 +132,7 @@ function init_loops(j)
     uP[i].loopStart=0
     uP[i].position=uP[i].loopStart
     uP[i].loopLength=(60/clock.get_tempo())*i*4
+    uP[i].recordedLength=0
     uP[i].isStopped=true
     uP[i].isEmpty=true
     uP[i].vol=0.5
@@ -190,7 +194,7 @@ function update_timer()
     uS.recordingTime=uS.recordingTime+uC.updateTimerInterval
     if uS.recordingTime>=uP[uS.loopNum].loopLength then
       -- stop recording when reached a full loop
-      tape_stop_rec(uS.loopNum)
+      tape_stop_rec(uS.loopNum,false)
     end
   end
 end
@@ -294,7 +298,7 @@ function tape_stop(i)
   end
   print("tape_stop "..i)
   if uS.recording>0 then
-    tape_stop_rec(i)
+    tape_stop_rec(i,true)
   end
   -- ?????
   -- if this runs as softcut.rate(i,0) though, then overdubbing stops working
@@ -302,13 +306,14 @@ function tape_stop(i)
   uP[i].isStopped=true
 end
 
-function tape_stop_rec(i)
+function tape_stop_rec(i,change_loop)
   if uS.recording==0 then
     do return end
   end
   print("tape_stop_rec "..i)
   p_amp_in.time=1
   uS.recording=0
+  uP[i].recordedLength = uS.recordingTime
   uS.recordingTime=0
   -- slowly stop
   clock.run(function()
@@ -318,6 +323,12 @@ function tape_stop_rec(i)
     end
     softcut.rec(i,0)
   end)
+
+  -- change the loop size if specified
+  if change_loop then 
+	  uP[i].loopLength=uP[i].recordedLength
+	  tape_change_loop(i)
+  end
 end
 
 function tape_clear(i)
@@ -357,7 +368,7 @@ end
 function tape_play(j)
   print("tape_play "..j)
   if uS.recording>0 then
-    tape_stop_rec(j)
+    tape_stop_rec(j,true)
   end
   if j<7 and uP[j].isStopped==false then
     do return end
