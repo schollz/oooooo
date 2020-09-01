@@ -39,6 +39,7 @@ uS={
   flagSpecial=0,
   message="",
   tempo=60,-- tempo is used to initialize all the loops to specific number of beats
+  tapeNum=1,
 }
 
 -- user constants
@@ -108,7 +109,7 @@ function init()
   params:add_control("rec_thresh","rec_thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,uC.recArmThreshold*1000,'amp/1k'))
   params:set_action("rec_thresh",function(x) uC.recArmThreshold=x/1000 end)
   params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
-  params:set_action("backup",function(x) uC.backupNumber=round(x) end)
+  params:set_action("backup",function(x) uS.tapeNum=round(x) end)
   
   redraw()
 end
@@ -210,13 +211,13 @@ function backup_save()
   end)
   
   -- write file of user data
-  file=io.open(PATH.."oooooo"..uC.backupNumber..".json","w")
+  file=io.open(PATH.."oooooo"..uS.tapeNum..".json","w")
   io.output(file)
   io.write(json.stringify(uP))
   io.close(file)
   
   -- save tape
-  softcut.buffer_write_stereo(PATH.."oooooo"..uC.backupNumber..".wav",0,-1)
+  softcut.buffer_write_stereo(PATH.."oooooo"..uS.tapeNum..".wav",0,-1)
 end
 
 function backup_load()
@@ -230,16 +231,16 @@ function backup_load()
   end)
   
   -- -- load parameters from file
-  if util.file_exists(PATH.."oooooo"..uC.backupNumber..".json") then
-    filecontents=readAll(PATH.."oooooo"..uC.backupNumber..".json")
+  if util.file_exists(PATH.."oooooo"..uS.tapeNum..".json") then
+    filecontents=readAll(PATH.."oooooo"..uS.tapeNum..".json")
     print(filecontents)
     uP=json.parse(filecontents)
   end
   
   -- load buffer from file
-  if util.file_exists(PATH.."oooooo"..uC.backupNumber..".wav") then
+  if util.file_exists(PATH.."oooooo"..uS.tapeNum..".wav") then
     softcut.buffer_clear()
-    softcut.buffer_read_stereo(PATH.."oooooo"..uC.backupNumber..".wav",0,0,-1)
+    softcut.buffer_read_stereo(PATH.."oooooo"..uS.tapeNum..".wav",0,0,-1)
   end
 end
 
@@ -469,6 +470,9 @@ function enc(n,d)
       if uS.flagSpecial==3 then
         -- modify clearing tempo
         uC.tempo=util.clamp(uC.tempo+d,40,300)
+      elseif uS.flagSpecial==1 or uS.flagSpecial==2 then 
+	-- update tape number
+	uS.tapeNum=util.clamp(uS.tapeNum+d,1,8)
       end
     end
   end
@@ -568,9 +572,9 @@ function redraw()
   if uS.loopNum==7 then
     screen.move(x+10,y)
     if uS.flagSpecial==1 then
-      screen.text("save")
+      screen.text("save "..uS.tapeNum)
     elseif uS.flagSpecial==2 then
-      screen.text("load")
+      screen.text("load "..uS.tapeNum)
     elseif uS.flagSpecial==3 then
       screen.text(string.format("%d bpm",uC.tempo))
     end
