@@ -39,7 +39,7 @@ uS={
   flagSpecial=0,
   message="",
   tapeNum=1,
-  volumePinch=500, -- pinch time in milliseconds
+  volumePinch=500,-- pinch time in milliseconds
 }
 
 -- user constants
@@ -313,7 +313,7 @@ function tape_stop_rec(i,change_loop)
   print("tape_stop_rec "..i)
   p_amp_in.time=1
   uS.recording=0
-  uP[i].recordedLength = uS.recordingTime
+  uP[i].recordedLength=uS.recordingTime
   uS.recordingTime=0
   -- slowly stop
   clock.run(function()
@@ -323,11 +323,11 @@ function tape_stop_rec(i,change_loop)
     end
     softcut.rec(i,0)
   end)
-
+  
   -- change the loop size if specified
-  if change_loop then 
-	  uP[i].loopLength=uP[i].recordedLength
-	  tape_change_loop(i)
+  if change_loop then
+    uP[i].loopLength=uP[i].recordedLength
+    tape_change_loop(i)
   end
 end
 
@@ -454,7 +454,7 @@ function enc(n,d)
     if uS.loopNum~=7 then
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
     else
-      -- toggle between saving / loading 
+      -- toggle between saving / loading
       uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,2)
     end
   elseif n==3 then
@@ -476,9 +476,9 @@ function enc(n,d)
         softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
       end
     else
-      if uS.flagSpecial==1 or uS.flagSpecial==2 then 
-	-- update tape number
-	uS.tapeNum=util.clamp(uS.tapeNum+d,1,8)
+      if uS.flagSpecial==1 or uS.flagSpecial==2 then
+        -- update tape number
+        uS.tapeNum=util.clamp(uS.tapeNum+d,1,8)
       end
     end
   end
