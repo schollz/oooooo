@@ -201,8 +201,14 @@ end
 --
 function backup_save()
   print("backup_save")
-  uS.message="saved"
-  redraw()
+  clock.run(function()
+    uS.message="saved"
+    redraw()
+    clock.sleep(0.5)
+    uS.message=""
+    redraw()
+  end)
+  
   -- write file of user data
   file=io.open(PATH.."oooooo"..uC.backupNumber..".json","w")
   io.output(file)
@@ -211,14 +217,17 @@ function backup_save()
   
   -- save tape
   softcut.buffer_write_stereo(PATH.."oooooo"..uC.backupNumber..".wav",0,-1)
-  
-  sleep(0.5)
-  uS.message=""
 end
 
 function backup_load()
   print("backup_load")
-  uS.message="loaded"
+  clock.run(function()
+    uS.message="loaded"
+    redraw()
+    clock.sleep(0.5)
+    uS.message=""
+    redraw()
+  end)
   
   -- -- load parameters from file
   if util.file_exists(PATH.."oooooo"..uC.backupNumber..".json") then
@@ -232,9 +241,6 @@ function backup_load()
     softcut.buffer_clear()
     softcut.buffer_read_stereo(PATH.."oooooo"..uC.backupNumber..".wav",0,0,-1)
   end
-  
-  sleep(0.5)
-  uS.message=""
 end
 
 --
@@ -306,11 +312,13 @@ function tape_stop_rec(i)
   uS.recording=0
   uS.recordingTime=0
   -- slowly stop
-  for j=1,10 do
-    softcut.rec(i,(10-j)*0.1)
-    sleep(0.05)
-  end
-  softcut.rec(i,0)
+  clock.run(function()
+    for j=1,10 do
+      softcut.rec(i,(10-j)*0.1)
+      clock.sleep(0.05)
+    end
+    softcut.rec(i,0)
+  end)
 end
 
 function tape_clear(i)
@@ -323,8 +331,13 @@ function tape_clear(i)
     do return end
   end
   -- signal clearing to prevent double clear
-  uS.flagClearing=true
-  uS.message="clearing"
+  clock.run(function()
+    uS.flagClearing=true
+    uS.message="clearing"
+    clock.sleep(0.5)
+    uS.flagClearing=false
+    uS.message=""
+  end)
   redraw()
   
   if i==7 then
@@ -340,11 +353,6 @@ function tape_clear(i)
   end
   -- reinitialize?
   -- init_loops(i)
-  
-  -- sleep to make sure the clear indicator was shown
-  sleep(0.2)
-  uS.message=""
-  uS.flagClearing=false
 end
 
 function tape_play(j)
@@ -399,13 +407,15 @@ function tape_rec(i)
   softcut.pre_level(i,1)
   uP[i].isEmpty=false
   redraw()
-  -- slowly init recording
+  -- slowly start recording
   -- ease in recording signal to avoid clicks near loop points
-  for j=1,10 do
-    softcut.rec(i,j*0.1)
-    sleep(0.05)
-  end
-  softcut.rec(i,1)
+  clock.run(function()
+    for j=1,10 do
+      softcut.rec(i,j*0.1)
+      clock.sleep(0.05)
+    end
+    softcut.rec(i,1)
+  end)
 end
 
 function tape_change_loop(i)
@@ -683,12 +693,6 @@ function readAll(file)
   local content=f:read("*all")
   f:close()
   return content
-end
-
-local clock=os.clock
-function sleep(n) -- seconds
-  local t0=clock()
-  while clock()-t0<=n do end
 end
 
 function calculate_lfo(current_time,period,offset)
