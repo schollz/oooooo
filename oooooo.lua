@@ -38,7 +38,6 @@ uS={
   flagClearing=false,
   flagSpecial=0,
   message="",
-  tempo=60,-- tempo is used to initialize all the loops to specific number of beats
   tapeNum=1,
 }
 
@@ -66,7 +65,6 @@ uC={
   },
   updateTimerInterval=0.05,
   recArmThreshold=0.03,
-  tempo=120,
   backupNumber=1,
   lfoTime=1,
 }
@@ -130,7 +128,7 @@ function init_loops(j)
     uP[i]={}
     uP[i].loopStart=0
     uP[i].position=uP[i].loopStart
-    uP[i].loopLength=(60/uC.tempo)*i*4
+    uP[i].loopLength=(60/clock.get_tempo())*i*4
     uP[i].isStopped=true
     uP[i].isEmpty=true
     uP[i].vol=0.5
@@ -445,8 +443,8 @@ function enc(n,d)
     if uS.loopNum~=7 then
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
     else
-      -- toggle between saving / loading / tempo managmenet
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,3)
+      -- toggle between saving / loading 
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,2)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -467,10 +465,7 @@ function enc(n,d)
         softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
       end
     else
-      if uS.flagSpecial==3 then
-        -- modify clearing tempo
-        uC.tempo=util.clamp(uC.tempo+d,40,300)
-      elseif uS.flagSpecial==1 or uS.flagSpecial==2 then 
+      if uS.flagSpecial==1 or uS.flagSpecial==2 then 
 	-- update tape number
 	uS.tapeNum=util.clamp(uS.tapeNum+d,1,8)
       end
@@ -575,8 +570,6 @@ function redraw()
       screen.text("save "..uS.tapeNum)
     elseif uS.flagSpecial==2 then
       screen.text("load "..uS.tapeNum)
-    elseif uS.flagSpecial==3 then
-      screen.text(string.format("%d bpm",uC.tempo))
     end
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
