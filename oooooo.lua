@@ -677,17 +677,7 @@ function redraw()
   end
   
   if uS.message~="" then
-    screen.level(0)
-    x=34
-    y=28
-    w=65
-    screen.rect(x,y,w,10)
-    screen.fill()
-    screen.level(15)
-    screen.rect(x,y,w,10)
-    screen.stroke()
-    screen.move(x+w/2,y+7)
-    screen.text_center(uS.message)
+    show_message(uS.message)
   end
   
   screen.update()
@@ -696,6 +686,20 @@ end
 --
 -- utils
 --
+function show_message(message)
+  screen.level(0)
+  x=34
+  y=28
+  w=string.len(message)*8
+  screen.rect(x,y,w,10)
+  screen.fill()
+  screen.level(15)
+  screen.rect(x,y,w,10)
+  screen.stroke()
+  screen.move(x+w/2,y+7)
+  screen.text_center(message)
+end
+
 function readAll(file)
   local f=assert(io.open(file,"rb"))
   local content=f:read("*all")
