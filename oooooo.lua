@@ -319,7 +319,7 @@ function tape_stop_rec(i,change_loop)
   clock.run(function()
     for j=1,10 do
       softcut.rec(i,(10-j)*0.1)
-      clock.sleep(0.05)
+      clock.sleep(params:get("vol pinch")/10/1000)
     end
     softcut.rec(i,0)
   end)
@@ -422,7 +422,7 @@ function tape_rec(i)
   clock.run(function()
     for j=1,10 do
       softcut.rec(i,j*0.1)
-      clock.sleep(0.05)
+      clock.sleep(params:get("vol pinch")/10/1000)
     end
     softcut.rec(i,1)
   end)
