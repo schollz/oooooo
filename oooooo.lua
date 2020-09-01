@@ -355,12 +355,12 @@ function tape_clear(i)
 end
 
 function tape_play(j)
-  if j<7 and uP[j].isStopped==false then
-    do return end
-  end
   print("tape_play "..j)
   if uS.recording>0 then
     tape_stop_rec(j)
+  end
+  if j<7 and uP[j].isStopped==false then
+    do return end
   end
   i1=j
   i2=j
