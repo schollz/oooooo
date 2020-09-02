@@ -94,7 +94,7 @@ function init()
   p_amp_in.time=1
   p_amp_in.callback=function(val)
     if uS.recording==1 then
-      -- print("incoming signal = "..val)
+      print("incoming signal = "..val)
       if val>params:get("rec thresh")/1000 then
         tape_rec(uS.loopNum)
       end
@@ -107,7 +107,7 @@ function init()
   params:set_action("rec thresh",update_parameters)
   params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
   params:set_action("backup",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(10,1000,'lin',1,500,'ms'))
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
   params:set_action("vol pinch",update_parameters)
   params:add_option("keep rec","keep rec",{"no","yes"},1)
   params:set_action("keep rec",update_parameters)
@@ -317,36 +317,41 @@ function tape_stop_rec(i,change_loop)
   end
   print("tape_stop_rec "..i)
   p_amp_in.time=1
+  still_armed=(uS.recording==1)
   uS.recording=0
   uP[i].recordedLength=uS.recordingTime
   uS.recordingTime=0
   -- slowly stop
   clock.run(function()
-    for j=1,10 do
-      softcut.rec(i,(10-j)*0.1)
-      clock.sleep(params:get("vol pinch")/10/1000)
+    if params:get("vol pinch")>0 then
+      for j=1,10 do
+        softcut.rec(i,(10-j)*0.1)
+        clock.sleep(params:get("vol pinch")/10/1000)
+      end
     end
     softcut.rec(i,0)
   end)
   
   -- change the loop size if specified
   print('params:get("keep rec") '..params:get("keep rec"))
-  if change_loop then
-    uP[i].loopLength=uP[i].recordedLength
-    tape_change_loop(i)
-  elseif params:get("keep rec")==2 then
-    -- keep recording onto the next loop
-    nextLoop=0
-    for j=1,6 do
-      if uP[j].isEmpty then
-        nextLoop=j
-        break
+  if not still_armed then
+    if change_loop then
+      uP[i].loopLength=uP[i].recordedLength
+      tape_change_loop(i)
+    elseif params:get("keep rec")==2 then
+      -- keep recording onto the next loop
+      nextLoop=0
+      for j=1,6 do
+        if uP[j].isEmpty then
+          nextLoop=j
+          break
+        end
       end
-    end
-    -- goto the next loop and record
-    if nextLoop>0 then
-      uS.loopNum=nextLoop
-      tape_rec(uS.loopNum)
+      -- goto the next loop and record
+      if nextLoop>0 then
+        uS.loopNum=nextLoop
+        tape_rec(uS.loopNum)
+      end
     end
   end
 end
@@ -420,7 +425,7 @@ function tape_arm_rec(i)
   -- arm  recording
   uS.recording=1
   -- monitor input
-  p_amp_in.time=0.05
+  p_amp_in.time=0.025
 end
 
 function tape_rec(i)
@@ -445,9 +450,11 @@ function tape_rec(i)
   -- slowly start recording
   -- ease in recording signal to avoid clicks near loop points
   clock.run(function()
-    for j=1,10 do
-      softcut.rec(i,j*0.1)
-      clock.sleep(params:get("vol pinch")/10/1000)
+    if params:get("vol pinch")>0 then
+      for j=1,10 do
+        softcut.rec(i,j*0.1)
+        clock.sleep(params:get("vol pinch")/10/1000)
+      end
     end
     softcut.rec(i,1)
   end)
@@ -586,6 +593,8 @@ function redraw()
     screen.rect(118,1,10,10)
     screen.move(121,8)
     screen.text(">")
+    screen.move(122,4)
+    screen.line(122,8)
   end
   
   -- show loop info
