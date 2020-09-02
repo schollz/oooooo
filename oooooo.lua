@@ -171,6 +171,19 @@ function init_loops(j)
   end
 end
 
+function randomize_parameters()
+  random_rates={-4,-2,-1,-0.5,-0.25,0.25,0.5,1,2,4}
+  for i=1,6 do
+    uP[i].rate=random_rates[math.random(#random_rates)]
+    softcut.rate(i,uP[i].rate)
+    uP[i].vol=math.random(2,10)/10*(1/math.abs(uP[i].rate))
+    uP[i].vol=util.clamp(uP[i].vol,0,1)
+    softcut.level(i,uP[i].vol)
+    uP[i].pan=math.random(-1,1)*0.75
+    softcut.pan(i,uP[i].pan)
+  end
+end
+
 --
 -- updaters
 --
@@ -326,6 +339,7 @@ function tape_stop_rec(i,change_loop)
     if params:get("vol pinch")>0 then
       for j=1,10 do
         softcut.rec(i,(10-j)*0.1)
+        print("sleeping "..params:get("vol pinch")/10/1000)
         clock.sleep(params:get("vol pinch")/10/1000)
       end
     end
@@ -369,9 +383,11 @@ function tape_clear(i)
   clock.run(function()
     uS.flagClearing=true
     uS.message="clearing"
+    redraw()
     clock.sleep(0.5)
     uS.flagClearing=false
     uS.message=""
+    redraw()
   end)
   redraw()
   
@@ -381,6 +397,7 @@ function tape_clear(i)
     for j=1,6 do
       uP[j].isEmpty=true
       uP[j].recordedLength=0
+      tape_reset(j)
     end
   else
     -- clear a specific section of buffer
@@ -390,6 +407,7 @@ function tape_clear(i)
       uC.bufferMinMax[i][1],
       uC.bufferMinMax[i][2],
     uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
+    tape_reset(i)
   end
   -- reinitialize?
   -- init_loops(i)
@@ -401,6 +419,9 @@ function tape_play(j)
     tape_stop_rec(j,true)
   end
   if j<7 and uP[j].isStopped==false then
+    do return end
+  end
+  if j<7 and uP[j].isEmpty then
     do return end
   end
   i1=j
@@ -489,7 +510,7 @@ function enc(n,d)
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
     else
       -- toggle between saving / loading
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,2)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,3)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -549,6 +570,9 @@ function key(n,z)
         elseif uS.flagSpecial==2 then
           -- load
           backup_load()
+        elseif uS.flagSpecial==3 then
+          -- randomize!
+          randomize_parameters()
         end
       end
     else
@@ -618,6 +642,8 @@ function redraw()
       screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
       screen.text("load "..params:get("backup"))
+    elseif uS.flagSpecial==3 then
+      screen.text("rand")
     end
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
