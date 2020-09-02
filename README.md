@@ -32,21 +32,24 @@ future directions:
 
 **recording:**
 
-- the first time you hit shift+K3 to record it will "prime". when "primed", recording will automatically begin when incoming audio asserts itself. you can always force recording by hitting shift+K3 a second time.
-- recording stops when it iterates over the whole loop (but can be stopped earlier use K2 or K3)
-- adjust the recording threshold by going into global `PARAMETERS` menu and adjust `rec_thresh`.
+- the first time you hit shift+K3 to record it will "prime". when "primed", recording will automatically begin when incoming audio asserts itself above a threshold. you can always force recording by hitting shift+K3 a second time.
+- the recording threshold can be set by global parameter "`rec thresh`"
+- recording stops when it iterates over the whole loop. you can stop it earlier with K2 or K3 and that will shrink the loop to that point. you can set recording to continue to the next loop by settting the global parameter "`keep rec`" to `yes`.
+- by default, volume in "pinched" when starting/stopping recording to avoid pops from discontinuous signals. you can lower/raise the pinching by adjusting the global parameter "`vol pinch`".
 
+**playback:**
 
-**special functions:**
+- you can adjust the rate in continuous or discrete (+/-25%, 50%, etc.) by changing the global parameter "`continuous rate`" to `yes`.
+
+**special functions in A loop:**
 
 if you change the loop to "A" using E2 there are several special functions available to affect all loops.
 
 - K2/K3 stops/plays on *all* loops,
 - pressing shift+K2 clears and resets *all* loops,
-- if you select the parameter "save" and hold K1+press K3 it will save the current state. this will overwrite the previous save, so make sure to backup the audio files yourself. you can change which save by changing the `backup` parameter in the global parameters menu.
+- if you select the parameter "save" and hold K1+press K3 it will save the current state. this will overwrite the previous save, so make sure to backup the audio files yourself. you can change which save/load with K3.
 - if you select the parameter "load" and hold K1+press K3 it will load the previous state.
-- if you select the parameter "tempo" you can modify a tempo that will be used to calculate loop lengths when clearing all loops.
-
+- if you select `rand` and press shift+K3 it will randomize the loops
 
 
 ## demo 
@@ -65,3 +68,19 @@ if you change the loop to "A" using E2 there are several special functions avail
 ## license 
 
 mit 
+
+
+
+### new in v0.4
+
+- bug fix: play button can stop recording as well as stop button
+- bug fix: sleep now uses clock instead of while-loop (less CPU)
+- bug fix: recording should be more reponsive (shorter poll time)
+- new feature: the initial loop sizes are quantized based on the global clock tempo
+- new feature: multiple save/loading tapes
+- new feature: randomizer mode on loop "A" (activate with shift+K3)
+- new feature: if loop stopped during recording, the loop shrinks to that size
+- new option: quantize rates (global parameter `continuous rates`)
+- new option: record through all loops (global parameter `keep rec`)
+- new option: set volume pinch at begining+end of loop when recording (global parameter `vol pinch`)
+
