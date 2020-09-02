@@ -66,6 +66,7 @@ uC={
   recArmThreshold=0.03,
   backupNumber=1,
   lfoTime=1,
+  discreteRates={-4,-2,-1,-0.5,0.25,0.25,0.5,1,2,4},
 }
 
 PATH=_path.audio..'oooooo/'
@@ -111,6 +112,8 @@ function init()
   params:set_action("vol pinch",update_parameters)
   params:add_option("keep rec","keep rec",{"no","yes"},1)
   params:set_action("keep rec",update_parameters)
+  params:add_option("continous rate","continous rate",{"no","yes"},2)
+  params:set_action("continous rate",update_parameters)
   params:read("oooooo.pset")
   
   redraw()
@@ -138,6 +141,7 @@ function init_loops(j)
     uP[i].isEmpty=true
     uP[i].vol=0.5
     uP[i].rate=1
+    uP[i].rateNum=8,
     uP[i].pan=0
     uP[i].lfoWarble={}
     for j=1,3 do
@@ -172,9 +176,8 @@ function init_loops(j)
 end
 
 function randomize_parameters()
-  random_rates={-4,-2,-1,-0.5,-0.25,0.25,0.5,1,2,4}
   for i=1,6 do
-    uP[i].rate=random_rates[math.random(#random_rates)]
+    uP[i].rate=uC.discreteRates[math.random(#uC.discreteRates)]
     softcut.rate(i,uP[i].rate)
     uP[i].vol=math.random(2,10)/10*(1/math.abs(uP[i].rate))
     uP[i].vol=util.clamp(uP[i].vol,0,1)
@@ -524,7 +527,13 @@ function enc(n,d)
         uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
         softcut.level(uS.loopNum,uP[uS.loopNum].vol)
       elseif uS.selectedPar==4 then
-        uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
+        if params:get("continous rate")==2 then
+          uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
+        else
+          d=sign(d)
+          uP[uS.loopNum].rateNum=util.clamp(uP[uS.loopNum].rateNum+d,1,#uC.discreteRates)
+          uP[uS.loopNum].rate=uC.discreteRates[uP[uS.loopNum].rateNum]
+        end
         softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
       elseif uS.selectedPar==5 then
         uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
