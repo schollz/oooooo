@@ -10,6 +10,9 @@ i was inspired to make this after seeing tape loops circulating (pun sorta inten
 
 future directions:
 
+- midi cc support for modulating loops
+- grid support (need help)
+- arc support (need help)
 - add lfos for tape *warbling*
 - fix all the 🐛🐛🐛
 
@@ -24,31 +27,30 @@ future directions:
 - K2 stops
 - K2 again resets loop
 - K3 plays
-- shift+K2 clears
-- shift+K3 records
+- shift+K2 clears loop
+- shift+K3 primes recording
+- shift+K3 again forces recording
 - E1 changes loops
 - E2 selects parameters
 - E3 adjusts parameters
 
 **recording:**
 
-- the first time you hit shift+K3 to record it will "prime". when "primed", recording will automatically begin when incoming audio asserts itself above a threshold. you can always force recording by hitting shift+K3 a second time.
-- the recording threshold can be set by global parameter "`rec thresh`"
-- recording stops when it iterates over the whole loop. you can stop it earlier with K2 or K3 and that will shrink the loop to that point. you can set recording to continue to the next loop by settting the global parameter "`keep rec`" to `yes`.
+- the first time you hit shift+K3 to record it will "prime". once "primed", recording will automatically begin when incoming audio rises above a threshold. the recording threshold can be set by global parameter "`rec thresh`". when "primed", you can force recording by hitting shift+K3 a second time.
+- recording stops after traversing the whole loop. you can stop it earlier with K2 or K3 and that will shrink the loop to that point. you can set recording to continue to the next loop by setting the global parameter "`rec thru loops`" to `yes`.
 - by default, volume in "pinched" when starting/stopping recording to avoid pops from discontinuous signals. you can lower/raise the pinching by adjusting the global parameter "`vol pinch`".
 
 **playback:**
 
-- you can adjust the rate in continuous or discrete (+/-25%, 50%, etc.) by changing the global parameter "`continuous rate`" to `yes`.
+- you can adjust the rate in continuous or discrete (±25%, ±50%, etc.) by changing the global parameter "`continuous rate`" to `yes`.
 
 **special functions in A loop:**
 
-if you change the loop to "A" using E2 there are several special functions available to affect all loops.
+if you change the loop to "A" using E1 there are several special functions available to affect all loops.
 
 - K2/K3 stops/plays on *all* loops,
 - pressing shift+K2 clears and resets *all* loops,
-- if you select the parameter "save" and hold K1+press K3 it will save the current state. this will overwrite the previous save, so make sure to backup the audio files yourself. you can change which save/load with K3.
-- if you select the parameter "load" and hold K1+press K3 it will load the previous state.
+- if you select the parameter "save"/"load" then shift+K3 will save/load the current state. this will overwrite the previous save, so make sure to backup the audio files yourself. you can change which save/load with E3.
 - if you select `rand` and press shift+K3 it will randomize the loops
 
 

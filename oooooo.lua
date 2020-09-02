@@ -11,8 +11,9 @@
 -- K2 stops
 -- K2 again resets loop
 -- K3 plays
--- shift+K2 clears
--- shift+K3 records
+-- shift+K2 clears loop
+-- shift+K3 primes recording
+-- shift+K3 again forces recording
 -- E1 changes loops
 -- E2 selects parameters
 -- E3 adjusts parameters
@@ -95,7 +96,7 @@ function init()
   p_amp_in.time=1
   p_amp_in.callback=function(val)
     if uS.recording==1 then
-      print("incoming signal = "..val)
+      -- print("incoming signal = "..val)
       if val>params:get("rec thresh")/1000 then
         tape_rec(uS.loopNum)
       end
@@ -104,14 +105,14 @@ function init()
   p_amp_in:start()
   
   -- add variables into main menu
-  params:add_control("rec thresh","rec thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,0.03*1000,'amp/1k'))
+  params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
   params:set_action("rec thresh",update_parameters)
   params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
   params:set_action("backup",update_parameters)
   params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
   params:set_action("vol pinch",update_parameters)
-  params:add_option("keep rec","keep rec",{"no","yes"},1)
-  params:set_action("keep rec",update_parameters)
+  params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
+  params:set_action("rec thru loops",update_parameters)
   params:add_option("continous rate","continous rate",{"no","yes"},2)
   params:set_action("continous rate",update_parameters)
   params:read("oooooo.pset")
@@ -342,7 +343,6 @@ function tape_stop_rec(i,change_loop)
     if params:get("vol pinch")>0 then
       for j=1,10 do
         softcut.rec(i,(10-j)*0.1)
-        print("sleeping "..params:get("vol pinch")/10/1000)
         clock.sleep(params:get("vol pinch")/10/1000)
       end
     end
@@ -350,12 +350,12 @@ function tape_stop_rec(i,change_loop)
   end)
   
   -- change the loop size if specified
-  print('params:get("keep rec") '..params:get("keep rec"))
+  print('params:get("rec thru loops") '..params:get("rec thru loops"))
   if not still_armed then
     if change_loop then
       uP[i].loopLength=uP[i].recordedLength
       tape_change_loop(i)
-    elseif params:get("keep rec")==2 then
+    elseif params:get("rec thru loops")==2 then
       -- keep recording onto the next loop
       nextLoop=0
       for j=1,6 do
@@ -459,7 +459,7 @@ function tape_rec(i)
   print("tape_rec "..i)
   if uP[i].isStopped then
     softcut.play(i,1)
-    print("setting rate to "..uP[i].rate)
+    -- print("setting rate to "..uP[i].rate)
     softcut.rate(i,uP[i].rate)
     softcut.level(i,uP[i].vol)
     uP[i].isStopped=false
