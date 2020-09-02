@@ -38,8 +38,6 @@ uS={
   flagClearing=false,
   flagSpecial=0,
   message="",
-  tapeNum=1,
-  volumePinch=500,-- pinch time in milliseconds
 }
 
 -- user constants
@@ -97,7 +95,7 @@ function init()
   p_amp_in.callback=function(val)
     if uS.recording==1 then
       -- print("incoming signal = "..val)
-      if val>uC.recArmThreshold then
+      if val>params:get("rec thresh")/1000 then
         tape_rec(uS.loopNum)
       end
     end
@@ -105,12 +103,15 @@ function init()
   p_amp_in:start()
   
   -- add variables into main menu
-  params:add_control("rec thresh","rec thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,uC.recArmThreshold*1000,'amp/1k'))
-  params:set_action("rec thresh",function(x) uC.recArmThreshold=x/1000 end)
+  params:add_control("rec thresh","rec thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,0.03*1000,'amp/1k'))
+  params:set_action("rec thresh",update_parameters)
   params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
-  params:set_action("backup",function(x) uS.tapeNum=round(x) end)
+  params:set_action("backup",update_parameters)
   params:add_control("vol pinch","vol pinch",controlspec.new(10,1000,'lin',1,500,'ms'))
-  params:set_action("vol pinch",function(x) uS.volumePinch=round(x) end)
+  params:set_action("vol pinch",update_parameters)
+  params:add_option("keep rec","keep rec",{"no","yes"},1)
+  params:set_action("keep rec",update_parameters)
+  params:read("oooooo.pset")
   
   redraw()
 end
@@ -173,6 +174,10 @@ end
 --
 -- updaters
 --
+function update_parameters(x)
+  params:write("oooooo.pset")
+end
+
 function update_positions(i,x)
   -- adjust position so it is relative to loop start
   uP[i].position=x-uC.bufferMinMax[i][2]
@@ -213,13 +218,13 @@ function backup_save()
   end)
   
   -- write file of user data
-  file=io.open(PATH.."oooooo"..uS.tapeNum..".json","w")
+  file=io.open(PATH.."oooooo"..params:get("backup")..".json","w")
   io.output(file)
   io.write(json.stringify(uP))
   io.close(file)
   
   -- save tape
-  softcut.buffer_write_stereo(PATH.."oooooo"..uS.tapeNum..".wav",0,-1)
+  softcut.buffer_write_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,-1)
 end
 
 function backup_load()
@@ -233,16 +238,16 @@ function backup_load()
   end)
   
   -- -- load parameters from file
-  if util.file_exists(PATH.."oooooo"..uS.tapeNum..".json") then
-    filecontents=readAll(PATH.."oooooo"..uS.tapeNum..".json")
+  if util.file_exists(PATH.."oooooo"..params:get("backup")..".json") then
+    filecontents=readAll(PATH.."oooooo"..params:get("backup")..".json")
     print(filecontents)
     uP=json.parse(filecontents)
   end
   
   -- load buffer from file
-  if util.file_exists(PATH.."oooooo"..uS.tapeNum..".wav") then
+  if util.file_exists(PATH.."oooooo"..params:get("backup")..".wav") then
     softcut.buffer_clear()
-    softcut.buffer_read_stereo(PATH.."oooooo"..uS.tapeNum..".wav",0,0,-1)
+    softcut.buffer_read_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,0,-1)
   end
 end
 
@@ -325,9 +330,24 @@ function tape_stop_rec(i,change_loop)
   end)
   
   -- change the loop size if specified
+  print('params:get("keep rec") '..params:get("keep rec"))
   if change_loop then
     uP[i].loopLength=uP[i].recordedLength
     tape_change_loop(i)
+  elseif params:get("keep rec")==2 then
+    -- keep recording onto the next loop
+    nextLoop=0
+    for j=1,6 do
+      if uP[j].isEmpty then
+        nextLoop=j
+        break
+      end
+    end
+    -- goto the next loop and record
+    if nextLoop>0 then
+      uS.loopNum=nextLoop
+      tape_rec(uS.loopNum)
+    end
   end
 end
 
@@ -353,9 +373,14 @@ function tape_clear(i)
   if i==7 then
     -- clear everything
     softcut.buffer_clear()
+    for j=1,6 do
+      uP[j].isEmpty=true
+      uP[j].recordedLength=0
+    end
   else
     -- clear a specific section of buffer
     uP[i].isEmpty=true
+    uP[i].recordedLength=0
     softcut.buffer_clear_region_channel(
       uC.bufferMinMax[i][1],
       uC.bufferMinMax[i][2],
@@ -449,8 +474,10 @@ end
 function enc(n,d)
   if n==1 and uS.recording==0 then
     -- do not allow changing loops if recording
+    d=sign(d)
     uS.loopNum=util.clamp(uS.loopNum+d,1,7)
   elseif n==2 then
+    d=sign(d)
     if uS.loopNum~=7 then
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
     else
@@ -478,7 +505,8 @@ function enc(n,d)
     else
       if uS.flagSpecial==1 or uS.flagSpecial==2 then
         -- update tape number
-        uS.tapeNum=util.clamp(uS.tapeNum+d,1,8)
+        d=sign(d)
+        params:set("backup",util.clamp(params:get("backup")+d,1,8))
       end
     end
   end
@@ -578,9 +606,9 @@ function redraw()
   if uS.loopNum==7 then
     screen.move(x+10,y)
     if uS.flagSpecial==1 then
-      screen.text("save "..uS.tapeNum)
+      screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
-      screen.text("load "..uS.tapeNum)
+      screen.text("load "..params:get("backup"))
     end
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
@@ -717,4 +745,14 @@ end
 
 function round(x)
   return x>=0 and math.floor(x+0.5) or math.ceil(x-0.5)
+end
+
+function sign(x)
+  if x>0 then
+    return 1
+  elseif x<0 then
+    return-1
+  else
+    return 0
+  end
 end
