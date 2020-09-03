@@ -42,7 +42,7 @@ future directions:
 
 **playback:**
 
-- you can adjust the rate in continuous or discrete (±25%, ±50%, etc.) by changing the global parameter "`continuous rate`" to `yes`.
+- you can adjust the rate in continuous or discrete (±25%, ±50%, etc.) by changing the global parameter "`continuous rate`" to `no`.
 
 **special functions in A loop:**
 
