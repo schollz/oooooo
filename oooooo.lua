@@ -1,4 +1,4 @@
--- oooooo v0.1
+-- oooooo v0.4
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -11,8 +11,9 @@
 -- K2 stops
 -- K2 again resets loop
 -- K3 plays
--- shift+K2 clears
--- shift+K3 records
+-- shift+K2 clears loop
+-- shift+K3 primes recording
+-- shift+K3 again forces recording
 -- E1 changes loops
 -- E2 selects parameters
 -- E3 adjusts parameters
@@ -38,7 +39,6 @@ uS={
   flagClearing=false,
   flagSpecial=0,
   message="",
-  tempo=60,-- tempo is used to initialize all the loops to specific number of beats
 }
 
 -- user constants
@@ -65,9 +65,9 @@ uC={
   },
   updateTimerInterval=0.05,
   recArmThreshold=0.03,
-  tempo=120,
   backupNumber=1,
   lfoTime=1,
+  discreteRates={-4,-2,-1,-0.5,-0.25,0.25,0.5,1,2,4},
 }
 
 PATH=_path.audio..'oooooo/'
@@ -97,7 +97,7 @@ function init()
   p_amp_in.callback=function(val)
     if uS.recording==1 then
       -- print("incoming signal = "..val)
-      if val>uC.recArmThreshold then
+      if val>params:get("rec thresh")/1000 then
         tape_rec(uS.loopNum)
       end
     end
@@ -105,10 +105,17 @@ function init()
   p_amp_in:start()
   
   -- add variables into main menu
-  params:add_control("rec_thresh","rec_thresh",controlspec.new(0.001*1000,0.1*1000,'exp',0.001*1000,uC.recArmThreshold*1000,'amp/1k'))
-  params:set_action("rec_thresh",function(x) uC.recArmThreshold=x/1000 end)
+  params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
+  params:set_action("rec thresh",update_parameters)
   params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
-  params:set_action("backup",function(x) uC.backupNumber=round(x) end)
+  params:set_action("backup",update_parameters)
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
+  params:set_action("vol pinch",update_parameters)
+  params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
+  params:set_action("rec thru loops",update_parameters)
+  params:add_option("continous rate","continous rate",{"no","yes"},2)
+  params:set_action("continous rate",update_parameters)
+  params:read(_path.data..'oooooo/'.."oooooo.pset")
   
   redraw()
 end
@@ -129,11 +136,13 @@ function init_loops(j)
     uP[i]={}
     uP[i].loopStart=0
     uP[i].position=uP[i].loopStart
-    uP[i].loopLength=(60/uC.tempo)*i*4
+    uP[i].loopLength=(60/clock.get_tempo())*i*4
+    uP[i].recordedLength=0
     uP[i].isStopped=true
     uP[i].isEmpty=true
     uP[i].vol=0.5
     uP[i].rate=1
+    uP[i].rateNum=8
     uP[i].pan=0
     uP[i].lfoWarble={}
     for j=1,3 do
@@ -167,9 +176,25 @@ function init_loops(j)
   end
 end
 
+function randomize_parameters()
+  for i=1,6 do
+    uP[i].rate=uC.discreteRates[math.random(#uC.discreteRates)]
+    softcut.rate(i,uP[i].rate)
+    uP[i].vol=math.random()*(1/math.abs(uP[i].rate))
+    uP[i].vol=util.clamp(uP[i].vol,0.1,0.8)
+    softcut.level(i,uP[i].vol)
+    uP[i].pan=math.random()*2-1
+    softcut.pan(i,uP[i].pan)
+  end
+end
+
 --
 -- updaters
 --
+function update_parameters(x)
+  params:write(_path.data..'oooooo/'.."oooooo.pset")
+end
+
 function update_positions(i,x)
   -- adjust position so it is relative to loop start
   uP[i].position=x-uC.bufferMinMax[i][2]
@@ -191,7 +216,7 @@ function update_timer()
     uS.recordingTime=uS.recordingTime+uC.updateTimerInterval
     if uS.recordingTime>=uP[uS.loopNum].loopLength then
       -- stop recording when reached a full loop
-      tape_stop_rec(uS.loopNum)
+      tape_stop_rec(uS.loopNum,false)
     end
   end
 end
@@ -201,40 +226,46 @@ end
 --
 function backup_save()
   print("backup_save")
-  uS.message="saved"
-  redraw()
+  clock.run(function()
+    uS.message="saved"
+    redraw()
+    clock.sleep(0.5)
+    uS.message=""
+    redraw()
+  end)
+  
   -- write file of user data
-  file=io.open(PATH.."oooooo"..uC.backupNumber..".json","w")
+  file=io.open(PATH.."oooooo"..params:get("backup")..".json","w")
   io.output(file)
   io.write(json.stringify(uP))
   io.close(file)
   
   -- save tape
-  softcut.buffer_write_stereo(PATH.."oooooo"..uC.backupNumber..".wav",0,-1)
-  
-  sleep(0.5)
-  uS.message=""
+  softcut.buffer_write_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,-1)
 end
 
 function backup_load()
   print("backup_load")
-  uS.message="loaded"
+  clock.run(function()
+    uS.message="loaded"
+    redraw()
+    clock.sleep(0.5)
+    uS.message=""
+    redraw()
+  end)
   
   -- -- load parameters from file
-  if util.file_exists(PATH.."oooooo"..uC.backupNumber..".json") then
-    filecontents=readAll(PATH.."oooooo"..uC.backupNumber..".json")
+  if util.file_exists(PATH.."oooooo"..params:get("backup")..".json") then
+    filecontents=readAll(PATH.."oooooo"..params:get("backup")..".json")
     print(filecontents)
     uP=json.parse(filecontents)
   end
   
   -- load buffer from file
-  if util.file_exists(PATH.."oooooo"..uC.backupNumber..".wav") then
+  if util.file_exists(PATH.."oooooo"..params:get("backup")..".wav") then
     softcut.buffer_clear()
-    softcut.buffer_read_stereo(PATH.."oooooo"..uC.backupNumber..".wav",0,0,-1)
+    softcut.buffer_read_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,0,-1)
   end
-  
-  sleep(0.5)
-  uS.message=""
 end
 
 --
@@ -289,7 +320,7 @@ function tape_stop(i)
   end
   print("tape_stop "..i)
   if uS.recording>0 then
-    tape_stop_rec(i)
+    tape_stop_rec(i,true)
   end
   -- ?????
   -- if this runs as softcut.rate(i,0) though, then overdubbing stops working
@@ -297,20 +328,49 @@ function tape_stop(i)
   uP[i].isStopped=true
 end
 
-function tape_stop_rec(i)
+function tape_stop_rec(i,change_loop)
   if uS.recording==0 then
     do return end
   end
   print("tape_stop_rec "..i)
   p_amp_in.time=1
+  still_armed=(uS.recording==1)
   uS.recording=0
+  uP[i].recordedLength=uS.recordingTime
   uS.recordingTime=0
   -- slowly stop
-  for j=1,10 do
-    softcut.rec(i,(10-j)*0.1)
-    sleep(0.05)
+  clock.run(function()
+    if params:get("vol pinch")>0 then
+      for j=1,10 do
+        softcut.rec(i,(10-j)*0.1)
+        clock.sleep(params:get("vol pinch")/10/1000)
+      end
+    end
+    softcut.rec(i,0)
+  end)
+  
+  -- change the loop size if specified
+  print('params:get("rec thru loops") '..params:get("rec thru loops"))
+  if not still_armed then
+    if change_loop then
+      uP[i].loopLength=uP[i].recordedLength
+      tape_change_loop(i)
+    elseif params:get("rec thru loops")==2 then
+      -- keep recording onto the next loop
+      nextLoop=0
+      for j=1,6 do
+        if uP[j].isEmpty then
+          nextLoop=j
+          break
+        end
+      end
+      -- goto the next loop and record
+      if nextLoop>0 then
+        uS.loopNum=nextLoop
+        tape_rec(uS.loopNum)
+      end
+    end
   end
-  softcut.rec(i,0)
 end
 
 function tape_clear(i)
@@ -323,37 +383,49 @@ function tape_clear(i)
     do return end
   end
   -- signal clearing to prevent double clear
-  uS.flagClearing=true
-  uS.message="clearing"
+  clock.run(function()
+    uS.flagClearing=true
+    uS.message="clearing"
+    redraw()
+    clock.sleep(0.5)
+    uS.flagClearing=false
+    uS.message=""
+    redraw()
+  end)
   redraw()
   
   if i==7 then
     -- clear everything
     softcut.buffer_clear()
+    for j=1,6 do
+      uP[j].isEmpty=true
+      uP[j].recordedLength=0
+      tape_reset(j)
+    end
   else
     -- clear a specific section of buffer
     uP[i].isEmpty=true
+    uP[i].recordedLength=0
     softcut.buffer_clear_region_channel(
       uC.bufferMinMax[i][1],
       uC.bufferMinMax[i][2],
     uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
+    tape_reset(i)
   end
   -- reinitialize?
   -- init_loops(i)
-  
-  -- sleep to make sure the clear indicator was shown
-  sleep(0.2)
-  uS.message=""
-  uS.flagClearing=false
 end
 
 function tape_play(j)
+  print("tape_play "..j)
+  if uS.recording>0 then
+    tape_stop_rec(j,true)
+  end
   if j<7 and uP[j].isStopped==false then
     do return end
   end
-  print("tape_play "..j)
-  if uS.recording>0 then
-    tape_stop_rec(j)
+  if j<7 and uP[j].isEmpty then
+    do return end
   end
   i1=j
   i2=j
@@ -377,7 +449,7 @@ function tape_arm_rec(i)
   -- arm  recording
   uS.recording=1
   -- monitor input
-  p_amp_in.time=0.05
+  p_amp_in.time=0.025
 end
 
 function tape_rec(i)
@@ -387,7 +459,7 @@ function tape_rec(i)
   print("tape_rec "..i)
   if uP[i].isStopped then
     softcut.play(i,1)
-    print("setting rate to "..uP[i].rate)
+    -- print("setting rate to "..uP[i].rate)
     softcut.rate(i,uP[i].rate)
     softcut.level(i,uP[i].vol)
     uP[i].isStopped=false
@@ -399,13 +471,17 @@ function tape_rec(i)
   softcut.pre_level(i,1)
   uP[i].isEmpty=false
   redraw()
-  -- slowly init recording
+  -- slowly start recording
   -- ease in recording signal to avoid clicks near loop points
-  for j=1,10 do
-    softcut.rec(i,j*0.1)
-    sleep(0.05)
-  end
-  softcut.rec(i,1)
+  clock.run(function()
+    if params:get("vol pinch")>0 then
+      for j=1,10 do
+        softcut.rec(i,j*0.1)
+        clock.sleep(params:get("vol pinch")/10/1000)
+      end
+    end
+    softcut.rec(i,1)
+  end)
 end
 
 function tape_change_loop(i)
@@ -429,12 +505,14 @@ end
 function enc(n,d)
   if n==1 and uS.recording==0 then
     -- do not allow changing loops if recording
+    d=sign(d)
     uS.loopNum=util.clamp(uS.loopNum+d,1,7)
   elseif n==2 then
+    d=sign(d)
     if uS.loopNum~=7 then
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
     else
-      -- toggle between saving / loading / tempo managmenet
+      -- toggle between saving / loading
       uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,3)
     end
   elseif n==3 then
@@ -449,16 +527,23 @@ function enc(n,d)
         uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
         softcut.level(uS.loopNum,uP[uS.loopNum].vol)
       elseif uS.selectedPar==4 then
-        uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
+        if params:get("continous rate")==2 then
+          uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
+        else
+          d=sign(d)
+          uP[uS.loopNum].rateNum=util.clamp(uP[uS.loopNum].rateNum+d,1,#uC.discreteRates)
+          uP[uS.loopNum].rate=uC.discreteRates[uP[uS.loopNum].rateNum]
+        end
         softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
       elseif uS.selectedPar==5 then
         uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
         softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
       end
     else
-      if uS.flagSpecial==3 then
-        -- modify clearing tempo
-        uC.tempo=util.clamp(uC.tempo+d,40,300)
+      if uS.flagSpecial==1 or uS.flagSpecial==2 then
+        -- update tape number
+        d=sign(d)
+        params:set("backup",util.clamp(params:get("backup")+d,1,8))
       end
     end
   end
@@ -494,6 +579,9 @@ function key(n,z)
         elseif uS.flagSpecial==2 then
           -- load
           backup_load()
+        elseif uS.flagSpecial==3 then
+          -- randomize!
+          randomize_parameters()
         end
       end
     else
@@ -538,6 +626,8 @@ function redraw()
     screen.rect(118,1,10,10)
     screen.move(121,8)
     screen.text(">")
+    screen.move(122,4)
+    screen.line(122,8)
   end
   
   -- show loop info
@@ -558,11 +648,11 @@ function redraw()
   if uS.loopNum==7 then
     screen.move(x+10,y)
     if uS.flagSpecial==1 then
-      screen.text("save")
+      screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
-      screen.text("load")
+      screen.text("load "..params:get("backup"))
     elseif uS.flagSpecial==3 then
-      screen.text(string.format("%d bpm",uC.tempo))
+      screen.text("rand")
     end
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
@@ -659,17 +749,7 @@ function redraw()
   end
   
   if uS.message~="" then
-    screen.level(0)
-    x=34
-    y=28
-    w=65
-    screen.rect(x,y,w,10)
-    screen.fill()
-    screen.level(15)
-    screen.rect(x,y,w,10)
-    screen.stroke()
-    screen.move(x+w/2,y+7)
-    screen.text_center(uS.message)
+    show_message(uS.message)
   end
   
   screen.update()
@@ -678,17 +758,25 @@ end
 --
 -- utils
 --
+function show_message(message)
+  screen.level(0)
+  x=34
+  y=28
+  w=string.len(message)*8
+  screen.rect(x,y,w,10)
+  screen.fill()
+  screen.level(15)
+  screen.rect(x,y,w,10)
+  screen.stroke()
+  screen.move(x+w/2,y+7)
+  screen.text_center(message)
+end
+
 function readAll(file)
   local f=assert(io.open(file,"rb"))
   local content=f:read("*all")
   f:close()
   return content
-end
-
-local clock=os.clock
-function sleep(n) -- seconds
-  local t0=clock()
-  while clock()-t0<=n do end
 end
 
 function calculate_lfo(current_time,period,offset)
@@ -701,4 +789,14 @@ end
 
 function round(x)
   return x>=0 and math.floor(x+0.5) or math.ceil(x-0.5)
+end
+
+function sign(x)
+  if x>0 then
+    return 1
+  elseif x<0 then
+    return-1
+  else
+    return 0
+  end
 end
