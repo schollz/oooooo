@@ -517,7 +517,7 @@ function enc(n,d)
   elseif n==2 then
     d=sign(d)
     if uS.loopNum~=7 then
-      uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
+      uS.selectedPar=util.clamp(uS.selectedPar+d,0,6)
     else
       -- toggle between saving / loading
       uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
@@ -545,6 +545,16 @@ function enc(n,d)
       elseif uS.selectedPar==5 then
         uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
         softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
+      elseif uS.selectedPar==6 then
+        -- add temporary warble
+        clock.run(function()
+          local newChange=(1+d/100)
+          uP[uS.loopNum].rate=uP[uS.loopNum].rate*newChange
+          softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
+          clock.sync(1)
+          uP[uS.loopNum].rate=uP[uS.loopNum].rate/newChange
+          softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
+        end)
       end
     else
       if uS.flagSpecial==1 or uS.flagSpecial==2 then
@@ -695,6 +705,9 @@ function redraw()
   elseif uS.selectedPar==5 then
     screen.move(x+10,y)
     screen.text("pan")
+  elseif uS.selectedPar==6 then
+    screen.move(x+10,y)
+    screen.text("warble")
   end
   
   -- screen.move(x+55,y)
