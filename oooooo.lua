@@ -180,10 +180,10 @@ function randomize_parameters()
   for i=1,6 do
     uP[i].rate=uC.discreteRates[math.random(#uC.discreteRates)]
     softcut.rate(i,uP[i].rate)
-    uP[i].vol=math.random(2,10)/10*(1/math.abs(uP[i].rate))
-    uP[i].vol=util.clamp(uP[i].vol,0,1)
+    uP[i].vol=math.random()*(1/math.abs(uP[i].rate))
+    uP[i].vol=util.clamp(uP[i].vol,0.1,0.8)
     softcut.level(i,uP[i].vol)
-    uP[i].pan=math.random(-1,1)*0.75
+    uP[i].pan=math.random()*2-1
     softcut.pan(i,uP[i].pan)
   end
 end
