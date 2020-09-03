@@ -67,7 +67,7 @@ uC={
   recArmThreshold=0.03,
   backupNumber=1,
   lfoTime=1,
-  discreteRates={-4,-2,-1,-0.5,0.25,0.25,0.5,1,2,4},
+  discreteRates={-4,-2,-1,-0.5,-0.25,0.25,0.5,1,2,4},
 }
 
 PATH=_path.audio..'oooooo/'
@@ -115,7 +115,7 @@ function init()
   params:set_action("rec thru loops",update_parameters)
   params:add_option("continous rate","continous rate",{"no","yes"},2)
   params:set_action("continous rate",update_parameters)
-  params:read("oooooo.pset")
+  params:read(_path.data..'oooooo/'.."oooooo.pset")
   
   redraw()
 end
@@ -142,7 +142,7 @@ function init_loops(j)
     uP[i].isEmpty=true
     uP[i].vol=0.5
     uP[i].rate=1
-    uP[i].rateNum=8,
+    uP[i].rateNum=8
     uP[i].pan=0
     uP[i].lfoWarble={}
     for j=1,3 do
@@ -192,7 +192,7 @@ end
 -- updaters
 --
 function update_parameters(x)
-  params:write("oooooo.pset")
+  params:write(_path.data..'oooooo/'.."oooooo.pset")
 end
 
 function update_positions(i,x)
