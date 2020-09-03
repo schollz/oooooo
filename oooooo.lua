@@ -188,6 +188,13 @@ function randomize_parameters()
   end
 end
 
+function randomize_loops()
+  for i=1,6 do
+    uP[i].loopLength=util.clamp(uP[i].loopLength+math.random()*2-1,uC.loopMinMax[1],uC.loopMinMax[2])
+    tape_change_loop(i)
+  end
+end
+
 --
 -- updaters
 --
@@ -513,7 +520,7 @@ function enc(n,d)
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
     else
       -- toggle between saving / loading
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,3)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -582,6 +589,9 @@ function key(n,z)
         elseif uS.flagSpecial==3 then
           -- randomize!
           randomize_parameters()
+        elseif uS.flagSpecial==4 then
+          -- randomize loops!
+          randomize_loops()
         end
       end
     else
@@ -653,6 +663,8 @@ function redraw()
       screen.text("load "..params:get("backup"))
     elseif uS.flagSpecial==3 then
       screen.text("rand")
+    elseif uS.flagSpecial==4 then
+      screen.text("rand loop")
     end
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
