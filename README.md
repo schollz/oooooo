@@ -73,16 +73,3 @@ mit
 
 
 
-### new in v0.4
-
-- bug fix: play button can stop recording as well as stop button
-- bug fix: sleep now uses clock instead of while-loop (less CPU)
-- bug fix: recording should be more reponsive (shorter poll time)
-- new feature: the initial loop sizes are quantized based on the global clock tempo
-- new feature: multiple save/loading tapes
-- new feature: randomizer mode on loop "A" (activate with shift+K3)
-- new feature: if loop stopped during recording, the loop shrinks to that size
-- new option: quantize rates (global parameter `continuous rates`)
-- new option: record through all loops (global parameter `keep rec`)
-- new option: set volume pinch at begining+end of loop when recording (global parameter `vol pinch`)
-
