@@ -27,9 +27,10 @@ future directions:
 - K2 stops
 - K2 again resets loop
 - K3 plays
-- shift+K2 clears loop
 - shift+K3 primes recording
 - shift+K3 again forces recording
+- shift+K2 clears loop
+- shift+K2 again resets
 - E1 changes loops
 - E2 selects parameters
 - E3 adjusts parameters
@@ -43,7 +44,8 @@ future directions:
 **playback:**
 
 - you can adjust the rate in continuous or discrete (±25%, ±50%, etc.) by changing the global parameter "`continuous rate`" to `no`.
-- the "warble" function allows you to temporarily pitch up/down the current loop
+- the "`reset every X beats`" allows you to trigger a tape reset every X beats
+- the "`warble`" function allows you to temporarily pitch up/down the current loop
 
 **special functions in A loop:**
 
