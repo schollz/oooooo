@@ -1,4 +1,4 @@
--- oooooo v0.5
+-- oooooo v0.6
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -39,6 +39,7 @@ uS={
   flagClearing=false,
   flagSpecial=0,
   message="",
+  currentBeat=0,
 }
 
 -- user constants
@@ -227,11 +228,14 @@ function update_timer()
       tape_stop_rec(uS.loopNum,false)
     end
   end
-  for i=1,6 do
-    if uP[i].resetEveryNthBeat>0 then
-      if clock.get_beats()%uP[i].resetEveryNthBeat==0 then
-        if not (uS.recording>0 and uS.loopNum==i) then
-          tape_reset(i)
+  if math.floor(clock.get_beats())~=uS.currentBeat then
+    uS.currentBeat=math.floor(clock.get_beats())
+    for i=1,6 do
+      if uP[i].resetEveryNthBeat>0 then
+        if uS.currentBeat%uP[i].resetEveryNthBeat==0 then
+          if not (uS.recording>0 and uS.loopNum==i) then
+            tape_reset(i)
+          end
         end
       end
     end
@@ -423,8 +427,8 @@ function tape_clear(i)
     end
   else
     -- clear a specific section of buffer
-    if uP[j].isEmpty then
-      init_loops(j)
+    if uP[i].isEmpty then
+      init_loops(i)
       uS.message="resetting"
       redraw()
     end
@@ -534,7 +538,7 @@ function enc(n,d)
   elseif n==2 then
     d=sign(d)
     if uS.loopNum~=7 then
-      uS.selectedPar=util.clamp(uS.selectedPar+d,0,6)
+      uS.selectedPar=util.clamp(uS.selectedPar+d,0,7)
     else
       -- toggle between saving / loading
       uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
