@@ -1,4 +1,4 @@
--- oooooo v0.6
+-- oooooo v0.6.1
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -279,7 +279,48 @@ function backup_load()
   if util.file_exists(PATH.."oooooo"..params:get("backup")..".json") then
     filecontents=readAll(PATH.."oooooo"..params:get("backup")..".json")
     print(filecontents)
-    uP=json.parse(filecontents)
+    u=json.parse(filecontents)
+    for i=1,7 do
+      if u[i].loopStart~=nil then
+        uP[i].loopStart=u[i].loopStart
+      end
+      if u[i].position~=nil then
+        uP[i].position=u[i].position
+      end
+      if u[i].loopLength~=nil then
+        uP[i].loopLength=u[i].loopLength
+      end
+      if u[i].recordedLength~=nil then
+        uP[i].recordedLength=u[i].recordedLength
+      end
+      if u[i].isStopped~=nil then
+        uP[i].isStopped=u[i].isStopped
+      end
+      if u[i].isEmpty~=nil then
+        uP[i].isEmpty=u[i].isEmpty
+      end
+      if u[i].vol~=nil then
+        uP[i].vol=u[i].vol
+      end
+      if u[i].rate~=nil then
+        uP[i].rate=u[i].rate
+      end
+      if u[i].rateNum~=nil then
+        uP[i].rateNum=u[i].rateNum
+      end
+      if u[i].rate~=nil then
+        uP[i].rate=u[i].rate
+      end
+      if u[i].pan~=nil then
+        uP[i].pan=u[i].pan
+      end
+      if u[i].resetEveryNthBeat~=nil then
+        uP[i].resetEveryNthBeat=u[i].resetEveryNthBeat
+      end
+      if u[i].lfoWarble~=nil then
+        uP[i].lfoWarble=u[i].lfoWarble
+      end
+    end
   end
   
   -- load buffer from file
