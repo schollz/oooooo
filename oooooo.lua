@@ -1,4 +1,4 @@
--- oooooo v0.4
+-- oooooo v0.5
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -185,6 +185,13 @@ function randomize_parameters()
     softcut.level(i,uP[i].vol)
     uP[i].pan=math.random()*2-1
     softcut.pan(i,uP[i].pan)
+  end
+end
+
+function randomize_loops()
+  for i=1,6 do
+    uP[i].loopLength=util.clamp(uP[i].loopLength+math.random()*2-1,uC.loopMinMax[1],uC.loopMinMax[2])
+    tape_change_loop(i)
   end
 end
 
@@ -510,10 +517,10 @@ function enc(n,d)
   elseif n==2 then
     d=sign(d)
     if uS.loopNum~=7 then
-      uS.selectedPar=util.clamp(uS.selectedPar+d,0,5)
+      uS.selectedPar=util.clamp(uS.selectedPar+d,0,6)
     else
       -- toggle between saving / loading
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,3)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -538,6 +545,16 @@ function enc(n,d)
       elseif uS.selectedPar==5 then
         uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
         softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
+      elseif uS.selectedPar==6 then
+        -- add temporary warble
+        clock.run(function()
+          local newChange=(1+d/100)
+          uP[uS.loopNum].rate=uP[uS.loopNum].rate*newChange
+          softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
+          clock.sync(1)
+          uP[uS.loopNum].rate=uP[uS.loopNum].rate/newChange
+          softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
+        end)
       end
     else
       if uS.flagSpecial==1 or uS.flagSpecial==2 then
@@ -582,6 +599,9 @@ function key(n,z)
         elseif uS.flagSpecial==3 then
           -- randomize!
           randomize_parameters()
+        elseif uS.flagSpecial==4 then
+          -- randomize loops!
+          randomize_loops()
         end
       end
     else
@@ -653,6 +673,8 @@ function redraw()
       screen.text("load "..params:get("backup"))
     elseif uS.flagSpecial==3 then
       screen.text("rand")
+    elseif uS.flagSpecial==4 then
+      screen.text("rand loop")
     end
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
@@ -683,6 +705,9 @@ function redraw()
   elseif uS.selectedPar==5 then
     screen.move(x+10,y)
     screen.text("pan")
+  elseif uS.selectedPar==6 then
+    screen.move(x+10,y)
+    screen.text("warble")
   end
   
   -- screen.move(x+55,y)
