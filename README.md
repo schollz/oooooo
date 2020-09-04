@@ -43,6 +43,7 @@ future directions:
 **playback:**
 
 - you can adjust the rate in continuous or discrete (±25%, ±50%, etc.) by changing the global parameter "`continuous rate`" to `no`.
+- the "warble" function allows you to temporarily pitch up/down the current loop
 
 **special functions in A loop:**
 
@@ -52,7 +53,7 @@ if you change the loop to "A" using E1 there are several special functions avail
 - pressing shift+K2 clears and resets *all* loops,
 - if you select the parameter "save"/"load" then shift+K3 will save/load the current state. this will overwrite the previous save, so make sure to backup the audio files yourself. you can change which save/load with E3.
 - if you select `rand` and press shift+K3 it will randomize the loops
-
+- if you select `rand loop` and press shift+K3 it will randomize loop lengths
 
 ## demo 
 
