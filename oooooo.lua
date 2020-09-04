@@ -1,4 +1,4 @@
--- oooooo v0.5
+-- oooooo v0.6
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -39,6 +39,7 @@ uS={
   flagClearing=false,
   flagSpecial=0,
   message="",
+  currentBeat=0,
 }
 
 -- user constants
@@ -145,6 +146,7 @@ function init_loops(j)
     uP[i].rateNum=8
     uP[i].pan=0
     uP[i].lfoWarble={}
+    uP[i].resetEveryNthBeat=0
     for j=1,3 do
       uP[i].lfoWarble[j]=math.random(1,60)
     end
@@ -224,6 +226,18 @@ function update_timer()
     if uS.recordingTime>=uP[uS.loopNum].loopLength then
       -- stop recording when reached a full loop
       tape_stop_rec(uS.loopNum,false)
+    end
+  end
+  if math.floor(clock.get_beats())~=uS.currentBeat then
+    uS.currentBeat=math.floor(clock.get_beats())
+    for i=1,6 do
+      if uP[i].resetEveryNthBeat>0 then
+        if uS.currentBeat%uP[i].resetEveryNthBeat==0 then
+          if not (uS.recording>0 and uS.loopNum==i) then
+            tape_reset(i)
+          end
+        end
+      end
     end
   end
 end
@@ -381,9 +395,6 @@ function tape_stop_rec(i,change_loop)
 end
 
 function tape_clear(i)
-  if i<7 and uP[i].isEmpty==true then
-    do return end
-  end
   print("tape_clear "..i)
   -- prevent double clear
   if uS.flagClearing then
@@ -405,12 +416,22 @@ function tape_clear(i)
     -- clear everything
     softcut.buffer_clear()
     for j=1,6 do
+      if uP[j].isEmpty then
+        init_loops(j)
+        uS.message="resetting"
+        redraw()
+      end
       uP[j].isEmpty=true
       uP[j].recordedLength=0
       tape_reset(j)
     end
   else
     -- clear a specific section of buffer
+    if uP[i].isEmpty then
+      init_loops(i)
+      uS.message="resetting"
+      redraw()
+    end
     uP[i].isEmpty=true
     uP[i].recordedLength=0
     softcut.buffer_clear_region_channel(
@@ -517,7 +538,7 @@ function enc(n,d)
   elseif n==2 then
     d=sign(d)
     if uS.loopNum~=7 then
-      uS.selectedPar=util.clamp(uS.selectedPar+d,0,6)
+      uS.selectedPar=util.clamp(uS.selectedPar+d,0,7)
     else
       -- toggle between saving / loading
       uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
@@ -546,6 +567,9 @@ function enc(n,d)
         uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
         softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
       elseif uS.selectedPar==6 then
+        d=sign(d)
+        uP[uS.loopNum].resetEveryNthBeat=util.clamp(uP[uS.loopNum].resetEveryNthBeat+d,0,64)
+      elseif uS.selectedPar==7 then
         -- add temporary warble
         clock.run(function()
           local newChange=(1+d/100)
@@ -706,6 +730,9 @@ function redraw()
     screen.move(x+10,y)
     screen.text("pan")
   elseif uS.selectedPar==6 then
+    screen.move(x+10,y)
+    screen.text("reset every "..uP[uS.loopNum].resetEveryNthBeat.." beat")
+  elseif uS.selectedPar==7 then
     screen.move(x+10,y)
     screen.text("warble")
   end
