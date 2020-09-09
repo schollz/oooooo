@@ -92,7 +92,7 @@ function init()
   
   -- add parameters
   for i=1,6 do
-    params:add_group("loop "..i,13)
+    params:add_group("loop "..i,14)
     --                 id      name min max default k units
     params:add_taper(i.."start","start",0,uC.loopMinMax[2],0,0,"s")
     params:add_taper(i.."length","length",uC.loopMinMax[1],uC.loopMinMax[2],(60/clock.get_tempo())*i*4,0,"s")
@@ -107,6 +107,7 @@ function init()
     params:add_taper(i.."pan lfo amp","pan lfo amp",0,1,0.25,0,"")
     params:add_taper(i.."pan lfo period","pan lfo period",0,60,0,0,"s")
     params:add_taper(i.."pan lfo offset","pan lfo offset",0,60,0,0,"s")
+    params:add_control(i.."reset every beat","reset every X beat",controlspec.new(0,64,"lin",1,0))
   end
   
   init_loops(7)
@@ -162,6 +163,7 @@ function init_loops(j)
   end
   for i=i1,i2 do
     print("initializing  "..i)
+    -- TODO: if using save file, then load the last save
     uP[i]={}
     uP[i].loopStart=0
     uP[i].loopLength=(60/clock.get_tempo())*i*4
@@ -177,7 +179,9 @@ function init_loops(j)
     uP[i].pan=0
     uP[i].panUpdate=false
     uP[i].lfoWarble={}
-    uP[i].resetEveryNthBeat=0
+    if i<7 then
+      params:set(i.."reset every beat",0)
+    end
     for j=1,3 do
       uP[i].lfoWarble[j]=math.random(1,60)
     end
@@ -279,8 +283,8 @@ function update_timer()
   if math.floor(clock.get_beats())~=uS.currentBeat then
     uS.currentBeat=math.floor(clock.get_beats())
     for i=1,6 do
-      if uP[i].resetEveryNthBeat>0 then
-        if uS.currentBeat%uP[i].resetEveryNthBeat==0 then
+      if params:get(i.."reset every beat")>0 then
+        if uS.currentBeat%params:get(i.."reset every beat")==0 then
           if not (uS.recording>0 and uS.loopNum==i) then
             tape_reset(i)
           end
@@ -357,61 +361,9 @@ end
 
 function backup_load()
   print("backup_load")
-  clock.run(function()
-    uS.message="loaded"
-    redraw()
-    clock.sleep(0.5)
-    uS.message=""
-    redraw()
-  end)
+  show_message("loaded")
   
-  -- -- load parameters from file
-  if util.file_exists(PATH.."oooooo"..params:get("backup")..".json") then
-    filecontents=readAll(PATH.."oooooo"..params:get("backup")..".json")
-    print(filecontents)
-    u=json.parse(filecontents)
-    for i=1,7 do
-      if u[i].loopStart~=nil then
-        uP[i].loopStart=u[i].loopStart
-      end
-      if u[i].position~=nil then
-        uP[i].position=u[i].position
-      end
-      if u[i].loopLength~=nil then
-        uP[i].loopLength=u[i].loopLength
-      end
-      if u[i].recordedLength~=nil then
-        uP[i].recordedLength=u[i].recordedLength
-      end
-      if u[i].isStopped~=nil then
-        uP[i].isStopped=u[i].isStopped
-      end
-      if u[i].isEmpty~=nil then
-        uP[i].isEmpty=u[i].isEmpty
-      end
-      if u[i].vol~=nil then
-        uP[i].vol=u[i].vol
-      end
-      if u[i].rate~=nil then
-        uP[i].rate=u[i].rate
-      end
-      if u[i].rateNum~=nil then
-        uP[i].rateNum=u[i].rateNum
-      end
-      if u[i].rate~=nil then
-        uP[i].rate=u[i].rate
-      end
-      if u[i].pan~=nil then
-        uP[i].pan=u[i].pan
-      end
-      if u[i].resetEveryNthBeat~=nil then
-        uP[i].resetEveryNthBeat=u[i].resetEveryNthBeat
-      end
-      if u[i].lfoWarble~=nil then
-        uP[i].lfoWarble=u[i].lfoWarble
-      end
-    end
-  end
+  -- TODO: load parameters from file
   
   -- load buffer from file
   if util.file_exists(PATH.."oooooo"..params:get("backup")..".wav") then
@@ -685,7 +637,7 @@ function enc(n,d)
         uP[uS.loopNum].panUpdate=true
       elseif uS.selectedPar==6 then
         d=sign(d)
-        uP[uS.loopNum].resetEveryNthBeat=util.clamp(uP[uS.loopNum].resetEveryNthBeat+d,0,64)
+        params:set(uS.loopNum.."reset every beat",util.clamp(params:get(uS.loopNum.."reset every beat")+d,0,64))
       elseif uS.selectedPar==7 then
         -- add temporary warble
         clock.run(function()
@@ -873,7 +825,7 @@ function redraw()
     screen.text("pan")
   elseif uS.selectedPar==6 then
     screen.move(x+10,y)
-    screen.text("reset every "..uP[uS.loopNum].resetEveryNthBeat.." beat")
+    screen.text("reset every "..params:get(uS.loopNum.."reset every beat").." beat")
   elseif uS.selectedPar==7 then
     screen.move(x+10,y)
     screen.text("warble")
