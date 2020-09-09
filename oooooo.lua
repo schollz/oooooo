@@ -256,7 +256,7 @@ function update_timer()
     end
   end
   for i=1,6 do
-    if uP[i].volUpdate then
+    if uP[i].volUpdate or (params:get(i.."vol lfo period")>0 and params:get(i.."vol lfo amp")>0) then
       newvalue=params:get(i.."vol")
       if params:get(i.."vol lfo period")>0 then
         newvalue=newvalue+params:get(i.."vol lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."vol lfo period"),params:get(i.."vol lfo offset"))
