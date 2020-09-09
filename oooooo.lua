@@ -1,4 +1,4 @@
--- oooooo v0.6.1
+-- oooooo v0.7
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -11,13 +11,14 @@
 -- K2 stops
 -- K2 again resets loop
 -- K3 plays
--- shift+K2 clears loop
 -- shift+K3 primes recording
 -- shift+K3 again forces recording
 -- E1 changes loops
 -- E2 selects parameters
 -- E3 adjusts parameters
---
+-- shift+K2 activates lfo when
+-- parameter selected
+-- otherwise shift+K2 clears
 
 local json=include "lib/json"
 
@@ -180,6 +181,8 @@ function init_loops(j)
     for j=1,3 do
       uP[i].lfoWarble[j]=math.random(1,60)
     end
+    
+    -- TODO: sync up the parameters
     
     if i<7 then
       -- update softcut
@@ -710,9 +713,29 @@ function key(n,z)
     uS.shift=not uS.shift
   elseif n==2 and z==1 then
     -- this key works on one or all
-    if uS.shift then
+    if uS.shift and uS.selectedPar==0 then
       -- clear
       tape_clear(uS.loopNum)
+    elseif uS.shift and (uS.selectedPar==1 or uS.selectedPar==2) then
+      -- toggle lfo for loops
+      if params:get(uS.loopNum.."length lfo period")==0 then
+        show_message("loop "..uS.loopNum.." lfo on")
+        params:set(uS.loopNum.."length lfo offset",math.random()*60)
+        params:set(uS.loopNum.."length lfo period",math.random()*60)
+      else
+        show_message("loop "..uS.loopNum.." lfo off")
+        params:set(uS.loopNum.."length lfo period",0)
+      end
+    elseif uS.shift and (uS.selectedPar==3) then
+      -- toggle lfo for loops
+      if params:get(uS.loopNum.."vol lfo period")==0 then
+        show_message("vol "..uS.loopNum.." lfo on")
+        params:set(uS.loopNum.."vol lfo offset",math.random()*60)
+        params:set(uS.loopNum.."vol lfo period",math.random()*60)
+      else
+        show_message("vol "..uS.loopNum.." lfo off")
+        params:set(uS.loopNum.."vol lfo period",0)
+      end
     else
       -- stop tape
       -- if stopped, then reset to 0
