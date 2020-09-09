@@ -32,6 +32,7 @@ uS={
   recordingTime=0,
   updateUI=false,
   updateParams=0,
+  updateUserParam=0,
   updateTape=false,
   shift=false,
   loopNum=1,-- 7 = all loops
@@ -40,6 +41,7 @@ uS={
   flagSpecial=0,
   message="",
   currentBeat=0,
+  currentTime=0,
 }
 
 -- user constants
@@ -118,6 +120,17 @@ function init()
   params:set_action("continous rate",update_parameters)
   params:read(_path.data..'oooooo/'.."oooooo.pset")
   
+  -- add parameters
+  for i=1,6 do
+    params:add_group("loop "..i,3)
+    --                 id      name min max default k units
+    params:add_taper(i.."vol","vol",0,1,1,0,"")
+    params:add_action(i.."vol",function(x) uP[i].volUpdate=true end) -- TODO: does this work?
+    params:add_taper(i.."vol lfo amp","vol lfo amp",0,1,1,0,"")
+    params:add_taper(i.."vol lfo period","vol lfo period",0,60,0,0,"/s")
+    params:add_taper(i.."vol lfo offset","vol lfo offset",0,60,0,0,"s")
+  end
+  
   redraw()
 end
 
@@ -142,6 +155,7 @@ function init_loops(j)
     uP[i].isStopped=true
     uP[i].isEmpty=true
     uP[i].vol=0.5
+    uP[i].volUpdate=false
     uP[i].rate=1
     uP[i].rateNum=8
     uP[i].pan=0
@@ -182,9 +196,9 @@ function randomize_parameters()
   for i=1,6 do
     uP[i].rate=uC.discreteRates[math.random(#uC.discreteRates)]
     softcut.rate(i,uP[i].rate)
-    uP[i].vol=math.random()*(1/math.abs(uP[i].rate))
-    uP[i].vol=util.clamp(uP[i].vol,0.1,0.8)
-    softcut.level(i,uP[i].vol)
+    params:set(uS.loopNum.."vol",math.random()*(1/math.abs(uP[i].rate)))
+    params:set(uS.loopNum.."vol",utils.clamp(params:get(uS.loopNum.."vol"),0.1,0.8))
+    uP[i].volUpdate=true
     uP[i].pan=math.random()*2-1
     softcut.pan(i,uP[i].pan)
   end
@@ -211,6 +225,7 @@ function update_positions(i,x)
 end
 
 function update_timer()
+  uS.currentTime=uS.currentTime+uC.updateTimerInterval
   -- -- update the count for the lfos
   -- uC.lfoTime=uC.lfoTime+uC.updateTimerInterval
   -- if uC.lfoTime>376.99 then -- 60 * 2 * pi
@@ -238,6 +253,18 @@ function update_timer()
           end
         end
       end
+    end
+  end
+  for i=1,6 do
+    if uP[i].volUpdate then
+      newvalue=params:get(i.."vol")
+      if params:get(i.."vol lfo period")>0 then
+        newvalue=newvalue+params:get(i.."vol lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."vol lfo period"),params:get(i.."vol lfo offset"))
+        newvalue=util.clamp(newvalue,0,1)
+      end
+      softcut.level(i,newvalue)
+      uP[i].volUpdate=false
+      uS.updateUI=true
     end
   end
 end
@@ -504,8 +531,8 @@ function tape_play(j)
   end
   for i=i1,i2 do
     softcut.play(i,1)
-    softcut.level(i,uP[i].vol)
     softcut.rate(i,uP[i].rate)
+    uP[i].volUpdate=true
     uP[i].isStopped=false
   end
 end
@@ -530,7 +557,7 @@ function tape_rec(i)
     softcut.play(i,1)
     -- print("setting rate to "..uP[i].rate)
     softcut.rate(i,uP[i].rate)
-    softcut.level(i,uP[i].vol)
+    uP[i].volUpdate=true
     uP[i].isStopped=false
   end
   p_amp_in.time=1
@@ -593,8 +620,9 @@ function enc(n,d)
         uP[uS.loopNum].loopLength=util.clamp(uP[uS.loopNum].loopLength+d/10,uC.loopMinMax[1],uC.loopMinMax[2])
         tape_change_loop(uS.loopNum)
       elseif uS.selectedPar==3 then
-        uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
-        softcut.level(uS.loopNum,uP[uS.loopNum].vol)
+        -- uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
+        params:set(uS.loopNum.."vol",utils.clamp(params:get(uS.loopNum.."vol")+d/100,0,1))
+        uP[uS.loopNum].volUpdate=true
       elseif uS.selectedPar==4 then
         if params:get("continous rate")==2 then
           uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
