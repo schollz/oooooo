@@ -37,6 +37,10 @@ future directions:
 - rate: shift+K2/K3 reverses
 - others: shift+K2/K3 toggles lfo
 
+all 114 parameters are availbe via the global menu.
+
+there is a quick menu available on screen which you can navigate. change loops with E1 and change parameters/modes with E2. here's a brief rundown:
+
 **recording:**
 
 - with no parameter selected, press shift+K3 to prime recording. when primed, recording will automatically begin when incoming audio rises above a threshold. the recording threshold can be set by global parameter "`rec thresh`". 
@@ -57,11 +61,11 @@ future directions:
 if you change the loop to "A" using E1 there are several special functions available to affect all loops.
 
 - K2/K3 stops/plays on *all* loops,
-- if no parameter is selected, pressing shift+K2 clears and resets *all* loops,
-- if you select the parameter "save"/"load" then shift+K3 will save/load the current state. this will overwrite the previous save, so make sure to backup the audio files yourself. you can change which save/load with E3.
-- if you select `rand parms` and press shift+K2/K3 it will randomize the loops
-- if you select `rand loop` and press shift+K2/K3 it will randomize loop lengths
-- if you select `rand lfos` and press shift+K2/K3 it will randomize lfos
+- if no parameter is selected, pressing shift+K2 clears and resets *all* loops
+- any other selection is activated by using shift+K2 or shift+K3
+- select "save" or "load" to backup or restore to the specified tape (use E3 to change)
+- "rand" will randomize parameters, loop sizes, or lfos of *all* loops
+- "pause lfos" will toggle pausing of the lfos
 
 ## demo 
 

@@ -8,18 +8,21 @@
 --    ▼ instructions below ▼
 --
 -- K1 shifts
--- K2 stops
+-- K2 stops loop
 -- K2 again resets loop
--- K3 plays
--- E1 changes loops
--- E2 selects parameters
--- E3 adjusts parameters
--- parameter specific:
--- none: shift+K2 resets then clears
--- none: shift+K3 primes recording
--- none: shift+K3+K3 forces recording
--- rate: shift+K2/K3 reverses
--- others: shift+K2/K3 toggles lfo
+-- K3 plays loop
+-- E1 changes loop
+-- E2 selects
+-- E3 adjusts
+-- selection (E2) specific:
+-- nothing selected:
+--   shift+K2 resets then clears
+--   shift+K3 primes recording
+--   shift+K3+K3 forces recording
+-- rate selected:
+--   shift+K2/K3 reverses
+-- other selected:
+--   shift+K2/K3 toggles lfo
 
 -- user parameters
 uP={
@@ -760,6 +763,9 @@ function key(n,z)
     end
   elseif n==3 and z==1 then
     if uS.shift then
+      if uS.loopNum==7 then
+        do return end -- TODO: start recording on all loop?
+      end
       if uS.recording==0 then
         tape_arm_rec(uS.loopNum)
       elseif uS.recording==1 then
