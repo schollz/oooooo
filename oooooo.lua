@@ -863,30 +863,6 @@ function redraw()
     screen.text("warble")
   end
   
-  -- screen.move(x+55,y)
-  -- if uS.selectedPar==3 then
-  --   screen.level(15)
-  -- else
-  --   screen.level(1)
-  -- end
-  -- screen.text(string.format("%1.2f",uP[uS.loopNum].vol))
-  
-  -- screen.move(x+80,y)
-  -- if uS.selectedPar==4 then
-  --   screen.level(15)
-  -- else
-  --   screen.level(1)
-  -- end
-  -- screen.text(string.format("%1.2f",uP[uS.loopNum].rate))
-  
-  -- screen.move(x+105,y)
-  -- if uS.selectedPar==5 then
-  --   screen.level(15)
-  -- else
-  --   screen.level(1)
-  -- end
-  -- screen.text(string.format("%1.2f",uP[uS.loopNum].pan))
-  
   -- draw representation of current loop states
   for i=1,6 do
     if uS.loopNum==i then goto continue end
@@ -908,17 +884,9 @@ function redraw()
     screen.circle(x,y,r)
     screen.stroke()
     
-    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
-    
-    -- if not uP[i].isStopped then
-    --   -- draw arc at position
-    --   screen.move(x,y)
-    --   screen.arc(x,y,r,math.rad(angle-5),math.rad(angle+5))
-    --   screen.stroke()
-    -- end
-    
     -- draw pixels at position if it has data or
     -- its being recorded/primed
+    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
     if uP[i].isEmpty==false or (i==uS.loopNum and uS.recording>0) then
       for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
@@ -947,17 +915,9 @@ function redraw()
     screen.circle(x,y,r)
     screen.stroke()
     
-    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
-    
-    -- if not uP[i].isStopped then
-    --   -- draw arc at position
-    --   screen.move(x,y)
-    --   screen.arc(x,y,r,math.rad(angle-5),math.rad(angle+5))
-    --   screen.stroke()
-    -- end
-    
     -- draw pixels at position if it has data or
     -- its being recorded/primed
+    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
     if uP[i].isEmpty==false or (i==uS.loopNum and uS.recording>0) then
       for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
