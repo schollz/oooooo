@@ -820,7 +820,7 @@ function redraw()
     elseif uS.flagSpecial==2 then
       screen.text("load "..params:get("backup"))
     elseif uS.flagSpecial==3 then
-      screen.text("rand")
+      screen.text("rand pars")
     elseif uS.flagSpecial==4 then
       screen.text("rand loop")
     elseif uS.flagSpecial==5 then
@@ -848,13 +848,13 @@ function redraw()
     screen.text(string.format("%1.1fs",uP[uS.loopNum].loopStart+uP[uS.loopNum].loopLength))
   elseif uS.selectedPar==3 then
     screen.move(x+10,y)
-    screen.text("level")
+    screen.text(string.format("vol %1.1f",uP[uS.loopNum].vol))
   elseif uS.selectedPar==4 then
     screen.move(x+10,y)
     screen.text(string.format("rate %1.1f%%",uP[uS.loopNum].rate*100))
   elseif uS.selectedPar==5 then
     screen.move(x+10,y)
-    screen.text("pan")
+    screen.text(string.format("pan %1.1f",uP[uS.loopNum].pan))
   elseif uS.selectedPar==6 then
     screen.move(x+10,y)
     screen.text("reset every "..params:get(uS.loopNum.."reset every beat").." beat")
