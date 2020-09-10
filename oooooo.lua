@@ -828,7 +828,7 @@ function redraw()
   if uS.loopNum==7 then
     screen.move(x+10,y)
     if uS.flagSpecial==0 then
-      screen.text("tape")
+      tape_icon(x+10,y)
     elseif uS.flagSpecial==1 then
       screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
@@ -966,6 +966,32 @@ function redraw()
   end
   
   screen.update()
+end
+
+--- Creates tape icon.
+-- @tparam x {number}  X-coordinate of element
+-- @tparam y {number}  Y-coordinate of element
+-- from https://github.com/frederickk/b-b-b-b-beat
+function tape_icon(x,y)
+  local r=2
+  
+  screen.move(math.floor(x),math.floor(y)-4)
+  screen.line_rel(1,0)
+  screen.line_rel((r*5),0)
+  
+  for i=0,6,2 do
+    screen.move(math.floor(x)+(r*i),math.floor(y)-4)
+    screen.line_rel(0,1)
+    screen.line_rel(0,r)
+  end
+  
+  screen.move(math.floor(x),math.floor(y)+(r*2)-4)
+  screen.line_rel(1,0)
+  screen.line_rel(r,0)
+  screen.move(math.floor(x)+(r*4),math.floor(y)+(r*2)-4)
+  screen.line_rel(1,0)
+  screen.line_rel(r,0)
+  screen.stroke()
 end
 
 --
