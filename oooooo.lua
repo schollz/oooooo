@@ -12,13 +12,14 @@
 -- K2 again resets loop
 -- K3 plays
 -- E1 changes loops
--- E2 selects mode/parameters
+-- E2 selects parameters
 -- E3 adjusts parameters
--- tape: shift+K2 resets then clears
--- tape: shift+K3 primes recording
--- tape: shift+K3+K3 forces recording
+-- parameter specific:
+-- none: shift+K2 resets then clears
+-- none: shift+K3 primes recording
+-- none: shift+K3+K3 forces recording
 -- rate: shift+K2/K3 reverses
--- other: shift+K2/K3 activates lfo
+-- others: shift+K2/K3 toggles lfo
 
 -- user parameters
 uP={
@@ -749,7 +750,7 @@ function key(n,z)
     end
   elseif n==2 and z==1 then
     -- this key works on one or all
-    if uS.shift and uS.selectedPar==0 then
+    if uS.shift then
       -- clear
       tape_clear(uS.loopNum)
     else
@@ -846,10 +847,9 @@ function redraw()
     elseif uS.flagSpecial==6 then
       screen.text("rand lfo")
     end
-    
   elseif uS.selectedPar==0 then
     screen.move(x+10,y)
-    screen.text("tape")
+    tape_icon(x+10,y)
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
     if uS.selectedPar==1 then
