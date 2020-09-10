@@ -88,11 +88,13 @@ function init()
   params:set_action("rec thru loops",update_parameters)
   params:add_option("continous rate","continous rate",{"no","yes"},2)
   params:set_action("continous rate",update_parameters)
+  params:add_option("pause lfos","pause lfos",{"no","yes"},1)
+  -- TODO: hook up pausing lfos
   params:read(_path.data..'oooooo/'.."oooooo.pset")
   
   -- add parameters
   for i=1,6 do
-    params:add_group("loop "..i,17)
+    params:add_group("loop "..i,18)
     --                 id      name min max default k units
     params:add_taper(i.."start","start",0,uC.loopMinMax[2],0,0,"s")
     params:add_taper(i.."length","length",uC.loopMinMax[1],uC.loopMinMax[2],(60/clock.get_tempo())*i*4,0,"s")
@@ -111,6 +113,7 @@ function init()
     params:add_taper(i.."pan lfo period","pan lfo period",0,60,0,0,"s")
     params:add_taper(i.."pan lfo offset","pan lfo offset",0,60,0,0,"s")
     params:add_control(i.."reset every beat","reset every X beat",controlspec.new(0,64,"lin",1,0))
+    params:add_option(i.."isempty","is empty",{"false","true"},2)
   end
   
   init_loops(7)
@@ -177,7 +180,6 @@ function init_loops(j)
     uP[i].position=uP[i].loopStart
     uP[i].recordedLength=0
     uP[i].isStopped=true
-    uP[i].isEmpty=true
     uP[i].vol=0.5
     uP[i].volUpdate=false
     uP[i].rate=1
@@ -203,6 +205,7 @@ function init_loops(j)
       params:set(i.."pan lfo period",0)
       params:set(i.."pan lfo offset",0)
       params:set(i.."reset every beat",0)
+      params:set(i.."isempty",2)
     end
     for j=1,3 do
       uP[i].lfoWarble[j]=math.random(1,60)
@@ -238,7 +241,8 @@ end
 function randomize_parameters()
   show_message("randomizing")
   for i=1,6 do
-    params:set(i.."rate",uC.discreteRates[math.random(#uC.discreteRates)])
+    params:set(i.."rate adjust",0)
+    params:set(i.."rate",math.random(#uC.discreteRates))
     params:set(i.."rate reverse",math.floor(math.random()*2)+1)
     uP[i].rateUpdate=true
     params:set(i.."vol",math.random()*0.6+0.2)
@@ -259,11 +263,11 @@ end
 function randomize_lfos()
   show_message("randomizing lfos")
   for i=1,6 do
-    params:set(i.."length lfo period",math.random()*30)
+    params:set(i.."length lfo period",math.random()*30+5)
     params:set(i.."length lfo offset",math.random()*60)
-    params:set(i.."vol lfo period",math.random()*6)
+    params:set(i.."vol lfo period",math.random()*6+6)
     params:set(i.."vol lfo offset",math.random()*60)
-    params:set(i.."pan lfo period",math.random()*6)
+    params:set(i.."pan lfo period",math.random()*6+6)
     params:set(i.."pan lfo offset",math.random()*60)
   end
 end
@@ -325,7 +329,7 @@ function update_timer()
     end
     if uP[i].rateUpdate then
       uS.updateUI=true
-      uP[i].panUpdate=false
+      uP[i].rateUpdate=false
       uP[i].rate=uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust")
       uP[i].rate=uP[i].rate*(params:get(i.."rate reverse")*2-3)/100.0
       softcut.rate(i,uP[i].rate)
@@ -482,7 +486,7 @@ function tape_stop_rec(i,change_loop)
       -- keep recording onto the next loop
       nextLoop=0
       for j=1,6 do
-        if uP[j].isEmpty then
+        if params:get(j.."isempty")==2 then
           nextLoop=j
           break
         end
@@ -518,23 +522,23 @@ function tape_clear(i)
     -- clear everything
     softcut.buffer_clear()
     for j=1,6 do
-      if uP[j].isEmpty then
+      if params:get(j.."isempty")==2 then
         init_loops(j)
         uS.message="resetting"
         redraw()
       end
-      uP[j].isEmpty=true
+      params:set(j.."isempty",2)
       uP[j].recordedLength=0
       tape_reset(j)
     end
   else
     -- clear a specific section of buffer
-    if uP[i].isEmpty then
+    if params:get(i.."isempty")==2 then
       init_loops(i)
       uS.message="resetting"
       redraw()
     end
-    uP[i].isEmpty=true
+    params:set(i.."isempty",2)
     uP[i].recordedLength=0
     softcut.buffer_clear_region_channel(
       uC.bufferMinMax[i][1],
@@ -554,7 +558,7 @@ function tape_play(j)
   if j<7 and uP[j].isStopped==false then
     do return end
   end
-  if j<7 and uP[j].isEmpty then
+  if j<7 and params:get(j.."isempty")==2 then
     do return end
   end
   i1=j
@@ -599,7 +603,7 @@ function tape_rec(i)
   uS.recording=2 -- recording is live
   softcut.rec_level(i,1)
   softcut.pre_level(i,1)
-  uP[i].isEmpty=false
+  params:set(i.."isempty",1)
   redraw()
   -- slowly start recording
   -- ease in recording signal to avoid clicks near loop points
@@ -887,7 +891,7 @@ function redraw()
     -- draw pixels at position if it has data or
     -- its being recorded/primed
     angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
-    if uP[i].isEmpty==false or (i==uS.loopNum and uS.recording>0) then
+    if params:get(i.."isempty")==1 or (i==uS.loopNum and uS.recording>0) then
       for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
         screen.stroke()
@@ -918,8 +922,8 @@ function redraw()
     -- draw pixels at position if it has data or
     -- its being recorded/primed
     angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
-    if uP[i].isEmpty==false or (i==uS.loopNum and uS.recording>0) then
-      for j=-1,1 do
+    if params:get(i.."isempty")==1 or (i==uS.loopNum and uS.recording>0) then
+      for j=-2,2 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
         screen.stroke()
       end
