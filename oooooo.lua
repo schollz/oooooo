@@ -1,4 +1,4 @@
--- oooooo v0.7
+-- oooooo v0.7.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -17,7 +17,9 @@
 -- E2 selects parameters
 -- E3 adjusts parameters
 -- shift+K2 activates lfo when
--- parameter selected
+-- loop or vol or pan selected
+-- shift+K2 reverses when
+-- rate is selected
 -- otherwise shift+K2 clears
 
 local json=include "lib/json"
@@ -71,7 +73,7 @@ uC={
   recArmThreshold=0.03,
   backupNumber=1,
   lfoTime=1,
-  discreteRates={-4,-2,-1,-0.5,-0.25,0.25,0.5,1,2,4},
+  discreteRates={-400,-200,-100,-50,-25,25,50,100,200,400},
 }
 
 PATH=_path.audio..'oooooo/'
@@ -92,7 +94,7 @@ function init()
   
   -- add parameters
   for i=1,6 do
-    params:add_group("loop "..i,14)
+    params:add_group("loop "..i,17)
     --                 id      name min max default k units
     params:add_taper(i.."start","start",0,uC.loopMinMax[2],0,0,"s")
     params:add_taper(i.."length","length",uC.loopMinMax[1],uC.loopMinMax[2],(60/clock.get_tempo())*i*4,0,"s")
@@ -103,6 +105,9 @@ function init()
     params:add_taper(i.."vol lfo amp","vol lfo amp",0,1,0.25,0,"")
     params:add_taper(i.."vol lfo period","vol lfo period",0,60,0,0,"s")
     params:add_taper(i.."vol lfo offset","vol lfo offset",0,60,0,0,"s")
+    params:add_option(i.."rate","rate (%)",uC.discreteRates,8)
+    params:add_taper(i.."rate adjust","rate adjust (%)",-400,400,0,1)
+    params:add_option(i.."rate reverse","reverse rate",{"on","off"},2)
     params:add_taper(i.."pan","pan",-1,1,0,0,"")
     params:add_taper(i.."pan lfo amp","pan lfo amp",0,1,0.25,0,"")
     params:add_taper(i.."pan lfo period","pan lfo period",0,60,0,0,"s")
@@ -146,6 +151,9 @@ function init()
     params:set_action(i.."length",function(x) uP[i].loopUpdate=true end)
     params:set_action(i.."start",function(x) uP[i].loopUpdate=true end)
     params:set_action(i.."pan",function(x) uP[i].panUpdate=true end)
+    params:set_action(i.."rate",function(x) uP[i].rateUpdate=true end)
+    params:set_action(i.."rate reverse",function(x) uP[i].rateUpdate=true end)
+    params:set_action(i.."rate adjust",function(x) uP[i].rateUpdate=true end)
   end
   redraw()
 end
@@ -175,18 +183,32 @@ function init_loops(j)
     uP[i].vol=0.5
     uP[i].volUpdate=false
     uP[i].rate=1
-    uP[i].rateNum=8
+    uP[i].rateUpdate=false
     uP[i].pan=0
     uP[i].panUpdate=false
     uP[i].lfoWarble={}
     if i<7 then
+      params:set(i.."start",0)
+      params:set(i.."length",uP[i].loopLength)
+      params:set(i.."length lfo amp",0.2)
+      params:set(i.."length lfo period",0)
+      params:set(i.."length lfo offset",0)
+      params:set(i.."vol",0.5)
+      params:set(i.."vol lfo amp",0.4)
+      params:set(i.."vol lfo period",0)
+      params:set(i.."vol lfo offset",0)
+      params:set(i.."rate",8)
+      params:set(i.."rate adjust",0)
+      params:set(i.."rate reverse",2)
+      params:set(i.."pan",0)
+      params:set(i.."pan lfo amp",0.7)
+      params:set(i.."pan lfo period",0)
+      params:set(i.."pan lfo offset",0)
       params:set(i.."reset every beat",0)
     end
     for j=1,3 do
       uP[i].lfoWarble[j]=math.random(1,60)
     end
-    
-    -- TODO: sync up the parameters
     
     if i<7 then
       -- update softcut
@@ -303,15 +325,22 @@ function update_timer()
       end
       softcut.level(i,uP[i].vol)
     end
+    if uP[i].rateUpdate then
+      uS.updateUI=true
+      uP[i].panUpdate=false
+      uP[i].rate=uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust")
+      uP[i].rate=uP[i].rate*(params:get(i.."rate reverse")*2-3)/100.0
+      softcut.rate(i,uP[i].rate)
+    end
     if uP[i].panUpdate or (params:get(i.."pan lfo period")>0 and params:get(i.."pan lfo amp")>0) then
       uS.updateUI=true
       uP[i].panUpdate=false
       uP[i].pan=params:get(i.."pan")
-      if params:get(i.."vol lfo period")>0 then
+      if params:get(i.."pan lfo period")>0 then
         uP[i].pan=uP[i].pan+params:get(i.."pan lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."pan lfo period"),params:get(i.."pan lfo offset"))
-        uP[i].pan=util.clamp(uP[i].pan,-1,1)
       end
-      softcut.level(i,uP[i].pan)
+      uP[i].pan=util.clamp(uP[i].pan,-1,1)
+      softcut.pan(i,uP[i].pan)
     end
     if uP[i].loopUpdate or (params:get(i.."length lfo period")>0 and params:get(i.."length lfo amp")>0) then
       uS.updateUI=true
@@ -341,19 +370,14 @@ end
 --
 function backup_save()
   print("backup_save")
-  clock.run(function()
-    uS.message="saved"
-    redraw()
-    clock.sleep(0.5)
-    uS.message=""
-    redraw()
-  end)
+  show_message("saved")
   
   -- write file of user data
-  file=io.open(PATH.."oooooo"..params:get("backup")..".json","w")
-  io.output(file)
-  io.write(json.stringify(uP))
-  io.close(file)
+  params:write(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
+  -- file=io.open(PATH.."oooooo"..params:get("backup")..".json","w")
+  -- io.output(file)
+  -- io.write(json.stringify(uP))
+  -- io.close(file)
   
   -- save tape
   softcut.buffer_write_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,-1)
@@ -363,7 +387,8 @@ function backup_load()
   print("backup_load")
   show_message("loaded")
   
-  -- TODO: load parameters from file
+  -- load parameters from file
+  params:read(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
   
   -- load buffer from file
   if util.file_exists(PATH.."oooooo"..params:get("backup")..".wav") then
@@ -457,8 +482,8 @@ function tape_stop_rec(i,change_loop)
   print('params:get("rec thru loops") '..params:get("rec thru loops"))
   if not still_armed then
     if change_loop then
-      uP[i].loopLength=uP[i].recordedLength
-      tape_change_loop(i)
+      params:set(i.."length",uP[i].recordedLength)
+      uP[i].updateLoop=true
     elseif params:get("rec thru loops")==2 then
       -- keep recording onto the next loop
       nextLoop=0
@@ -546,7 +571,7 @@ function tape_play(j)
   end
   for i=i1,i2 do
     softcut.play(i,1)
-    softcut.rate(i,uP[i].rate)
+    uP[i].rateUpdate=true
     uP[i].volUpdate=true
     uP[i].isStopped=false
   end
@@ -625,13 +650,13 @@ function enc(n,d)
         uP[uS.loopNum].volUpdate=true
       elseif uS.selectedPar==4 then
         if params:get("continous rate")==2 then
-          uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
+          params:set(uS.loopNum.."rate adjust",util.clamp(params:get(uS.loopNum.."rate adjust")+d,-400,400))
         else
           d=sign(d)
-          uP[uS.loopNum].rateNum=util.clamp(uP[uS.loopNum].rateNum+d,1,#uC.discreteRates)
-          uP[uS.loopNum].rate=uC.discreteRates[uP[uS.loopNum].rateNum]
+          params:set(uS.loopNum.."rate adjust",0)
+          params:set(uS.loopNum.."rate",util.clamp(params:get(uS.loopNum.."rate")+d,1,#uC.discreteRates))
         end
-        softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
+        uP[uS.loopNum].rateUpdate=true
       elseif uS.selectedPar==5 then
         params:set(uS.loopNum.."pan",util.clamp(params:get(uS.loopNum.."pan")+d/100,-1,1))
         uP[uS.loopNum].panUpdate=true
@@ -668,7 +693,7 @@ function key(n,z)
     if uS.shift and uS.selectedPar==0 then
       -- clear
       tape_clear(uS.loopNum)
-    elseif uS.shift and (uS.selectedPar==1 or uS.selectedPar==2) then
+    elseif uS.shift and (uS.selectedPar==1 or uS.selectedPar==2) and uS.loopNum~=7 then
       -- toggle lfo for loops
       if params:get(uS.loopNum.."length lfo period")==0 then
         show_message("loop "..uS.loopNum.." lfo on")
@@ -678,15 +703,28 @@ function key(n,z)
         show_message("loop "..uS.loopNum.." lfo off")
         params:set(uS.loopNum.."length lfo period",0)
       end
-    elseif uS.shift and (uS.selectedPar==3) then
+    elseif uS.shift and (uS.selectedPar==3)and uS.loopNum~=7 then
       -- toggle lfo for loops
-      if params:get(uS.loopNum.."vol lfo period")==0 then
+      if params:get(uS.loopNum.."vol lfo period")==0 and uS.loopNum~=7 then
         show_message("vol "..uS.loopNum.." lfo on")
         params:set(uS.loopNum.."vol lfo offset",math.random()*60)
         params:set(uS.loopNum.."vol lfo period",math.random()*60)
       else
         show_message("vol "..uS.loopNum.." lfo off")
         params:set(uS.loopNum.."vol lfo period",0)
+      end
+    elseif uS.shift and uS.selectedPar==4 and uS.loopNum~=7 then
+      -- toggle reverse
+      params:set(uS.loopNum.."rate reverse",3-params:get(uS.loopNum.."rate reverse"))
+    elseif uS.shift and uS.selectedPar==5 and uS.loopNum~=7 then
+      -- toggle lfo for pan
+      if params:get(uS.loopNum.."pan lfo period")==0 and uS.loopNum~=7 then
+        show_message("pan "..uS.loopNum.." lfo on")
+        params:set(uS.loopNum.."pan lfo offset",math.random()*60)
+        params:set(uS.loopNum.."pan lfo period",math.random()*60)
+      else
+        show_message("pan "..uS.loopNum.." lfo off")
+        params:set(uS.loopNum.."pan lfo period",0)
       end
     else
       -- stop tape
