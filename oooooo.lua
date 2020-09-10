@@ -22,8 +22,6 @@
 -- rate is selected
 -- otherwise shift+K2 clears
 
-local json=include "lib/json"
-
 -- user parameters
 uP={
   -- initialized in init
@@ -374,10 +372,6 @@ function backup_save()
   
   -- write file of user data
   params:write(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
-  -- file=io.open(PATH.."oooooo"..params:get("backup")..".json","w")
-  -- io.output(file)
-  -- io.write(json.stringify(uP))
-  -- io.close(file)
   
   -- save tape
   softcut.buffer_write_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,-1)
