@@ -317,11 +317,11 @@ function update_timer()
     end
   end
   for i=1,6 do
-    if uP[i].volUpdate or (params:get(i.."vol lfo period")>0 and params:get(i.."vol lfo amp")>0) then
+    if uP[i].volUpdate or (params:get(i.."vol lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."vol lfo amp")>0) then
       uS.updateUI=true
       uP[i].volUpdate=false
       uP[i].vol=params:get(i.."vol")
-      if params:get(i.."vol lfo period")>0 then
+      if params:get(i.."vol lfo period")>0 and params:get("pause lfos")==1 then
         uP[i].vol=uP[i].vol+params:get(i.."vol lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."vol lfo period"),params:get(i.."vol lfo offset"))
         uP[i].vol=util.clamp(uP[i].vol,0,1)
       end
@@ -334,22 +334,22 @@ function update_timer()
       uP[i].rate=uP[i].rate*(params:get(i.."rate reverse")*2-3)/100.0
       softcut.rate(i,uP[i].rate)
     end
-    if uP[i].panUpdate or (params:get(i.."pan lfo period")>0 and params:get(i.."pan lfo amp")>0) then
+    if uP[i].panUpdate or (params:get(i.."pan lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."pan lfo amp")>0) then
       uS.updateUI=true
       uP[i].panUpdate=false
       uP[i].pan=params:get(i.."pan")
-      if params:get(i.."pan lfo period")>0 then
+      if params:get(i.."pan lfo period")>0 and params:get("pause lfos")==1 then
         uP[i].pan=uP[i].pan+params:get(i.."pan lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."pan lfo period"),params:get(i.."pan lfo offset"))
       end
       uP[i].pan=util.clamp(uP[i].pan,-1,1)
       softcut.pan(i,uP[i].pan)
     end
-    if uP[i].loopUpdate or (params:get(i.."length lfo period")>0 and params:get(i.."length lfo amp")>0) then
+    if uP[i].loopUpdate or (params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."length lfo amp")>0) then
       uS.updateUI=true
       uP[i].loopUpdate=false
       uP[i].loopStart=params:get(i.."start")
       uP[i].loopLength=params:get(i.."length")
-      if params:get(i.."length lfo period")>0 and uS.recording==0 then
+      if params:get(i.."length lfo period")>0 and uS.recording==0 and params:get("pause lfos")==1 then
         uP[i].loopLength=uP[i].loopLength*(1+params:get(i.."length lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."length lfo period"),params:get(i.."length lfo offset")))/2
       end
       if uP[i].loopLength+uP[i].loopStart>uC.loopMinMax[2] then
@@ -632,7 +632,7 @@ function enc(n,d)
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,7)
     else
       -- toggle between saving / loading
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,5)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,6)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -746,12 +746,15 @@ function key(n,z)
           -- load
           backup_load()
         elseif uS.flagSpecial==3 then
+          -- pause/start lfos
+          params:set("pause lfos",3-params:set("pause lfos"))
+        elseif uS.flagSpecial==4 then
           -- randomize!
           randomize_parameters()
-        elseif uS.flagSpecial==4 then
+        elseif uS.flagSpecial==5 then
           -- randomize loops!
           randomize_loops()
-        elseif uS.flagSpecial==5 then
+        elseif uS.flagSpecial==6 then
           -- randomize lfos!
           randomize_lfos()
         end
@@ -823,11 +826,17 @@ function redraw()
       screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
       screen.text("load "..params:get("backup"))
-    elseif uS.flagSpecial==3 then
-      screen.text("rand pars")
     elseif uS.flagSpecial==4 then
-      screen.text("rand loop")
+      if params:get("pause lfos")==1 then
+        screen.text("pause lfos")
+      else
+        screen.text("unpause lfos")
+      end
+    elseif uS.flagSpecial==4 then
+      screen.text("rand pars")
     elseif uS.flagSpecial==5 then
+      screen.text("rand loop")
+    elseif uS.flagSpecial==6 then
       screen.text("rand lfo")
     end
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
