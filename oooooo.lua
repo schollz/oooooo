@@ -238,10 +238,10 @@ end
 function randomize_parameters()
   show_message("randomizing")
   for i=1,6 do
-    uP[i].rate=uC.discreteRates[math.random(#uC.discreteRates)]
-    softcut.rate(i,uP[i].rate)
-    params:set(i.."vol",math.random()*(1/math.abs(uP[i].rate)))
-    params:set(i.."vol",util.clamp(params:get(i.."vol"),0.1,0.8))
+    params:set(i.."rate",uC.discreteRates[math.random(#uC.discreteRates)])
+    params:set(i.."rate reverse",math.floor(math.random()*2)+1)
+    uP[i].rateUpdate=true
+    params:set(i.."vol",math.random()*0.6+0.2)
     uP[i].volUpdate=true
     params:set(i.."pan",math.random()*2-1)
     uP[i].panUpdate=true
@@ -259,11 +259,11 @@ end
 function randomize_lfos()
   show_message("randomizing lfos")
   for i=1,6 do
-    params:set(i.."length lfo period",math.random()*60)
+    params:set(i.."length lfo period",math.random()*30)
     params:set(i.."length lfo offset",math.random()*60)
-    params:set(i.."vol lfo period",math.random()*60)
+    params:set(i.."vol lfo period",math.random()*6)
     params:set(i.."vol lfo offset",math.random()*60)
-    params:set(i.."pan lfo period",math.random()*60)
+    params:set(i.."pan lfo period",math.random()*6)
     params:set(i.."pan lfo offset",math.random()*60)
   end
 end
