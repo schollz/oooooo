@@ -11,16 +11,14 @@
 -- K2 stops
 -- K2 again resets loop
 -- K3 plays
--- shift+K3 primes recording
--- shift+K3 again forces recording
 -- E1 changes loops
--- E2 selects parameters
+-- E2 selects mode/parameters
 -- E3 adjusts parameters
--- shift+K2 activates lfo when
--- loop or vol or pan selected
--- shift+K2 reverses when
--- rate is selected
--- otherwise shift+K2 clears
+-- tape: shift+K2 resets then clears
+-- tape: shift+K3 primes recording
+-- tape: shift+K3+K3 forces recording
+-- rate: shift+K2/K3 reverses
+-- other: shift+K2/K3 activates lfo
 
 -- user parameters
 uP={
@@ -629,9 +627,10 @@ function enc(n,d)
   elseif n==2 then
     d=sign(d)
     if uS.loopNum~=7 then
+      -- toggle between loop parameters
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,7)
     else
-      -- toggle between saving / loading
+      -- toggle between special parameters
       uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,6)
     end
   elseif n==3 then
@@ -686,12 +685,35 @@ end
 function key(n,z)
   if n==1 then
     uS.shift=not uS.shift
-  elseif n==2 and z==1 then
-    -- this key works on one or all
-    if uS.shift and uS.selectedPar==0 then
-      -- clear
-      tape_clear(uS.loopNum)
-    elseif uS.shift and (uS.selectedPar==1 or uS.selectedPar==2) and uS.loopNum~=7 then
+  elseif uS.shift and z==1 and uS.flagSpecial>0 and uS.loopNum==7 then
+    -- shit+K2 or shift+K3 activates parameters
+    if uS.flagSpecial==1 then
+      -- save
+      backup_save()
+    elseif uS.flagSpecial==2 then
+      -- load
+      backup_load()
+    elseif uS.flagSpecial==3 then
+      -- pause/start lfos
+      if params:set("pause lfos")==1 then
+        show_message("pausing lfos")
+      else
+        show_message("unpausing lfos")
+      end
+      params:set("pause lfos",3-params:set("pause lfos"))
+    elseif uS.flagSpecial==4 then
+      -- randomize!
+      randomize_parameters()
+    elseif uS.flagSpecial==5 then
+      -- randomize loops!
+      randomize_loops()
+    elseif uS.flagSpecial==6 then
+      -- randomize lfos!
+      randomize_lfos()
+    end
+  elseif uS.shift and z==1 and uS.selectedPar>0 and uS.loopNum<7 then
+    -- shit+K2 or shift+K3 activates parameters when parameter is selected
+    if (uS.selectedPar==1 or uS.selectedPar==2) then
       -- toggle lfo for loops
       if params:get(uS.loopNum.."length lfo period")==0 then
         show_message("loop "..uS.loopNum.." lfo on")
@@ -701,7 +723,7 @@ function key(n,z)
         show_message("loop "..uS.loopNum.." lfo off")
         params:set(uS.loopNum.."length lfo period",0)
       end
-    elseif uS.shift and (uS.selectedPar==3)and uS.loopNum~=7 then
+    elseif uS.selectedPar==3 then
       -- toggle lfo for loops
       if params:get(uS.loopNum.."vol lfo period")==0 and uS.loopNum~=7 then
         show_message("vol "..uS.loopNum.." lfo on")
@@ -711,10 +733,10 @@ function key(n,z)
         show_message("vol "..uS.loopNum.." lfo off")
         params:set(uS.loopNum.."vol lfo period",0)
       end
-    elseif uS.shift and uS.selectedPar==4 and uS.loopNum~=7 then
+    elseif uS.selectedPar==4 then
       -- toggle reverse
       params:set(uS.loopNum.."rate reverse",3-params:get(uS.loopNum.."rate reverse"))
-    elseif uS.shift and uS.selectedPar==5 and uS.loopNum~=7 then
+    elseif uS.selectedPar==5 then
       -- toggle lfo for pan
       if params:get(uS.loopNum.."pan lfo period")==0 and uS.loopNum~=7 then
         show_message("pan "..uS.loopNum.." lfo on")
@@ -724,6 +746,12 @@ function key(n,z)
         show_message("pan "..uS.loopNum.." lfo off")
         params:set(uS.loopNum.."pan lfo period",0)
       end
+    end
+  elseif n==2 and z==1 then
+    -- this key works on one or all
+    if uS.shift and uS.selectedPar==0 then
+      -- clear
+      tape_clear(uS.loopNum)
     else
       -- stop tape
       -- if stopped, then reset to 0
@@ -731,33 +759,10 @@ function key(n,z)
     end
   elseif n==3 and z==1 then
     if uS.shift then
-      if uS.loopNum~=7 then
-        if uS.recording==0 then
-          tape_arm_rec(uS.loopNum)
-        elseif uS.recording==1 then
-          tape_rec(uS.loopNum)
-        end
-      else
-        -- save/load functionality
-        if uS.flagSpecial==1 then
-          -- save
-          backup_save()
-        elseif uS.flagSpecial==2 then
-          -- load
-          backup_load()
-        elseif uS.flagSpecial==3 then
-          -- pause/start lfos
-          params:set("pause lfos",3-params:set("pause lfos"))
-        elseif uS.flagSpecial==4 then
-          -- randomize!
-          randomize_parameters()
-        elseif uS.flagSpecial==5 then
-          -- randomize loops!
-          randomize_loops()
-        elseif uS.flagSpecial==6 then
-          -- randomize lfos!
-          randomize_lfos()
-        end
+      if uS.recording==0 then
+        tape_arm_rec(uS.loopNum)
+      elseif uS.recording==1 then
+        tape_rec(uS.loopNum)
       end
     else
       tape_play(uS.loopNum)
@@ -822,7 +827,9 @@ function redraw()
   y=60
   if uS.loopNum==7 then
     screen.move(x+10,y)
-    if uS.flagSpecial==1 then
+    if uS.flagSpecial==0 then
+      screen.text("tape")
+    elseif uS.flagSpecial==1 then
       screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
       screen.text("load "..params:get("backup"))
@@ -839,6 +846,10 @@ function redraw()
     elseif uS.flagSpecial==6 then
       screen.text("rand lfo")
     end
+    
+  elseif uS.selectedPar==0 then
+    screen.move(x+10,y)
+    screen.text("tape")
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
     if uS.selectedPar==1 then
@@ -998,3 +1009,4 @@ function sign(x)
     return 0
   end
 end
+
