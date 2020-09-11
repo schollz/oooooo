@@ -288,7 +288,9 @@ function update_positions(i,x)
 end
 
 function update_timer()
-  uS.currentTime=uS.currentTime+uC.updateTimerInterval
+  if params:get("pause lfos")==1 then
+    uS.currentTime=uS.currentTime+uC.updateTimerInterval
+  end
   -- -- update the count for the lfos
   -- uC.lfoTime=uC.lfoTime+uC.updateTimerInterval
   -- if uC.lfoTime>376.99 then -- 60 * 2 * pi
@@ -699,12 +701,12 @@ function key(n,z)
       backup_load()
     elseif uS.flagSpecial==3 then
       -- pause/start lfos
-      if params:set("pause lfos")==1 then
+      if params:get("pause lfos")==1 then
         show_message("pausing lfos")
       else
         show_message("unpausing lfos")
       end
-      params:set("pause lfos",3-params:set("pause lfos"))
+      params:set("pause lfos",3-params:get("pause lfos"))
     elseif uS.flagSpecial==4 then
       -- randomize!
       randomize_parameters()
@@ -840,7 +842,7 @@ function redraw()
       screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
       screen.text("load "..params:get("backup"))
-    elseif uS.flagSpecial==4 then
+    elseif uS.flagSpecial==3 then
       if params:get("pause lfos")==1 then
         screen.text("pause lfos")
       else
@@ -949,7 +951,7 @@ function redraw()
     -- its being recorded/primed
     angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
     if params:get(i.."isempty")==1 or (i==uS.loopNum and uS.recording>0) then
-      for j=-2,2 do
+      for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
         screen.stroke()
       end
