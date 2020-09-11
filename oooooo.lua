@@ -104,7 +104,7 @@ function init()
     params:add_taper(i.."length lfo period","length lfo period",0,60,0,0,"s")
     params:add_taper(i.."length lfo offset","length lfo offset",0,60,0,0,"s")
     params:add_taper(i.."vol","vol",0,1,0.5,0,"")
-    params:add_taper(i.."vol lfo amp","vol lfo amp",0,1,0.25,0,"")
+    params:add_taper(i.."vol lfo amp","vol lfo amp",0,1,0.1,0,"")
     params:add_taper(i.."vol lfo period","vol lfo period",0,60,0,0,"s")
     params:add_taper(i.."vol lfo offset","vol lfo offset",0,60,0,0,"s")
     params:add_option(i.."rate","rate (%)",uC.discreteRates,8)
@@ -178,6 +178,7 @@ function init_loops(j)
     uP[i]={}
     uP[i].loopStart=0
     uP[i].loopLength=(60/clock.get_tempo())*i*4
+    -- uP[i].loopLength=(60/clock.get_tempo())*16
     uP[i].loopUpdate=false
     uP[i].position=uP[i].loopStart
     uP[i].recordedLength=0
@@ -196,7 +197,7 @@ function init_loops(j)
       params:set(i.."length lfo period",0)
       params:set(i.."length lfo offset",0)
       params:set(i.."vol",0.5)
-      params:set(i.."vol lfo amp",0.4)
+      params:set(i.."vol lfo amp",0.2)
       params:set(i.."vol lfo period",0)
       params:set(i.."vol lfo offset",0)
       params:set(i.."rate",8)
@@ -265,11 +266,11 @@ end
 function randomize_lfos()
   show_message("randomizing lfos")
   for i=1,6 do
-    params:set(i.."length lfo period",math.random()*30+5)
-    params:set(i.."length lfo offset",math.random()*60)
-    params:set(i.."vol lfo period",math.random()*6+6)
+    -- params:set(i.."length lfo period",math.random()*30+5)
+    -- params:set(i.."length lfo offset",math.random()*60)
+    params:set(i.."vol lfo period",math.random()*12+6)
     params:set(i.."vol lfo offset",math.random()*60)
-    params:set(i.."pan lfo period",math.random()*6+6)
+    params:set(i.."pan lfo period",math.random()*12+6)
     params:set(i.."pan lfo offset",math.random()*60)
   end
 end
