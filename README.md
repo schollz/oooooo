@@ -27,35 +27,45 @@ future directions:
 - K2 stops
 - K2 again resets loop
 - K3 plays
-- shift+K3 primes recording
-- shift+K3 again forces recording
-- shift+K2 clears loop
-- shift+K2 again resets
 - E1 changes loops
 - E2 selects parameters
 - E3 adjusts parameters
+- parameter specific:
+- none: shift+K2 resets then clears
+- none: shift+K3 primes recording
+- none: shift+K3+K3 forces recording
+- rate: shift+K2/K3 reverses
+- others: shift+K2/K3 toggles lfo
+
+all 114 parameters are availbe via the global menu.
+
+there is a quick menu available on screen which you can navigate. change loops with E1 and change parameters/modes with E2. here's a brief rundown:
 
 **recording:**
 
-- the first time you hit shift+K3 to record it will "prime". once "primed", recording will automatically begin when incoming audio rises above a threshold. the recording threshold can be set by global parameter "`rec thresh`". when "primed", you can force recording by hitting shift+K3 a second time.
+- with no parameter selected, press shift+K3 to prime recording. when primed, recording will automatically begin when incoming audio rises above a threshold. the recording threshold can be set by global parameter "`rec thresh`". 
+- you can force recording by hitting shift+K3 a second time.
 - recording stops after traversing the whole loop. you can stop it earlier with K2 or K3 and that will shrink the loop to that point. you can set recording to continue to the next loop by setting the global parameter "`rec thru loops`" to `yes`.
 - by default, volume in "pinched" when starting/stopping recording to avoid pops from discontinuous signals. you can lower/raise the pinching by adjusting the global parameter "`vol pinch`".
 
 **playback:**
 
-- you can adjust the rate in continuous or discrete (±25%, ±50%, etc.) by changing the global parameter "`continuous rate`" to `no`.
+- you can adjust the rate in continuous or discrete (±25%, ±50%, etc.) by changing the global parameter "`continuous rate`"
+- when the rate parameter is selected, shift+K2 or shift+K3 reverses direction
+- when other parameters are selected, shift+K2 or shift+K3 toggles lfo
 - the "`reset every X beats`" allows you to trigger a tape reset every X beats
-- the "`warble`" function allows you to temporarily pitch up/down the current loop
+- the "`warble`" mode allows you to temporarily pitch up/down the current loop using E3
 
 **special functions in A loop:**
 
 if you change the loop to "A" using E1 there are several special functions available to affect all loops.
 
 - K2/K3 stops/plays on *all* loops,
-- pressing shift+K2 clears and resets *all* loops,
-- if you select the parameter "save"/"load" then shift+K3 will save/load the current state. this will overwrite the previous save, so make sure to backup the audio files yourself. you can change which save/load with E3.
-- if you select `rand` and press shift+K3 it will randomize the loops
-- if you select `rand loop` and press shift+K3 it will randomize loop lengths
+- if no parameter is selected, pressing shift+K2 clears and resets *all* loops
+- any other selection is activated by using shift+K2 or shift+K3
+- select "save" or "load" to backup or restore to the specified tape (use E3 to change)
+- "rand" will randomize parameters, loop sizes, or lfos of *all* loops
+- "pause lfos" will toggle pausing of the lfos
 
 ## demo 
 

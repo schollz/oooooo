@@ -1,4 +1,4 @@
--- oooooo v0.6.1
+-- oooooo v0.7.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -8,18 +8,21 @@
 --    ▼ instructions below ▼
 --
 -- K1 shifts
--- K2 stops
+-- K2 stops loop
 -- K2 again resets loop
--- K3 plays
--- shift+K2 clears loop
--- shift+K3 primes recording
--- shift+K3 again forces recording
--- E1 changes loops
--- E2 selects parameters
--- E3 adjusts parameters
---
-
-local json=include "lib/json"
+-- K3 plays loop
+-- E1 changes loop
+-- E2 selects
+-- E3 adjusts
+-- selection (E2) specific:
+-- nothing selected:
+--   shift+K2 resets then clears
+--   shift+K3 primes recording
+--   shift+K3+K3 forces recording
+-- rate selected:
+--   shift+K2/K3 reverses
+-- other selected:
+--   shift+K2/K3 toggles lfo
 
 -- user parameters
 uP={
@@ -32,6 +35,7 @@ uS={
   recordingTime=0,
   updateUI=false,
   updateParams=0,
+  updateUserParam=0,
   updateTape=false,
   shift=false,
   loopNum=1,-- 7 = all loops
@@ -40,6 +44,7 @@ uS={
   flagSpecial=0,
   message="",
   currentBeat=0,
+  currentTime=0,
 }
 
 -- user constants
@@ -68,12 +73,51 @@ uC={
   recArmThreshold=0.03,
   backupNumber=1,
   lfoTime=1,
-  discreteRates={-4,-2,-1,-0.5,-0.25,0.25,0.5,1,2,4},
+  discreteRates={-400,-200,-100,-50,-25,25,50,100,200,400},
 }
 
 PATH=_path.audio..'oooooo/'
 
 function init()
+  -- add variables into main menu
+  params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
+  params:set_action("rec thresh",update_parameters)
+  params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
+  params:set_action("backup",update_parameters)
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
+  params:set_action("vol pinch",update_parameters)
+  params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
+  params:set_action("rec thru loops",update_parameters)
+  params:add_option("continous rate","continous rate",{"no","yes"},2)
+  params:set_action("continous rate",update_parameters)
+  params:add_option("pause lfos","pause lfos",{"no","yes"},1)
+  -- TODO: hook up pausing lfos
+  params:read(_path.data..'oooooo/'.."oooooo.pset")
+  
+  -- add parameters
+  for i=1,6 do
+    params:add_group("loop "..i,18)
+    --                 id      name min max default k units
+    params:add_taper(i.."start","start",0,uC.loopMinMax[2],0,0,"s")
+    params:add_taper(i.."length","length",uC.loopMinMax[1],uC.loopMinMax[2],(60/clock.get_tempo())*i*4,0,"s")
+    params:add_taper(i.."length lfo amp","length lfo amp",0,1,0.2,0,"")
+    params:add_taper(i.."length lfo period","length lfo period",0,60,0,0,"s")
+    params:add_taper(i.."length lfo offset","length lfo offset",0,60,0,0,"s")
+    params:add_taper(i.."vol","vol",0,1,0.5,0,"")
+    params:add_taper(i.."vol lfo amp","vol lfo amp",0,1,0.1,0,"")
+    params:add_taper(i.."vol lfo period","vol lfo period",0,60,0,0,"s")
+    params:add_taper(i.."vol lfo offset","vol lfo offset",0,60,0,0,"s")
+    params:add_option(i.."rate","rate (%)",uC.discreteRates,8)
+    params:add_taper(i.."rate adjust","rate adjust (%)",-400,400,0,1)
+    params:add_option(i.."rate reverse","reverse rate",{"on","off"},2)
+    params:add_taper(i.."pan","pan",-1,1,0,0,"")
+    params:add_taper(i.."pan lfo amp","pan lfo amp",0,1,0.25,0,"")
+    params:add_taper(i.."pan lfo period","pan lfo period",0,60,0,0,"s")
+    params:add_taper(i.."pan lfo offset","pan lfo offset",0,60,0,0,"s")
+    params:add_control(i.."reset every beat","reset every X beat",controlspec.new(0,64,"lin",1,0))
+    params:add_option(i.."isempty","is empty",{"false","true"},2)
+  end
+  
   init_loops(7)
   
   -- make data directory
@@ -105,19 +149,15 @@ function init()
   end
   p_amp_in:start()
   
-  -- add variables into main menu
-  params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
-  params:set_action("rec thresh",update_parameters)
-  params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
-  params:set_action("backup",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
-  params:set_action("vol pinch",update_parameters)
-  params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
-  params:set_action("rec thru loops",update_parameters)
-  params:add_option("continous rate","continous rate",{"no","yes"},2)
-  params:set_action("continous rate",update_parameters)
-  params:read(_path.data..'oooooo/'.."oooooo.pset")
-  
+  for i=1,6 do
+    params:set_action(i.."vol",function(x) uP[i].volUpdate=true end)
+    params:set_action(i.."length",function(x) uP[i].loopUpdate=true end)
+    params:set_action(i.."start",function(x) uP[i].loopUpdate=true end)
+    params:set_action(i.."pan",function(x) uP[i].panUpdate=true end)
+    params:set_action(i.."rate",function(x) uP[i].rateUpdate=true end)
+    params:set_action(i.."rate reverse",function(x) uP[i].rateUpdate=true end)
+    params:set_action(i.."rate adjust",function(x) uP[i].rateUpdate=true end)
+  end
   redraw()
 end
 
@@ -134,19 +174,42 @@ function init_loops(j)
   end
   for i=i1,i2 do
     print("initializing  "..i)
+    -- TODO: if using save file, then load the last save
     uP[i]={}
     uP[i].loopStart=0
-    uP[i].position=uP[i].loopStart
     uP[i].loopLength=(60/clock.get_tempo())*i*4
+    -- uP[i].loopLength=(60/clock.get_tempo())*16
+    uP[i].loopUpdate=false
+    uP[i].position=uP[i].loopStart
     uP[i].recordedLength=0
     uP[i].isStopped=true
-    uP[i].isEmpty=true
     uP[i].vol=0.5
+    uP[i].volUpdate=false
     uP[i].rate=1
-    uP[i].rateNum=8
+    uP[i].rateUpdate=false
     uP[i].pan=0
+    uP[i].panUpdate=false
     uP[i].lfoWarble={}
-    uP[i].resetEveryNthBeat=0
+    if i<7 then
+      params:set(i.."start",0)
+      params:set(i.."length",uP[i].loopLength)
+      params:set(i.."length lfo amp",0.2)
+      params:set(i.."length lfo period",0)
+      params:set(i.."length lfo offset",0)
+      params:set(i.."vol",0.5)
+      params:set(i.."vol lfo amp",0.2)
+      params:set(i.."vol lfo period",0)
+      params:set(i.."vol lfo offset",0)
+      params:set(i.."rate",8)
+      params:set(i.."rate adjust",0)
+      params:set(i.."rate reverse",2)
+      params:set(i.."pan",0)
+      params:set(i.."pan lfo amp",0.7)
+      params:set(i.."pan lfo period",0)
+      params:set(i.."pan lfo offset",0)
+      params:set(i.."reset every beat",0)
+      params:set(i.."isempty",2)
+    end
     for j=1,3 do
       uP[i].lfoWarble[j]=math.random(1,60)
     end
@@ -179,21 +242,36 @@ function init_loops(j)
 end
 
 function randomize_parameters()
+  show_message("randomizing")
   for i=1,6 do
-    uP[i].rate=uC.discreteRates[math.random(#uC.discreteRates)]
-    softcut.rate(i,uP[i].rate)
-    uP[i].vol=math.random()*(1/math.abs(uP[i].rate))
-    uP[i].vol=util.clamp(uP[i].vol,0.1,0.8)
-    softcut.level(i,uP[i].vol)
-    uP[i].pan=math.random()*2-1
-    softcut.pan(i,uP[i].pan)
+    params:set(i.."rate adjust",0)
+    params:set(i.."rate",math.random(#uC.discreteRates))
+    params:set(i.."rate reverse",math.floor(math.random()*2)+1)
+    uP[i].rateUpdate=true
+    params:set(i.."vol",math.random()*0.6+0.2)
+    uP[i].volUpdate=true
+    params:set(i.."pan",math.random()*2-1)
+    uP[i].panUpdate=true
   end
 end
 
 function randomize_loops()
+  show_message("randomizing loops")
   for i=1,6 do
-    uP[i].loopLength=util.clamp(uP[i].loopLength+math.random()*2-1,uC.loopMinMax[1],uC.loopMinMax[2])
-    tape_change_loop(i)
+    params:set(i.."length",util.clamp(params:get(i.."length")+math.random()*2-1,uC.loopMinMax[1],uC.loopMinMax[2]))
+    uP[i].loopUpdate=true
+  end
+end
+
+function randomize_lfos()
+  show_message("randomizing lfos")
+  for i=1,6 do
+    -- params:set(i.."length lfo period",math.random()*30+5)
+    -- params:set(i.."length lfo offset",math.random()*60)
+    params:set(i.."vol lfo period",math.random()*12+6)
+    params:set(i.."vol lfo offset",math.random()*60)
+    params:set(i.."pan lfo period",math.random()*12+6)
+    params:set(i.."pan lfo offset",math.random()*60)
   end
 end
 
@@ -211,6 +289,9 @@ function update_positions(i,x)
 end
 
 function update_timer()
+  if params:get("pause lfos")==1 then
+    uS.currentTime=uS.currentTime+uC.updateTimerInterval
+  end
   -- -- update the count for the lfos
   -- uC.lfoTime=uC.lfoTime+uC.updateTimerInterval
   -- if uC.lfoTime>376.99 then -- 60 * 2 * pi
@@ -231,13 +312,62 @@ function update_timer()
   if math.floor(clock.get_beats())~=uS.currentBeat then
     uS.currentBeat=math.floor(clock.get_beats())
     for i=1,6 do
-      if uP[i].resetEveryNthBeat>0 then
-        if uS.currentBeat%uP[i].resetEveryNthBeat==0 then
+      if params:get(i.."reset every beat")>0 then
+        if uS.currentBeat%params:get(i.."reset every beat")==0 then
           if not (uS.recording>0 and uS.loopNum==i) then
             tape_reset(i)
           end
         end
       end
+    end
+  end
+  for i=1,6 do
+    if uP[i].volUpdate or (params:get(i.."vol lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."vol lfo amp")>0) then
+      uS.updateUI=true
+      uP[i].volUpdate=false
+      uP[i].vol=params:get(i.."vol")
+      if params:get(i.."vol lfo period")>0 and params:get("pause lfos")==1 then
+        uP[i].vol=uP[i].vol+params:get(i.."vol lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."vol lfo period"),params:get(i.."vol lfo offset"))
+        uP[i].vol=util.clamp(uP[i].vol,0,1)
+      end
+      softcut.level(i,uP[i].vol)
+    end
+    if uP[i].rateUpdate then
+      uS.updateUI=true
+      uP[i].rateUpdate=false
+      uP[i].rate=uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust")
+      uP[i].rate=uP[i].rate*(params:get(i.."rate reverse")*2-3)/100.0
+      softcut.rate(i,uP[i].rate)
+    end
+    if uP[i].panUpdate or (params:get(i.."pan lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."pan lfo amp")>0) then
+      uS.updateUI=true
+      uP[i].panUpdate=false
+      uP[i].pan=params:get(i.."pan")
+      if params:get(i.."pan lfo period")>0 and params:get("pause lfos")==1 then
+        uP[i].pan=uP[i].pan+params:get(i.."pan lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."pan lfo period"),params:get(i.."pan lfo offset"))
+      end
+      uP[i].pan=util.clamp(uP[i].pan,-1,1)
+      softcut.pan(i,uP[i].pan)
+    end
+    if uP[i].loopUpdate or (params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."length lfo amp")>0) then
+      uS.updateUI=true
+      uP[i].loopUpdate=false
+      uP[i].loopStart=params:get(i.."start")
+      uP[i].loopLength=params:get(i.."length")
+      if params:get(i.."length lfo period")>0 and uS.recording==0 and params:get("pause lfos")==1 then
+        uP[i].loopLength=uP[i].loopLength*(1+params:get(i.."length lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."length lfo period"),params:get(i.."length lfo offset")))/2
+      end
+      if uP[i].loopLength+uP[i].loopStart>uC.loopMinMax[2] then
+        -- loop length is too long, shorten it
+        uP[i].loopLength=uC.loopMinMax[2]-uP[i].loopStart
+      end
+      -- move to start of loop if position is outside of loop
+      if uP[i].position<uP[i].loopStart or uP[i].position>uP[i].loopStart+uP[i].loopLength then
+        uP[i].position=uP[i].loopStart
+        softcut.position(i,uP[i].position+uC.bufferMinMax[i][2])
+      end
+      softcut.loop_start(i,uP[i].loopStart+uC.bufferMinMax[i][2])
+      softcut.loop_end(i,uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength)
     end
   end
 end
@@ -247,19 +377,10 @@ end
 --
 function backup_save()
   print("backup_save")
-  clock.run(function()
-    uS.message="saved"
-    redraw()
-    clock.sleep(0.5)
-    uS.message=""
-    redraw()
-  end)
+  show_message("saved")
   
   -- write file of user data
-  file=io.open(PATH.."oooooo"..params:get("backup")..".json","w")
-  io.output(file)
-  io.write(json.stringify(uP))
-  io.close(file)
+  params:write(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
   
   -- save tape
   softcut.buffer_write_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,-1)
@@ -267,61 +388,10 @@ end
 
 function backup_load()
   print("backup_load")
-  clock.run(function()
-    uS.message="loaded"
-    redraw()
-    clock.sleep(0.5)
-    uS.message=""
-    redraw()
-  end)
+  show_message("loaded")
   
-  -- -- load parameters from file
-  if util.file_exists(PATH.."oooooo"..params:get("backup")..".json") then
-    filecontents=readAll(PATH.."oooooo"..params:get("backup")..".json")
-    print(filecontents)
-    u=json.parse(filecontents)
-    for i=1,7 do
-      if u[i].loopStart~=nil then
-        uP[i].loopStart=u[i].loopStart
-      end
-      if u[i].position~=nil then
-        uP[i].position=u[i].position
-      end
-      if u[i].loopLength~=nil then
-        uP[i].loopLength=u[i].loopLength
-      end
-      if u[i].recordedLength~=nil then
-        uP[i].recordedLength=u[i].recordedLength
-      end
-      if u[i].isStopped~=nil then
-        uP[i].isStopped=u[i].isStopped
-      end
-      if u[i].isEmpty~=nil then
-        uP[i].isEmpty=u[i].isEmpty
-      end
-      if u[i].vol~=nil then
-        uP[i].vol=u[i].vol
-      end
-      if u[i].rate~=nil then
-        uP[i].rate=u[i].rate
-      end
-      if u[i].rateNum~=nil then
-        uP[i].rateNum=u[i].rateNum
-      end
-      if u[i].rate~=nil then
-        uP[i].rate=u[i].rate
-      end
-      if u[i].pan~=nil then
-        uP[i].pan=u[i].pan
-      end
-      if u[i].resetEveryNthBeat~=nil then
-        uP[i].resetEveryNthBeat=u[i].resetEveryNthBeat
-      end
-      if u[i].lfoWarble~=nil then
-        uP[i].lfoWarble=u[i].lfoWarble
-      end
-    end
-  end
+  -- load parameters from file
+  params:read(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
   
   -- load buffer from file
   if util.file_exists(PATH.."oooooo"..params:get("backup")..".wav") then
@@ -415,13 +485,13 @@ function tape_stop_rec(i,change_loop)
   print('params:get("rec thru loops") '..params:get("rec thru loops"))
   if not still_armed then
     if change_loop then
-      uP[i].loopLength=uP[i].recordedLength
-      tape_change_loop(i)
+      params:set(i.."length",uP[i].recordedLength)
+      uP[i].updateLoop=true
     elseif params:get("rec thru loops")==2 then
       -- keep recording onto the next loop
       nextLoop=0
       for j=1,6 do
-        if uP[j].isEmpty then
+        if params:get(j.."isempty")==2 then
           nextLoop=j
           break
         end
@@ -457,23 +527,23 @@ function tape_clear(i)
     -- clear everything
     softcut.buffer_clear()
     for j=1,6 do
-      if uP[j].isEmpty then
+      if params:get(j.."isempty")==2 then
         init_loops(j)
         uS.message="resetting"
         redraw()
       end
-      uP[j].isEmpty=true
+      params:set(j.."isempty",2)
       uP[j].recordedLength=0
       tape_reset(j)
     end
   else
     -- clear a specific section of buffer
-    if uP[i].isEmpty then
+    if params:get(i.."isempty")==2 then
       init_loops(i)
       uS.message="resetting"
       redraw()
     end
-    uP[i].isEmpty=true
+    params:set(i.."isempty",2)
     uP[i].recordedLength=0
     softcut.buffer_clear_region_channel(
       uC.bufferMinMax[i][1],
@@ -493,7 +563,7 @@ function tape_play(j)
   if j<7 and uP[j].isStopped==false then
     do return end
   end
-  if j<7 and uP[j].isEmpty then
+  if j<7 and params:get(j.."isempty")==2 then
     do return end
   end
   i1=j
@@ -504,8 +574,8 @@ function tape_play(j)
   end
   for i=i1,i2 do
     softcut.play(i,1)
-    softcut.level(i,uP[i].vol)
-    softcut.rate(i,uP[i].rate)
+    uP[i].rateUpdate=true
+    uP[i].volUpdate=true
     uP[i].isStopped=false
   end
 end
@@ -530,7 +600,7 @@ function tape_rec(i)
     softcut.play(i,1)
     -- print("setting rate to "..uP[i].rate)
     softcut.rate(i,uP[i].rate)
-    softcut.level(i,uP[i].vol)
+    uP[i].volUpdate=true
     uP[i].isStopped=false
   end
   p_amp_in.time=1
@@ -538,7 +608,7 @@ function tape_rec(i)
   uS.recording=2 -- recording is live
   softcut.rec_level(i,1)
   softcut.pre_level(i,1)
-  uP[i].isEmpty=false
+  params:set(i.."isempty",1)
   redraw()
   -- slowly start recording
   -- ease in recording signal to avoid clicks near loop points
@@ -553,21 +623,6 @@ function tape_rec(i)
   end)
 end
 
-function tape_change_loop(i)
-  print("tape_change_loop on "..i)
-  if uP[i].loopLength+uP[i].loopStart>uC.loopMinMax[2] then
-    -- loop length is too long, shorten it
-    uP[i].loopLength=uC.loopMinMax[2]-uP[i].loopStart
-  end
-  -- move to start of loop if position is outside of loop
-  if uP[i].position<uP[i].loopStart or uP[i].position>uP[i].loopStart+uP[i].loopLength then
-    uP[i].position=uP[i].loopStart
-    softcut.position(i,uP[i].position+uC.bufferMinMax[i][2])
-  end
-  softcut.loop_start(i,uP[i].loopStart+uC.bufferMinMax[i][2])
-  softcut.loop_end(i,uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength)
-end
-
 --
 -- encoders
 --
@@ -579,37 +634,39 @@ function enc(n,d)
   elseif n==2 then
     d=sign(d)
     if uS.loopNum~=7 then
+      -- toggle between loop parameters
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,7)
     else
-      -- toggle between saving / loading
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
+      -- toggle between special parameters
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,6)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
       if uS.selectedPar==1 then
-        uP[uS.loopNum].loopStart=util.clamp(uP[uS.loopNum].loopStart+d/10,0,uC.loopMinMax[2])
-        tape_change_loop(uS.loopNum)
+        params:set(uS.loopNum.."start",util.clamp(params:get(uS.loopNum.."start")+d/10,0,uC.loopMinMax[2]))
+        uP[uS.loopNum].loopUpdate=true
       elseif uS.selectedPar==2 then
-        uP[uS.loopNum].loopLength=util.clamp(uP[uS.loopNum].loopLength+d/10,uC.loopMinMax[1],uC.loopMinMax[2])
-        tape_change_loop(uS.loopNum)
+        params:set(uS.loopNum.."length",util.clamp(params:get(uS.loopNum.."length")+d/10,uC.loopMinMax[1],uC.loopMinMax[2]))
+        uP[uS.loopNum].loopUpdate=true
       elseif uS.selectedPar==3 then
-        uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
-        softcut.level(uS.loopNum,uP[uS.loopNum].vol)
+        -- uP[uS.loopNum].vol=util.clamp(uP[uS.loopNum].vol+d/100,0,1)
+        params:set(uS.loopNum.."vol",util.clamp(params:get(uS.loopNum.."vol")+d/100,0,1))
+        uP[uS.loopNum].volUpdate=true
       elseif uS.selectedPar==4 then
         if params:get("continous rate")==2 then
-          uP[uS.loopNum].rate=util.clamp(uP[uS.loopNum].rate+d/100,-4,4)
+          params:set(uS.loopNum.."rate adjust",util.clamp(params:get(uS.loopNum.."rate adjust")+d,-400,400))
         else
           d=sign(d)
-          uP[uS.loopNum].rateNum=util.clamp(uP[uS.loopNum].rateNum+d,1,#uC.discreteRates)
-          uP[uS.loopNum].rate=uC.discreteRates[uP[uS.loopNum].rateNum]
+          params:set(uS.loopNum.."rate adjust",0)
+          params:set(uS.loopNum.."rate",util.clamp(params:get(uS.loopNum.."rate")+d,1,#uC.discreteRates))
         end
-        softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
+        uP[uS.loopNum].rateUpdate=true
       elseif uS.selectedPar==5 then
-        uP[uS.loopNum].pan=util.clamp(uP[uS.loopNum].pan+d/100,-1,1)
-        softcut.pan(uS.loopNum,uP[uS.loopNum].pan)
+        params:set(uS.loopNum.."pan",util.clamp(params:get(uS.loopNum.."pan")+d/100,-1,1))
+        uP[uS.loopNum].panUpdate=true
       elseif uS.selectedPar==6 then
         d=sign(d)
-        uP[uS.loopNum].resetEveryNthBeat=util.clamp(uP[uS.loopNum].resetEveryNthBeat+d,0,64)
+        params:set(uS.loopNum.."reset every beat",util.clamp(params:get(uS.loopNum.."reset every beat")+d,0,64))
       elseif uS.selectedPar==7 then
         -- add temporary warble
         clock.run(function()
@@ -635,6 +692,68 @@ end
 function key(n,z)
   if n==1 then
     uS.shift=not uS.shift
+  elseif uS.shift and z==1 and uS.flagSpecial>0 and uS.loopNum==7 then
+    -- shit+K2 or shift+K3 activates parameters
+    if uS.flagSpecial==1 then
+      -- save
+      backup_save()
+    elseif uS.flagSpecial==2 then
+      -- load
+      backup_load()
+    elseif uS.flagSpecial==3 then
+      -- pause/start lfos
+      if params:get("pause lfos")==1 then
+        show_message("pausing lfos")
+      else
+        show_message("unpausing lfos")
+      end
+      params:set("pause lfos",3-params:get("pause lfos"))
+    elseif uS.flagSpecial==4 then
+      -- randomize!
+      randomize_parameters()
+    elseif uS.flagSpecial==5 then
+      -- randomize loops!
+      randomize_loops()
+    elseif uS.flagSpecial==6 then
+      -- randomize lfos!
+      randomize_lfos()
+    end
+  elseif uS.shift and z==1 and uS.selectedPar>0 and uS.loopNum<7 then
+    -- shit+K2 or shift+K3 activates parameters when parameter is selected
+    if (uS.selectedPar==1 or uS.selectedPar==2) then
+      -- toggle lfo for loops
+      if params:get(uS.loopNum.."length lfo period")==0 then
+        show_message("loop "..uS.loopNum.." lfo on")
+        params:set(uS.loopNum.."length lfo offset",math.random()*60)
+        params:set(uS.loopNum.."length lfo period",math.random()*60)
+      else
+        show_message("loop "..uS.loopNum.." lfo off")
+        params:set(uS.loopNum.."length lfo period",0)
+      end
+    elseif uS.selectedPar==3 then
+      -- toggle lfo for loops
+      if params:get(uS.loopNum.."vol lfo period")==0 and uS.loopNum~=7 then
+        show_message("vol "..uS.loopNum.." lfo on")
+        params:set(uS.loopNum.."vol lfo offset",math.random()*60)
+        params:set(uS.loopNum.."vol lfo period",math.random()*60)
+      else
+        show_message("vol "..uS.loopNum.." lfo off")
+        params:set(uS.loopNum.."vol lfo period",0)
+      end
+    elseif uS.selectedPar==4 then
+      -- toggle reverse
+      params:set(uS.loopNum.."rate reverse",3-params:get(uS.loopNum.."rate reverse"))
+    elseif uS.selectedPar==5 then
+      -- toggle lfo for pan
+      if params:get(uS.loopNum.."pan lfo period")==0 and uS.loopNum~=7 then
+        show_message("pan "..uS.loopNum.." lfo on")
+        params:set(uS.loopNum.."pan lfo offset",math.random()*60)
+        params:set(uS.loopNum.."pan lfo period",math.random()*60)
+      else
+        show_message("pan "..uS.loopNum.." lfo off")
+        params:set(uS.loopNum.."pan lfo period",0)
+      end
+    end
   elseif n==2 and z==1 then
     -- this key works on one or all
     if uS.shift then
@@ -647,27 +766,13 @@ function key(n,z)
     end
   elseif n==3 and z==1 then
     if uS.shift then
-      if uS.loopNum~=7 then
-        if uS.recording==0 then
-          tape_arm_rec(uS.loopNum)
-        elseif uS.recording==1 then
-          tape_rec(uS.loopNum)
-        end
-      else
-        -- save/load functionality
-        if uS.flagSpecial==1 then
-          -- save
-          backup_save()
-        elseif uS.flagSpecial==2 then
-          -- load
-          backup_load()
-        elseif uS.flagSpecial==3 then
-          -- randomize!
-          randomize_parameters()
-        elseif uS.flagSpecial==4 then
-          -- randomize loops!
-          randomize_loops()
-        end
+      if uS.loopNum==7 then
+        do return end -- TODO: start recording on all loop?
+      end
+      if uS.recording==0 then
+        tape_arm_rec(uS.loopNum)
+      elseif uS.recording==1 then
+        tape_rec(uS.loopNum)
       end
     else
       tape_play(uS.loopNum)
@@ -732,15 +837,28 @@ function redraw()
   y=60
   if uS.loopNum==7 then
     screen.move(x+10,y)
-    if uS.flagSpecial==1 then
+    if uS.flagSpecial==0 then
+      tape_icon(x+10,y)
+    elseif uS.flagSpecial==1 then
       screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
       screen.text("load "..params:get("backup"))
     elseif uS.flagSpecial==3 then
-      screen.text("rand")
+      if params:get("pause lfos")==1 then
+        screen.text("pause lfos")
+      else
+        screen.text("unpause lfos")
+      end
     elseif uS.flagSpecial==4 then
+      screen.text("rand pars")
+    elseif uS.flagSpecial==5 then
       screen.text("rand loop")
+    elseif uS.flagSpecial==6 then
+      screen.text("rand lfo")
     end
+  elseif uS.selectedPar==0 then
+    screen.move(x+10,y)
+    tape_icon(x+10,y)
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
     if uS.selectedPar==1 then
@@ -763,47 +881,24 @@ function redraw()
     screen.text(string.format("%1.1fs",uP[uS.loopNum].loopStart+uP[uS.loopNum].loopLength))
   elseif uS.selectedPar==3 then
     screen.move(x+10,y)
-    screen.text("level")
+    screen.text(string.format("vol %1.1f",uP[uS.loopNum].vol))
   elseif uS.selectedPar==4 then
     screen.move(x+10,y)
     screen.text(string.format("rate %1.1f%%",uP[uS.loopNum].rate*100))
   elseif uS.selectedPar==5 then
     screen.move(x+10,y)
-    screen.text("pan")
+    screen.text(string.format("pan %1.1f",uP[uS.loopNum].pan))
   elseif uS.selectedPar==6 then
     screen.move(x+10,y)
-    screen.text("reset every "..uP[uS.loopNum].resetEveryNthBeat.." beat")
+    screen.text("reset every "..params:get(uS.loopNum.."reset every beat").." beat")
   elseif uS.selectedPar==7 then
     screen.move(x+10,y)
     screen.text("warble")
   end
   
-  -- screen.move(x+55,y)
-  -- if uS.selectedPar==3 then
-  --   screen.level(15)
-  -- else
-  --   screen.level(1)
-  -- end
-  -- screen.text(string.format("%1.2f",uP[uS.loopNum].vol))
-  
-  -- screen.move(x+80,y)
-  -- if uS.selectedPar==4 then
-  --   screen.level(15)
-  -- else
-  --   screen.level(1)
-  -- end
-  -- screen.text(string.format("%1.2f",uP[uS.loopNum].rate))
-  
-  -- screen.move(x+105,y)
-  -- if uS.selectedPar==5 then
-  --   screen.level(15)
-  -- else
-  --   screen.level(1)
-  -- end
-  -- screen.text(string.format("%1.2f",uP[uS.loopNum].pan))
-  
   -- draw representation of current loop states
   for i=1,6 do
+    if uS.loopNum==i then goto continue end
     -- draw circles
     r=(uC.radiiMinMax[2]-uC.radiiMinMax[1])*uP[i].loopLength/(uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])+uC.radiiMinMax[1]
     if r>45 then
@@ -822,47 +917,103 @@ function redraw()
     screen.circle(x,y,r)
     screen.stroke()
     
-    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
-    
-    -- if not uP[i].isStopped then
-    --   -- draw arc at position
-    --   screen.move(x,y)
-    --   screen.arc(x,y,r,math.rad(angle-5),math.rad(angle+5))
-    --   screen.stroke()
-    -- end
-    
     -- draw pixels at position if it has data or
     -- its being recorded/primed
-    if uP[i].isEmpty==false or (i==uS.loopNum and uS.recording>0) then
+    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
+    if params:get(i.."isempty")==1 or (i==uS.loopNum and uS.recording>0) then
       for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
         screen.stroke()
       end
     end
+    ::continue::
+  end
+  for i=1,6 do
+    if uS.loopNum~=i then goto continue end
+    -- draw circles
+    r=(uC.radiiMinMax[2]-uC.radiiMinMax[1])*uP[i].loopLength/(uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])+uC.radiiMinMax[1]
+    if r>45 then
+      r=45
+    end
+    x=uC.centerOffsets[i][1]+(uC.widthMinMax[2]-uC.widthMinMax[1])*(uP[i].pan+1)/2+uC.widthMinMax[1]
+    y=uC.centerOffsets[i][2]+(uC.heightMinMax[2]-uC.heightMinMax[1])*(1-uP[i].vol)+uC.heightMinMax[1]
+    if uS.loopNum==i then
+      screen.line_width(1)
+      screen.level(15)
+    else
+      screen.line_width(1)
+      screen.level(1)
+    end
+    screen.move(x+r,y)
+    screen.circle(x,y,r)
+    screen.stroke()
+    
+    -- draw pixels at position if it has data or
+    -- its being recorded/primed
+    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
+    if params:get(i.."isempty")==1 or (i==uS.loopNum and uS.recording>0) then
+      for j=-1,1 do
+        screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
+        screen.stroke()
+      end
+    end
+    ::continue::
   end
   
   if uS.message~="" then
-    show_message(uS.message)
+    screen.level(0)
+    x=64
+    y=28
+    w=string.len(uS.message)*6
+    screen.rect(x-w/2,y,w,10)
+    screen.fill()
+    screen.level(15)
+    screen.rect(x-w/2,y,w,10)
+    screen.stroke()
+    screen.move(x,y+7)
+    screen.text_center(uS.message)
   end
   
   screen.update()
+end
+
+--- Creates tape icon.
+-- @tparam x {number}  X-coordinate of element
+-- @tparam y {number}  Y-coordinate of element
+-- from https://github.com/frederickk/b-b-b-b-beat
+function tape_icon(x,y)
+  local r=2
+  
+  screen.move(math.floor(x),math.floor(y)-4)
+  screen.line_rel(1,0)
+  screen.line_rel((r*5),0)
+  
+  for i=0,6,2 do
+    screen.move(math.floor(x)+(r*i),math.floor(y)-4)
+    screen.line_rel(0,1)
+    screen.line_rel(0,r)
+  end
+  
+  screen.move(math.floor(x),math.floor(y)+(r*2)-4)
+  screen.line_rel(1,0)
+  screen.line_rel(r,0)
+  screen.move(math.floor(x)+(r*4),math.floor(y)+(r*2)-4)
+  screen.line_rel(1,0)
+  screen.line_rel(r,0)
+  screen.stroke()
 end
 
 --
 -- utils
 --
 function show_message(message)
-  screen.level(0)
-  x=34
-  y=28
-  w=string.len(message)*8
-  screen.rect(x,y,w,10)
-  screen.fill()
-  screen.level(15)
-  screen.rect(x,y,w,10)
-  screen.stroke()
-  screen.move(x+w/2,y+7)
-  screen.text_center(message)
+  clock.run(function()
+    uS.message=message
+    redraw()
+    clock.sleep(0.5)
+    uS.message=""
+    redraw()
+  end)
 end
 
 function readAll(file)
@@ -893,3 +1044,4 @@ function sign(x)
     return 0
   end
 end
+
