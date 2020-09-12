@@ -67,6 +67,14 @@ if you change the loop to "A" using E1 there are several special functions avail
 - "rand" will randomize parameters, loop sizes, or lfos of *all* loops
 - "pause lfos" will toggle pausing of the lfos
 
+**other functions:**
+
+there are other functions in the global menu.
+
+- things that you can do on startup (auto loading, changing loop sizes, start playing)
+- destroying loops (degrades them over time)
+- volume ramps (ramp up or down)
+
 ## demo 
 
 <p align="center"><a href="https://www.instagram.com/p/CEb2CDQBXaz/"><img src="https://user-images.githubusercontent.com/6550035/91628605-30102a80-e976-11ea-9d0e-249e6219c411.png" alt="Demo of playing" width=80%></a></p>
