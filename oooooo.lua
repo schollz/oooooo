@@ -93,6 +93,7 @@ function init()
   params:set_action("continous rate",update_parameters)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
   params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,50,'% prob'))
+  params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0))
   params:add_group("startup",2)
   params:add_option("start randomized","start randomized",{"no","yes"},1)
   params:set_action("start randomized",update_parameters)
@@ -331,6 +332,11 @@ function update_timer()
   end
   if math.floor(clock.get_beats())~=uS.currentBeat then
     -- a beat has been hit
+    if params:get("vol ramp")~=0 then
+      for i=1,6 do
+        params:set(i.."vol",util.clamp(params:get(i.."vol")-params:get("vol ramp")/10,0,1))
+      end
+    end
     if params:get("destroy loops")>0 and math.random()*100<params:get("destroy loops") and uS.recording==0 then
       -- cause destruction to moving non empty loops
       nonEmptyLoops={}
