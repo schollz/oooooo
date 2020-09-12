@@ -342,7 +342,7 @@ function update_timer()
     -- a beat has been hit
     if params:get("vol ramp")~=0 then
       for i=1,6 do
-        params:set(i.."vol",util.clamp(params:get(i.."vol")-params:get("vol ramp")/10,0,1))
+        params:set(i.."vol",util.clamp(params:get(i.."vol")+params:get("vol ramp")/10,0,1))
       end
     end
     if params:get("destroy loops")>0 and math.random()*100<params:get("destroy loops") and uS.recording==0 then
