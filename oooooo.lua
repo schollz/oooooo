@@ -1,4 +1,4 @@
--- oooooo v0.7.0
+-- oooooo v0.8.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -91,6 +91,12 @@ function init()
   params:add_option("continous rate","continous rate",{"no","yes"},2)
   params:set_action("continous rate",update_parameters)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
+  params:add_group("startup",2)
+  params:add_option("start randomized","start randomized",{"no","yes"},1)
+  params:set_action("start randomized",update_parameters)
+  params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
+  params:set_action("start length",update_parameters)
+  
   -- TODO: hook up pausing lfos
   params:read(_path.data..'oooooo/'.."oooooo.pset")
   
@@ -159,6 +165,11 @@ function init()
     params:set_action(i.."rate adjust",function(x) uP[i].rateUpdate=true end)
   end
   redraw()
+  
+  if params:get("start randomized")==2 then
+    randomize_lfos()
+  end
+  tape_reset(7)
 end
 
 function init_loops(j)
@@ -178,7 +189,9 @@ function init_loops(j)
     uP[i]={}
     uP[i].loopStart=0
     uP[i].loopLength=(60/clock.get_tempo())*i*4
-    -- uP[i].loopLength=(60/clock.get_tempo())*16
+    if params:get("start length")>0 then
+      uP[i].loopLength=(60/clock.get_tempo())*params:get("start length")
+    end
     uP[i].loopUpdate=false
     uP[i].position=uP[i].loopStart
     uP[i].recordedLength=0
