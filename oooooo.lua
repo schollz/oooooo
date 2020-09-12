@@ -80,26 +80,13 @@ uC={
 PATH=_path.audio..'oooooo/'
 
 function init()
+  params:add_separator("oooooo")
   -- add variables into main menu
-  params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
-  params:set_action("rec thresh",update_parameters)
-  params:add_control("backup","backup",controlspec.new(1,8,'lin',1,1))
+  params:add_control("backup","tape (backup/save)",controlspec.new(1,8,'lin',1,1))
   params:set_action("backup",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
-  params:set_action("vol pinch",update_parameters)
-  params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
-  params:set_action("rec thru loops",update_parameters)
   params:add_option("continous rate","continous rate",{"no","yes"},2)
   params:set_action("continous rate",update_parameters)
-  params:add_option("pause lfos","pause lfos",{"no","yes"},1)
-  params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,50,'% prob'))
-  params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0))
-  params:add_control("reset all every","reset all every",controlspec.new(0,64,"lin",1,0,"beats"))
-  params:set_action("reset all every",function(x)
-    for i=1,6 do
-      params:set(i.."reset every beat",x)
-    end
-  end)
+  
   params:add_group("startup",4)
   params:add_option("load on start","load on start",{"no","yes"},1)
   params:set_action("load on start",update_parameters)
@@ -110,12 +97,37 @@ function init()
   params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
   params:set_action("start length",update_parameters)
   
+  params:add_group("recording",3)
+  params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
+  params:set_action("rec thresh",update_parameters)
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
+  params:set_action("vol pinch",update_parameters)
+  params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
+  params:set_action("rec thru loops",update_parameters)
+  
+  params:add_group("all loops",5)
+  params:add_option("pause lfos","pause lfos",{"no","yes"},1)
+  params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,50,'% prob'))
+  params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0))
+  params:add_option("randomize all on reset","randomize on reset",{"no","params","loops","both"},1)
+  params:set_action("randomize all on reset",function(x)
+    for i=1,6 do
+      params:set(i.."randomize on reset",x)
+    end
+  end)
+  params:add_control("reset all every","reset all every",controlspec.new(0,64,"lin",1,0,"beats"))
+  params:set_action("reset all every",function(x)
+    for i=1,6 do
+      params:set(i.."reset every beat",x)
+    end
+  end)
+  
   -- TODO: hook up pausing lfos
   params:read(_path.data..'oooooo/'.."oooooo.pset")
   
   -- add parameters
   for i=1,6 do
-    params:add_group("loop "..i,18)
+    params:add_group("loop "..i,19)
     --                 id      name min max default k units
     params:add_taper(i.."start","start",0,uC.loopMinMax[2],0,0,"s")
     params:add_taper(i.."length","length",uC.loopMinMax[1],uC.loopMinMax[2],(60/clock.get_tempo())*i*4,0,"s")
@@ -134,6 +146,7 @@ function init()
     params:add_taper(i.."pan lfo period","pan lfo period",0,60,0,0,"s")
     params:add_taper(i.."pan lfo offset","pan lfo offset",0,60,0,0,"s")
     params:add_control(i.."reset every beat","reset every",controlspec.new(0,64,"lin",1,0,"beats"))
+    params:add_option(i.."randomize on reset","randomize on reset",{"no","params","loops","both"},1)
     params:add_option(i.."isempty","is empty",{"false","true"},2)
   end
   
@@ -189,9 +202,10 @@ function init()
     if params:get("play on start")==2 then
       tape_play(7)
     end
+  else
+    tape_stop(1)
+    tape_reset(1)
   end
-  tape_stop(1)
-  tape_reset(1)
 end
 
 function init_loops(j)
@@ -264,8 +278,8 @@ function init_loops(j)
       softcut.rec(i,0)
       
       softcut.fade_time(i,0.2)
-      softcut.level_slew_time(i,0.8)
-      softcut.rate_slew_time(i,0.8)
+      softcut.level_slew_time(i,(60/clock.get_tempo())*8)
+      softcut.rate_slew_time(i,(60/clock.get_tempo())*8)
       
       softcut.rec_level(i,1)
       softcut.pre_level(i,1)
@@ -277,9 +291,15 @@ function init_loops(j)
   end
 end
 
-function randomize_parameters()
+function randomize_parameters(j)
   show_message("randomizing")
-  for i=1,6 do
+  i1=j
+  i2=j
+  if j==7 then
+    i1=1
+    i2=6
+  end
+  for i=i1,i2 do
     params:set(i.."rate adjust",0)
     params:set(i.."rate",math.random(#uC.discreteRates))
     params:set(i.."rate reverse",math.floor(math.random()*2)+1)
@@ -291,9 +311,15 @@ function randomize_parameters()
   end
 end
 
-function randomize_loops()
+function randomize_loops(j)
   show_message("randomizing loops")
-  for i=1,6 do
+  i1=j
+  i2=j
+  if j==7 then
+    i1=1
+    i2=6
+  end
+  for i=i1,i2 do
     params:set(i.."length",util.clamp(params:get(i.."length")+math.random()*2-1,uC.loopMinMax[1],uC.loopMinMax[2]))
     uP[i].loopUpdate=true
   end
@@ -513,6 +539,16 @@ function tape_reset(i)
   print("tape_reset "..i)
   uP[i].position=0
   softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
+  if params:get(i.."randomize on reset")>1 then
+    if params:get(i.."randomize on reset")==2 then
+      randomize_parameters(i)
+    elseif params:get(i.."randomize on reset")==3 then
+      randomize_loops(i)
+    elseif params:get(i.."randomize on reset")==4then
+      randomize_parameters(i)
+      randomize_loops(i)
+    end
+  end
 end
 
 function tape_stop(i)
@@ -779,10 +815,10 @@ function key(n,z)
       params:set("pause lfos",3-params:get("pause lfos"))
     elseif uS.flagSpecial==4 then
       -- randomize!
-      randomize_parameters()
+      randomize_parameters(7)
     elseif uS.flagSpecial==5 then
       -- randomize loops!
-      randomize_loops()
+      randomize_loops(7)
     elseif uS.flagSpecial==6 then
       -- randomize lfos!
       randomize_lfos()
