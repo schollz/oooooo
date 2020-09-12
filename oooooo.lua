@@ -176,7 +176,6 @@ function init()
   if params:get("start randomized")==2 then
     randomize_lfos()
   end
-  tape_reset(7)
   
   -- end of init
   if params:get("load on start")==2 then
@@ -185,6 +184,8 @@ function init()
       tape_play(7)
     end
   end
+  tape_stop(1)
+  tape_reset(1)
 end
 
 function init_loops(j)
