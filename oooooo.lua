@@ -94,13 +94,19 @@ function init()
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
   params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,50,'% prob'))
   params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0))
+  params:add_control("reset all every","reset all every",controlspec.new(0,64,"lin",1,0,"beats"))
+  params:set_action("reset all every",function(x)
+    for i=1,6 do
+      params:set(i.."reset every beat",x)
+    end
+  end)
   params:add_group("startup",4)
   params:add_option("load on start","load on start",{"no","yes"},1)
   params:set_action("load on start",update_parameters)
   params:add_option("play on start","play on start",{"no","yes"},1)
   params:set_action("play on start",update_parameters)
-  params:add_option("start randomized","start randomized",{"no","yes"},1)
-  params:set_action("start randomized",update_parameters)
+  params:add_option("start lfos random","start lfos random",{"no","yes"},1)
+  params:set_action("start lfos random",update_parameters)
   params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
   params:set_action("start length",update_parameters)
   
@@ -127,7 +133,7 @@ function init()
     params:add_taper(i.."pan lfo amp","pan lfo amp",0,1,0.25,0,"")
     params:add_taper(i.."pan lfo period","pan lfo period",0,60,0,0,"s")
     params:add_taper(i.."pan lfo offset","pan lfo offset",0,60,0,0,"s")
-    params:add_control(i.."reset every beat","reset every X beat",controlspec.new(0,64,"lin",1,0))
+    params:add_control(i.."reset every beat","reset every",controlspec.new(0,64,"lin",1,0,"beats"))
     params:add_option(i.."isempty","is empty",{"false","true"},2)
   end
   
@@ -173,7 +179,7 @@ function init()
   end
   redraw()
   
-  if params:get("start randomized")==2 then
+  if params:get("start lfos random")==2 then
     randomize_lfos()
   end
   
