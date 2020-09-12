@@ -107,7 +107,7 @@ function init()
   
   params:add_group("all loops",5)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
-  params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,50,'% prob'))
+  params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,0,'% prob'))
   params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0))
   params:add_option("randomize all on reset","randomize on reset",{"no","params","loops","both"},1)
   params:set_action("randomize all on reset",function(x)
