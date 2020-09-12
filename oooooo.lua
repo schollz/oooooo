@@ -94,7 +94,11 @@ function init()
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
   params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,50,'% prob'))
   params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0))
-  params:add_group("startup",2)
+  params:add_group("startup",4)
+  params:add_option("load on start","load on start",{"no","yes"},1)
+  params:set_action("load on start",update_parameters)
+  params:add_option("play on start","play on start",{"no","yes"},1)
+  params:set_action("play on start",update_parameters)
   params:add_option("start randomized","start randomized",{"no","yes"},1)
   params:set_action("start randomized",update_parameters)
   params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
@@ -175,8 +179,12 @@ function init()
   tape_reset(7)
   
   -- end of init
-  backup_load()
-  tape_play(7)
+  if params:get("load on start")==2 then
+    backup_load()
+    if params:get("play on start")==2 then
+      tape_play(7)
+    end
+  end
 end
 
 function init_loops(j)
