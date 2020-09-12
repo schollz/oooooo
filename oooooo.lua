@@ -74,6 +74,7 @@ uC={
   backupNumber=1,
   lfoTime=1,
   discreteRates={-400,-200,-100,-50,-25,25,50,100,200,400},
+  discreteBeats={1/4,1/2,1,2},
 }
 
 PATH=_path.audio..'oooooo/'
@@ -91,6 +92,7 @@ function init()
   params:add_option("continous rate","continous rate",{"no","yes"},2)
   params:set_action("continous rate",update_parameters)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
+  params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,50,'% prob'))
   params:add_group("startup",2)
   params:add_option("start randomized","start randomized",{"no","yes"},1)
   params:set_action("start randomized",update_parameters)
@@ -170,6 +172,10 @@ function init()
     randomize_lfos()
   end
   tape_reset(7)
+  
+  -- end of init
+  backup_load()
+  tape_play(7)
 end
 
 function init_loops(j)
@@ -203,6 +209,7 @@ function init_loops(j)
     uP[i].pan=0
     uP[i].panUpdate=false
     uP[i].lfoWarble={}
+    uP[i].destroying=false
     if i<7 then
       params:set(i.."start",0)
       params:set(i.."length",uP[i].loopLength)
@@ -323,6 +330,34 @@ function update_timer()
     end
   end
   if math.floor(clock.get_beats())~=uS.currentBeat then
+    -- a beat has been hit
+    if params:get("destroy loops")>0 and math.random()*100<params:get("destroy loops") and uS.recording==0 then
+      -- cause destruction to moving non empty loops
+      nonEmptyLoops={}
+      for i=1,6 do
+        if params:get(i.."isempty")==1 and uP[i].isStopped==false and uP[i].destroying==false then
+          table.insert(nonEmptyLoops,i)
+        end
+      end
+      if #nonEmptyLoops>0 then
+        -- select a loop at random
+        loopDestroy=nonEmptyLoops[math.random(#nonEmptyLoops)]
+        clock.run(function()
+          numBeats=uC.discreteBeats[math.random(#uC.discreteBeats)]
+          preLevel=math.random()
+          print("destroying "..loopDestroy.." for "..numBeats.." at "..preLevel.." pre level")
+          uP[loopDestroy].destroying=true
+          softcut.rec_level(loopDestroy,0)
+          softcut.pre_level(loopDestroy,preLevel)
+          softcut.rec(loopDestroy,1)
+          clock.sync(numBeats)
+          softcut.rec_level(loopDestroy,1)
+          softcut.pre_level(loopDestroy,1)
+          softcut.rec(loopDestroy,0)
+          uP[loopDestroy].destroying=false
+        end)
+      end
+    end
     uS.currentBeat=math.floor(clock.get_beats())
     for i=1,6 do
       if params:get(i.."reset every beat")>0 then
