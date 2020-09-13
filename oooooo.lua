@@ -679,7 +679,7 @@ end
 
 function tape_play(j)
   print("tape_play "..j)
-  if j<7 and uP[j].isStopped==false then
+  if j<7 and uP[j].isStopped==false and uS.recording[j]==0 then
     do return end
   end
   if j<7 and params:get(j.."isempty")==2 then
@@ -889,7 +889,10 @@ function key(n,z)
   elseif n==3 and z==1 then
     if uS.shift then
       if uS.loopNum==7 then
-        do return end -- TODO: start recording on all loop?
+        -- start recording on all
+        for i=1,6 do
+          tape_rec(i)
+        end
       end
       if uS.recording[uS.loopNum]==0 then
         tape_arm_rec(uS.loopNum)
