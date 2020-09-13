@@ -878,10 +878,10 @@ function key(n,z)
     end
   elseif n==2 and z==1 then
     -- this key works on one or all
-    if uS.shift then
+    if uS.shift and ((uS.loopNum==7 and uS.flagSpecial==0) or (uS.loopNum<7 and uS.selectedPar==0)) then
       -- clear
       tape_clear(uS.loopNum)
-    else
+    elseif uS.shift==false then
       -- stop tape
       -- if stopped, then reset to 0
       tape_stop_reset(uS.loopNum)
