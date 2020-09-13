@@ -7,22 +7,21 @@
 --
 --    ▼ instructions below ▼
 --
--- K1 shifts
--- K2 stops loop
--- K2 again resets loop
--- K3 plays loop
--- E1 changes loop
--- E2 selects
--- E3 adjusts
--- selection (E2) specific:
--- nothing selected:
---   shift+K2 resets then clears
---   shift+K3 primes recording
---   shift+K3+K3 forces recording
--- rate selected:
---   shift+K2/K3 reverses
--- other selected:
---   shift+K2/K3 toggles lfo
+-- E1 selects loops
+-- E2 changes mode/parameter
+--
+-- in tape mode:
+-- K2 stops
+-- K2 again resets
+-- K3 plays
+-- K1+K2 clears
+-- K1+K2 again resets
+-- K1+K3 primes recording
+-- K1+K3 again records
+--
+-- in other modes:
+-- K2 or K3 activates or lfos
+-- E3 adjusts parameter
 
 -- user parameters
 uP={
@@ -116,7 +115,7 @@ function init()
   params:set_action("vol pinch",update_parameters)
   params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
   params:set_action("rec thru loops",update_parameters)
-  params:add_control("stop rec after","stop rec after",controlspec.new(0,64,"lin",1,1,"loops"))
+  params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
   params:set_action("stop rec after",update_parameters)
   
   params:add_group("all loops",5)
