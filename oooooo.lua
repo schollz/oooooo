@@ -814,7 +814,36 @@ end
 function key(n,z)
   if n==1 then
     uS.shift=not uS.shift
-  elseif uS.shift and z==1 and uS.flagSpecial>0 and uS.loopNum==7 then
+  elseif z==0 then
+    do return end
+  elseif (uS.flagSpecial==0 and uS.loopNum==7) or (uS.selectedPar==0 and uS.loopNum<7) then
+    -- shift+K2 clears, shift+K3 records only when on tape
+    if uS.shift==false and n==2 then
+      -- stop tape
+      -- if stopped, then reset to 0
+      tape_stop_reset(uS.loopNum)
+    elseif uS.shift==false and n==3 then
+      -- play tape
+      tape_play(uS.loopNum)
+      
+    elseif n==2 then
+      -- clear
+      tape_clear(uS.loopNum)
+    elseif n==3 then
+      if uS.loopNum==7 then
+        -- start recording on all
+        for i=1,6 do
+          tape_rec(i)
+        end
+      else
+        if uS.recording[uS.loopNum]==0 then
+          tape_arm_rec(uS.loopNum)
+        elseif uS.recording[uS.loopNum]==1 then
+          tape_rec(uS.loopNum)
+        end
+      end
+    end
+  elseif uS.flagSpecial>0 and uS.loopNum==7 then
     -- shit+K2 or shift+K3 activates parameters
     if uS.flagSpecial==1 then
       -- save
@@ -840,7 +869,7 @@ function key(n,z)
       -- randomize lfos!
       randomize_lfos()
     end
-  elseif uS.shift and z==1 and uS.selectedPar>0 and uS.loopNum<7 then
+  elseif uS.selectedPar>0 and uS.loopNum<7 then
     -- shit+K2 or shift+K3 activates parameters when parameter is selected
     if (uS.selectedPar==1 or uS.selectedPar==2) then
       -- toggle lfo for loops
@@ -875,32 +904,6 @@ function key(n,z)
         show_message("pan "..uS.loopNum.." lfo off")
         params:set(uS.loopNum.."pan lfo period",0)
       end
-    end
-  elseif n==2 and z==1 then
-    -- this key works on one or all
-    if uS.shift and ((uS.loopNum==7 and uS.flagSpecial==0) or (uS.loopNum<7 and uS.selectedPar==0)) then
-      -- clear
-      tape_clear(uS.loopNum)
-    elseif uS.shift==false then
-      -- stop tape
-      -- if stopped, then reset to 0
-      tape_stop_reset(uS.loopNum)
-    end
-  elseif n==3 and z==1 then
-    if uS.shift then
-      if uS.loopNum==7 then
-        -- start recording on all
-        for i=1,6 do
-          tape_rec(i)
-        end
-      end
-      if uS.recording[uS.loopNum]==0 then
-        tape_arm_rec(uS.loopNum)
-      elseif uS.recording[uS.loopNum]==1 then
-        tape_rec(uS.loopNum)
-      end
-    else
-      tape_play(uS.loopNum)
     end
   end
   uS.updateUI=true
