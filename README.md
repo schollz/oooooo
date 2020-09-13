@@ -4,16 +4,15 @@ digital tape loops x 6.
 
 ![Image](https://user-images.githubusercontent.com/6550035/91628872-c47b8c80-e978-11ea-9d07-df79ef337a0f.gif)
 
-i call this script *"oooooo"* because it is composed of six loops. they are like digital tape loops - you can level, pan, speed, slow, shorten, lengthen, dub, overdub any loop at any time.
+i call this script *"oooooo"* because it is composed of six loops. they are like digital tape loops - you can level, pan, speed, slow, shorten, lengthen, dub, overdub, destroy any loop at any time.
 
 i was inspired to make this after seeing tape loops circulating (pun sorta intended) all over the place. i like the idea of having multiple independent different loops, with different sizes, played on a different tape players with different eccentricities. i don't have any cassette tapes but i have norns so i wrote this script to try to make digital tape loops. 
 
 future directions:
 
-- midi cc support for modulating loops
 - grid support (need help)
 - arc support (need help)
-- add lfos for tape *warbling*
+- crow support (need help)
 - fix all the 🐛🐛🐛
 
 ### Requirements
@@ -23,57 +22,59 @@ future directions:
 
 ### Documentation
 
-- K1 shifts
+- E1 selects loops
+- E2 changes mode/parameter
+
+- in tape mode:
 - K2 stops
-- K2 again resets loop
+- K2 again resets
 - K3 plays
-- E1 changes loops
-- E2 selects parameters
-- E3 adjusts parameters
-- parameter specific:
-- none: shift+K2 resets then clears
-- none: shift+K3 primes recording
-- none: shift+K3+K3 forces recording
-- rate: shift+K2/K3 reverses
-- others: shift+K2/K3 toggles lfo
+- K1+K2 clears
+- K1+K2 again resets
+- K1+K3 primes recording
+- K1+K3 again records
 
-all 114 parameters are availbe via the global menu.
+- in other modes:
+- K2 or K3 activates or lfos
+- E3 adjusts parameter
 
-there is a quick menu available on screen which you can navigate. change loops with E1 and change parameters/modes with E2. here's a brief rundown:
+all parameters are available via the global menu.
 
-**recording:**
 
-- with no parameter selected, press shift+K3 to prime recording. when primed, recording will automatically begin when incoming audio rises above a threshold. the recording threshold can be set by global parameter "`rec thresh`". 
-- you can force recording by hitting shift+K3 a second time.
-- recording stops after traversing the whole loop. you can stop it earlier with K2 or K3 and that will shrink the loop to that point. you can set recording to continue to the next loop by setting the global parameter "`rec thru loops`" to `yes`.
+
+**playback/recording:**
+
+- in tape mode, press K2 to stop/goto 0, and press K3 to start playing (once recorded).
+- in tape mode, press K1+K3 to prime recording. when primed, recording will automatically begin when incoming audio rises above a threshold. the recording threshold can be set by global parameter "`recording -> rec thresh`". 
+- in tape mode, you can force recording by hitting K1+K3 a second time.
+- recording stops after traversing the whole loop. you can stop it earlier with K2 or K3 (in tape mode) and that will shrink the loop to that point. you can set recording to continue to the next loop by setting the global parameter "`recording -> rec thru loops`" to `yes`.
 - by default, volume in "pinched" when starting/stopping recording to avoid pops from discontinuous signals. you can lower/raise the pinching by adjusting the global parameter "`vol pinch`".
+- to record a loop over and over, infinitely, change `recording -> stop rec after` to its max value.
 
-**playback:**
+**quick menu:**
 
+- E2 changes mode/parameter on the quick menu
+- each parameter can be activated by K2 or K3 (activated lfo), and it can modified by E3
 - you can adjust the rate in continuous or discrete (±25%, ±50%, etc.) by changing the global parameter "`continuous rate`"
-- when the rate parameter is selected, shift+K2 or shift+K3 reverses direction
-- when other parameters are selected, shift+K2 or shift+K3 toggles lfo
-- the "`reset every X beats`" allows you to trigger a tape reset every X beats
 - the "`warble`" mode allows you to temporarily pitch up/down the current loop using E3
 
-**special functions in A loop:**
+**A loop:**
 
-if you change the loop to "A" using E1 there are several special functions available to affect all loops.
+- "A" loop can control all loops. the tape mode works as before, but affects all loops.
+- the quick menu differs from loops but is also activated by K2 or K3, and modulated with E3
 
-- K2/K3 stops/plays on *all* loops,
-- if no parameter is selected, pressing shift+K2 clears and resets *all* loops
-- any other selection is activated by using shift+K2 or shift+K3
-- select "save" or "load" to backup or restore to the specified tape (use E3 to change)
-- "rand" will randomize parameters, loop sizes, or lfos of *all* loops
-- "pause lfos" will toggle pausing of the lfos
+**settings:**
 
-**other functions:**
+- the global menu has lots of settings. 
+- in `startup` menu you can load loops on startup, play loops on startup, start loops with random lfos and change the length of the starting loops (in beats).
+- in `recording` menu you can change pre/rec levels, recording threshold for primed recordings, the volume pinchoff, whether to record through loops, and how many times to loop over before stopping recording
+- in `all loops` you can pause all lfos, set loop destruction (which slowly degrades loops), ramp volume up/down, randomize loops on reset, change the reset per loop
+- in `loop X` menu you can modify all lfos, and several other parameters of each loop.
 
-there are other functions in the global menu.
+**oooooo ideas:**
 
-- things that you can do on startup (auto loading, changing loop sizes, start playing)
-- destroying loops (degrades them over time)
-- volume ramps (ramp up or down)
+- cool ambiance: record to each loop and then move them around the screen 
+- crazy delay: in `recording` menu set `pre level` and `rec level` to 0.5. set `stop rec after` to max. go to `A` loop. turn E2 to `rand lfo` and activate with K2. turn E2 to tape and press K1+K3 to record on all loops forever, making a stereo-field delay. (make it crazier by changing `all loops -> randomize on reset` to `yes` and `all loops -> reset all every` to `X beats`)
 
 ## demo 
 
