@@ -25,7 +25,8 @@ future directions:
 - E1 selects loops
 - E2 changes mode/parameter
 
-- in tape mode:
+in tape mode:
+
 - K2 stops
 - K2 again resets
 - K3 plays
@@ -34,7 +35,8 @@ future directions:
 - K1+K3 primes recording
 - K1+K3 again records
 
-- in other modes:
+in other modes:
+
 - K2 or K3 activates or lfos
 - E3 adjusts parameter
 
