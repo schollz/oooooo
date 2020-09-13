@@ -76,7 +76,7 @@ all parameters are available via the global menu.
 **oooooo ideas:**
 
 - *audibly ambient:* record to each loop and then move them around the screen. [video example](https://www.instagram.com/p/CEzI3mqB_0k/)
-- *lucid looper:* instead of overdubbing one loop, record six separate loops of the same size that have their own stereo field. change `startup -> start length` to `16` beats and `startup -> start lfos random` to `yes`. then change `recording -> rec thru loops` to `yes` and make sure `recording -> stop rec after` is `1`. [video example](https://www.instagram.com/p/CFBjBxGhJXs/)
+- *lucid looper:* instead of overdubbing one loop, record six separate loops of the same size that have their own stereo field. change `startup -> start length` to `16` beats and `startup -> start lfos random` to `yes`. then change `recording -> rec thru loops` to `yes` and make sure `recording -> stop rec after` is `1`. then reload *oooooo*, and record. [video example](https://www.instagram.com/p/CFBjBxGhJXs/)
 - *dangerous delay:* tape delay with six tapes, that shapeshift. in `recording` menu set `pre level` and `rec level` to 0.5. set `stop rec after` to max. go to `A` loop. turn E2 to `rand lfo` and activate with K2. turn E2 to tape and press K1+K3 to record on all loops forever, making a stereo-field delay. (make it crazier by changing `all loops -> randomize on reset` to `yes` and `all loops -> reset all every` to `X beats`). [video example](https://www.instagram.com/p/CFFHUNmhxIf/)
 
 ## demo 
