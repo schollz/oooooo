@@ -31,9 +31,9 @@ uP={
 
 -- user state
 uS={
-  recording=0,-- 0 = not recording, 1 = armed, 2 = recording
-  recordingTime=0,
-  recordingLoopNum=0,
+  recording={0,0,0,0,0,0},-- 0 = not recording, 1 = armed, 2 = recording
+  recordingTime={0,0,0,0,0,0},
+  recordingLoopNum={0,0,0,0,0,0},
   updateUI=false,
   updateParams=0,
   updateUserParam=0,
@@ -179,10 +179,12 @@ function init()
   -- set period low when primed, default 1 second
   p_amp_in.time=1
   p_amp_in.callback=function(val)
-    if uS.recording==1 then
-      -- print("incoming signal = "..val)
-      if val>params:get("rec thresh")/1000 then
-        tape_rec(uS.loopNum)
+    for i=1,6 do
+      if uS.recording[i]==1 then
+        -- print("incoming signal = "..val)
+        if val>params:get("rec thresh")/1000 then
+          tape_rec(i)
+        end
       end
     end
   end
@@ -371,13 +373,15 @@ function update_timer()
   if uS.updateUI then
     redraw()
   end
-  if uS.recording==2 then
-    uS.recordingTime=uS.recordingTime+uC.updateTimerInterval
-    if uS.recordingTime>=uP[uS.loopNum].loopLength then
-      uS.recordingLoopNum=uS.recordingLoopNum+1
-      if uS.recordingLoopNum>=params:get("stop rec after") and uS.recordingLoopNum<64 then
-        -- stop recording when reached a full loop
-        tape_stop_rec(uS.loopNum,false)
+  for i=1,6 do
+    if uS.recording[i]==2 then
+      uS.recordingTime[i]=uS.recordingTime[i]+uC.updateTimerInterval
+      if uS.recordingTime[i]>=uP[uS.loopNum].loopLength then
+        uS.recordingLoopNum[i]=uS.recordingLoopNum[i]+1
+        if uS.recordingLoopNum[i]>=params:get("stop rec after") and uS.recordingLoopNum[i]<64 then
+          -- stop recording when reached a full loop
+          tape_stop_rec(i,false)
+        end
       end
     end
   end
@@ -388,7 +392,7 @@ function update_timer()
         params:set(i.."vol",util.clamp(params:get(i.."vol")+params:get("vol ramp")/10,0,1))
       end
     end
-    if params:get("destroy loops")>0 and math.random()*100<params:get("destroy loops") and uS.recording==0 then
+    if params:get("destroy loops")>0 and math.random()*100<params:get("destroy loops") then
       -- cause destruction to moving non empty loops
       nonEmptyLoops={}
       for i=1,6 do
@@ -419,9 +423,7 @@ function update_timer()
     for i=1,6 do
       if params:get(i.."reset every beat")>0 then
         if uS.currentBeat%params:get(i.."reset every beat")==0 then
-          if not (uS.recording>0 and uS.loopNum==i) then
-            tape_reset(i)
-          end
+          tape_reset(i)
         end
       end
     end
@@ -534,7 +536,7 @@ function tape_stop_reset(j)
     i2=6
   end
   for i=i1,i2 do
-    if uP[i].isStopped and uS.recording==0 then
+    if uP[i].isStopped and uS.recording[i]==0 then
       tape_reset(i)
     else
       tape_stop(i)
@@ -562,11 +564,11 @@ function tape_reset(i)
 end
 
 function tape_stop(i)
-  if uP[i].isStopped==true and uS.recording==0 then
+  if uP[i].isStopped==true and uS.recording[i]==0 then
     do return end
   end
   print("tape_stop "..i)
-  if uS.recording>0 then
+  if uS.recording[i]>0 then
     tape_stop_rec(i,true)
   end
   -- ?????
@@ -576,20 +578,20 @@ function tape_stop(i)
 end
 
 function tape_stop_rec(i,change_loop)
-  if uS.recording==0 then
+  if uS.recording[i]==0 then
     do return end
   end
   print("tape_stop_rec "..i)
   p_amp_in.time=1
-  still_armed=(uS.recording==1)
-  uS.recording=0
-  uS.recordingLoopNum=0
-  if uS.recordingTime<params:get(i.."length") then
-    uP[i].recordedLength=uS.recordingTime
+  still_armed=(uS.recording[i]==1)
+  uS.recording[i]=0
+  uS.recordingLoopNum[i]=0
+  if uS.recordingTime[i]<params:get(i.."length") then
+    uP[i].recordedLength=uS.recordingTime[i]
   else
     uP[i].recordedLength=params:get(i.."length")
   end
-  uS.recordingTime=0
+  uS.recordingTime[i]=0
   -- slowly stop
   clock.run(function()
     if params:get("vol pinch")>0 then
@@ -677,9 +679,6 @@ end
 
 function tape_play(j)
   print("tape_play "..j)
-  if uS.recording>0 then
-    tape_stop_rec(j,true)
-  end
   if j<7 and uP[j].isStopped==false then
     do return end
   end
@@ -693,6 +692,9 @@ function tape_play(j)
     i2=6
   end
   for i=i1,i2 do
+    if uS.recording[i]>0 then
+      tape_stop_rec(i,true)
+    end
     softcut.play(i,1)
     uP[i].rateUpdate=true
     uP[i].volUpdate=true
@@ -701,19 +703,19 @@ function tape_play(j)
 end
 
 function tape_arm_rec(i)
-  if uS.recording==1 then
+  if uS.recording[i]==1 then
     do return end
   end
   print("tape_arm_rec "..i)
   -- arm  recording
-  uS.recording=1
-  uS.recordingLoopNum=0
+  uS.recording[i]=1
+  uS.recordingLoopNum[i]=0
   -- monitor input
   p_amp_in.time=0.025
 end
 
 function tape_rec(i)
-  if uS.recording==2 then
+  if uS.recording[i]==2 then
     do return end
   end
   print("tape_rec "..i)
@@ -725,8 +727,8 @@ function tape_rec(i)
     uP[i].isStopped=false
   end
   p_amp_in.time=1
-  uS.recordingTime=0
-  uS.recording=2 -- recording is live
+  uS.recordingTime[i]=0
+  uS.recording[i]=2 -- recording is live
   softcut.rec_level(i,params:get("rec level"))
   softcut.pre_level(i,params:get("pre level"))
   params:set(i.."isempty",1)
@@ -748,8 +750,7 @@ end
 -- encoders
 --
 function enc(n,d)
-  if n==1 and uS.recording==0 then
-    -- do not allow changing loops if recording
+  if n==1 then
     d=sign(d)
     uS.loopNum=util.clamp(uS.loopNum+d,1,7)
   elseif n==2 then
@@ -890,9 +891,9 @@ function key(n,z)
       if uS.loopNum==7 then
         do return end -- TODO: start recording on all loop?
       end
-      if uS.recording==0 then
+      if uS.recording[uS.loopNum]==0 then
         tape_arm_rec(uS.loopNum)
-      elseif uS.recording==1 then
+      elseif uS.recording[uS.loopNum]==1 then
         tape_rec(uS.loopNum)
       end
     else
@@ -919,11 +920,27 @@ function redraw()
   screen.level(15)
   
   -- show state symbol
-  if uS.recording==2 then
+  anyRecording=false
+  anyPrimed=false
+  for i=1,6 do
+    if uS.recording[i]==1 then
+      anyPrimed=true
+      screen.level(1)
+      screen.move(111,i*8+12)
+      screen.text(i)
+    elseif uS.recording[i]==2 then
+      anyRecording=true
+      screen.level(15)
+      screen.move(111,i*8+12)
+      screen.text(i)
+    end
+  end
+  screen.level(15)
+  if anyRecording then
     screen.rect(108,1,20,10)
     screen.move(111,8)
     screen.text("REC")
-  elseif uS.recording==1 then
+  elseif anyPrimed then
     screen.rect(108,1,20,10)
     screen.level(1)
     screen.move(111,8)
@@ -1041,7 +1058,7 @@ function redraw()
     -- draw pixels at position if it has data or
     -- its being recorded/primed
     angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
-    if params:get(i.."isempty")==1 or (i==uS.loopNum and uS.recording>0) then
+    if params:get(i.."isempty")==1 or i==uS.loopNum or uS.recording[i]>0 then
       for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
         screen.stroke()
@@ -1072,7 +1089,7 @@ function redraw()
     -- draw pixels at position if it has data or
     -- its being recorded/primed
     angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
-    if params:get(i.."isempty")==1 or (i==uS.loopNum and uS.recording>0) then
+    if params:get(i.."isempty")==1 or i==uS.loopNum or uS.recording[i]>0 then
       for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
         screen.stroke()
