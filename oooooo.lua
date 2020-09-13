@@ -33,6 +33,7 @@ uP={
 uS={
   recording=0,-- 0 = not recording, 1 = armed, 2 = recording
   recordingTime=0,
+  recordingLoopNum=0,
   updateUI=false,
   updateParams=0,
   updateUserParam=0,
@@ -97,13 +98,19 @@ function init()
   params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
   params:set_action("start length",update_parameters)
   
-  params:add_group("recording",3)
+  params:add_group("recording",6)
+  params:add_taper("pre level","pre level",0,1,1,0)
+  params:set_action("pre level",update_parameters)
+  params:add_taper("rec level","rec level",0,1,1,0)
+  params:set_action("rec level",update_parameters)
   params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
   params:set_action("rec thresh",update_parameters)
   params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
   params:set_action("vol pinch",update_parameters)
   params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
   params:set_action("rec thru loops",update_parameters)
+  params:add_control("stop rec after","stop rec after",controlspec.new(0,64,"lin",1,1,"loops"))
+  params:set_action("stop rec after",update_parameters)
   
   params:add_group("all loops",5)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
@@ -281,8 +288,8 @@ function init_loops(j)
       softcut.level_slew_time(i,(60/clock.get_tempo())*8)
       softcut.rate_slew_time(i,(60/clock.get_tempo())*8)
       
-      softcut.rec_level(i,1)
-      softcut.pre_level(i,1)
+      softcut.rec_level(i,params:get("rec level",2))
+      softcut.pre_level(i,params:get("pre level",2))
       softcut.buffer(i,uC.bufferMinMax[i][1])
       softcut.position(i,uC.bufferMinMax[i][2])
       softcut.enable(i,1)
@@ -367,8 +374,11 @@ function update_timer()
   if uS.recording==2 then
     uS.recordingTime=uS.recordingTime+uC.updateTimerInterval
     if uS.recordingTime>=uP[uS.loopNum].loopLength then
-      -- stop recording when reached a full loop
-      tape_stop_rec(uS.loopNum,false)
+      uS.recordingLoopNum=uS.recordingLoopNum+1
+      if uS.recordingLoopNum>=params:get("stop rec after") and uS.recordingLoopNum<64 then
+        -- stop recording when reached a full loop
+        tape_stop_rec(uS.loopNum,false)
+      end
     end
   end
   if math.floor(clock.get_beats())~=uS.currentBeat then
@@ -449,7 +459,7 @@ function update_timer()
       uP[i].loopUpdate=false
       uP[i].loopStart=params:get(i.."start")
       uP[i].loopLength=params:get(i.."length")
-      if params:get(i.."length lfo period")>0 and uS.recording==0 and params:get("pause lfos")==1 then
+      if params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 then
         uP[i].loopLength=uP[i].loopLength*(1+params:get(i.."length lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."length lfo period"),params:get(i.."length lfo offset")))/2
       end
       if uP[i].loopLength+uP[i].loopStart>uC.loopMinMax[2] then
@@ -500,7 +510,7 @@ end
 --
 function tape_warble()
   for i=1,6 do
-    if uP[i].isStopped or uS.recording>0 then
+    if uP[i].isStopped then
       -- do nothing
     else
       warblePercent=0
@@ -573,7 +583,12 @@ function tape_stop_rec(i,change_loop)
   p_amp_in.time=1
   still_armed=(uS.recording==1)
   uS.recording=0
-  uP[i].recordedLength=uS.recordingTime
+  uS.recordingLoopNum=0
+  if uS.recordingTime<params:get(i.."length") then
+    uP[i].recordedLength=uS.recordingTime
+  else
+    uP[i].recordedLength=params:get(i.."length")
+  end
   uS.recordingTime=0
   -- slowly stop
   clock.run(function()
@@ -692,6 +707,7 @@ function tape_arm_rec(i)
   print("tape_arm_rec "..i)
   -- arm  recording
   uS.recording=1
+  uS.recordingLoopNum=0
   -- monitor input
   p_amp_in.time=0.025
 end
@@ -711,8 +727,8 @@ function tape_rec(i)
   p_amp_in.time=1
   uS.recordingTime=0
   uS.recording=2 -- recording is live
-  softcut.rec_level(i,1)
-  softcut.pre_level(i,1)
+  softcut.rec_level(i,params:get("rec level"))
+  softcut.pre_level(i,params:get("pre level"))
   params:set(i.."isempty",1)
   redraw()
   -- slowly start recording
