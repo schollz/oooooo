@@ -1,4 +1,4 @@
--- oooooo v0.9.0
+-- oooooo v0.9.1
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -307,7 +307,6 @@ function init_loops(j)
 end
 
 function randomize_parameters(j)
-  show_message("randomizing")
   i1=j
   i2=j
   if j==7 then
@@ -327,7 +326,6 @@ function randomize_parameters(j)
 end
 
 function randomize_loops(j)
-  show_message("randomizing loops")
   i1=j
   i2=j
   if j==7 then
@@ -341,7 +339,6 @@ function randomize_loops(j)
 end
 
 function randomize_lfos()
-  show_message("randomizing lfos")
   for i=1,6 do
     -- params:set(i.."length lfo period",math.random()*30+5)
     -- params:set(i.."length lfo offset",math.random()*60)
@@ -867,12 +864,15 @@ function key(n,z)
       params:set("pause lfos",3-params:get("pause lfos"))
     elseif uS.flagSpecial==4 then
       -- randomize!
+  show_message("randomizing")
       randomize_parameters(7)
     elseif uS.flagSpecial==5 then
       -- randomize loops!
+  show_message("randomizing loops")
       randomize_loops(7)
     elseif uS.flagSpecial==6 then
       -- randomize lfos!
+  show_message("randomizing lfos")
       randomize_lfos()
     end
   elseif uS.selectedPar>0 and uS.loopNum<7 then
@@ -937,14 +937,14 @@ function redraw()
   for i=1,6 do
     if uS.recording[i]==1 then
       anyPrimed=true
-      screen.level(1)
-      screen.move(111,i*8+12)
-      screen.text(i)
+  --    screen.level(1)
+  --    screen.move(111,i*8+12)
+  --    screen.text(i)
     elseif uS.recording[i]==2 then
       anyRecording=true
-      screen.level(15)
-      screen.move(111,i*8+12)
-      screen.text(i)
+   --   screen.level(15)
+   --   screen.move(111,i*8+12)
+   --   screen.text(i)
     end
   end
   screen.level(15)
@@ -971,8 +971,8 @@ function redraw()
   end
   
   -- show loop info
-  x=7+shift_amount
-  y=9+shift_amount
+  x=4+shift_amount
+  y=8+shift_amount
   screen.move(x,y)
   if uS.loopNum==7 then
     screen.text("A")
@@ -988,7 +988,7 @@ function redraw()
   if uS.loopNum==7 then
     screen.move(x+10,y)
     if uS.flagSpecial==0 then
-      tape_icon(x+10,y)
+      -- tape_icon(x+10,y)
     elseif uS.flagSpecial==1 then
       screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
@@ -1007,8 +1007,8 @@ function redraw()
       screen.text("rand lfo")
     end
   elseif uS.selectedPar==0 then
-    screen.move(x+10,y)
-    tape_icon(x+10,y)
+    -- screen.move(x+10,y)
+    -- tape_icon(x+10,y)
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
     if uS.selectedPar==1 then
@@ -1065,6 +1065,9 @@ function redraw()
     end
     screen.move(x+r,y)
     screen.circle(x,y,r)
+    if uS.recording[i]>0 then 
+	    screen.circle(x,y,r+1)
+    end
     screen.stroke()
     
     -- draw pixels at position if it has data or
@@ -1096,6 +1099,9 @@ function redraw()
     end
     screen.move(x+r,y)
     screen.circle(x,y,r)
+    if uS.recording[i]>0 then 
+	    screen.circle(x,y,r+1)
+    end
     screen.stroke()
     
     -- draw pixels at position if it has data or
