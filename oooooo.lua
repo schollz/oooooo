@@ -864,15 +864,15 @@ function key(n,z)
       params:set("pause lfos",3-params:get("pause lfos"))
     elseif uS.flagSpecial==4 then
       -- randomize!
-  show_message("randomizing")
+      show_message("randomizing")
       randomize_parameters(7)
     elseif uS.flagSpecial==5 then
       -- randomize loops!
-  show_message("randomizing loops")
+      show_message("randomizing loops")
       randomize_loops(7)
     elseif uS.flagSpecial==6 then
       -- randomize lfos!
-  show_message("randomizing lfos")
+      show_message("randomizing lfos")
       randomize_lfos()
     end
   elseif uS.selectedPar>0 and uS.loopNum<7 then
@@ -937,14 +937,14 @@ function redraw()
   for i=1,6 do
     if uS.recording[i]==1 then
       anyPrimed=true
-  --    screen.level(1)
-  --    screen.move(111,i*8+12)
-  --    screen.text(i)
+      --    screen.level(1)
+      --    screen.move(111,i*8+12)
+      --    screen.text(i)
     elseif uS.recording[i]==2 then
       anyRecording=true
-   --   screen.level(15)
-   --   screen.move(111,i*8+12)
-   --   screen.text(i)
+      --   screen.level(15)
+      --   screen.move(111,i*8+12)
+      --   screen.text(i)
     end
   end
   screen.level(15)
@@ -1065,8 +1065,8 @@ function redraw()
     end
     screen.move(x+r,y)
     screen.circle(x,y,r)
-    if uS.recording[i]>0 then 
-	    screen.circle(x,y,r+1)
+    if uS.recording[i]>0 then
+      screen.circle(x,y,r+1)
     end
     screen.stroke()
     
@@ -1099,8 +1099,8 @@ function redraw()
     end
     screen.move(x+r,y)
     screen.circle(x,y,r)
-    if uS.recording[i]>0 then 
-	    screen.circle(x,y,r+1)
+    if uS.recording[i]>0 then
+      screen.circle(x,y,r+1)
     end
     screen.stroke()
     
