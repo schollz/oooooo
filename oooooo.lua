@@ -138,6 +138,9 @@ function init()
   -- TODO: hook up pausing lfos
   params:read(_path.data..'oooooo/'.."oooooo.pset")
   
+  -- reset defaults
+  params:set("slew rate",(60/clock.get_tempo())*4)
+  
   -- add parameters
   for i=1,6 do
     params:add_group("loop "..i,19)
