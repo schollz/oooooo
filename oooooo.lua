@@ -148,7 +148,7 @@ function init()
     params:add_taper(i.."length lfo period","length lfo period",0,60,0,0,"s")
     params:add_taper(i.."length lfo offset","length lfo offset",0,60,0,0,"s")
     params:add_taper(i.."vol","vol",0,1,0.5,0,"")
-    params:add_taper(i.."vol lfo amp","vol lfo amp",0,1,0.1,0,"")
+    params:add_taper(i.."vol lfo amp","vol lfo amp",0,1,0.3,0,"")
     params:add_taper(i.."vol lfo period","vol lfo period",0,60,0,0,"s")
     params:add_taper(i.."vol lfo offset","vol lfo offset",0,60,0,0,"s")
     params:add_option(i.."rate","rate (%)",uC.discreteRates,8)
@@ -315,7 +315,11 @@ function randomize_parameters(j)
   end
   for i=i1,i2 do
     params:set(i.."rate adjust",0)
-    params:set(i.."rate",math.random(#uC.discreteRates))
+    -- randomize rates between 25%, 50%, 100%, 200%, 400%
+    -- params:set(i.."rate",math.random(#uC.discreteRates))
+    
+    -- randomize rates between 25%, 50%, 100%
+    params:set(i.."rate",math.random(3)+5)
     params:set(i.."rate reverse",math.floor(math.random()*2)+1)
     uP[i].rateUpdate=true
     params:set(i.."vol",math.random()*0.6+0.2)
