@@ -86,7 +86,7 @@ function init()
   params:set_action("backup",update_parameters)
   params:add_option("continous rate","continous rate",{"no","yes"},2)
   params:set_action("continous rate",update_parameters)
-  params:add_taper("slew rate","slew rate",0,30,(60/clock.get_tempo())*8,0,"s")
+  params:add_taper("slew rate","slew rate",0,30,(60/clock.get_tempo())*4,0,"s")
   params:set_action("slew rate",function(x)
     for i=1,6 do
       softcut.level_slew_time(i,x)
