@@ -997,7 +997,8 @@ function redraw()
   if uS.loopNum==7 then
     screen.move(x+10,y)
     if uS.flagSpecial==0 then
-      -- tape_icon(x+10,y)
+      screen.move(x+10,y)
+      tape_icon(x+10,y)
     elseif uS.flagSpecial==1 then
       screen.text("save "..params:get("backup"))
     elseif uS.flagSpecial==2 then
@@ -1016,8 +1017,8 @@ function redraw()
       screen.text("rand lfo")
     end
   elseif uS.selectedPar==0 then
-    -- screen.move(x+10,y)
-    -- tape_icon(x+10,y)
+    screen.move(x+10,y)
+    tape_icon(x+10,y)
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
     screen.move(x+10,y)
     if uS.selectedPar==1 then
