@@ -666,6 +666,7 @@ function tape_clear(i)
       end
       params:set(j.."isempty",2)
       uP[j].recordedLength=0
+      tape_stop(j)
       tape_reset(j)
     end
   else
@@ -681,6 +682,7 @@ function tape_clear(i)
       uC.bufferMinMax[i][1],
       uC.bufferMinMax[i][2],
     uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
+      tape_stop(i)
     tape_reset(i)
   end
   -- reinitialize?
