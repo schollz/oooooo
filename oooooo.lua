@@ -82,17 +82,6 @@ PATH=_path.audio..'oooooo/'
 function init()
   params:add_separator("oooooo")
   -- add variables into main menu
-  params:add_control("backup","tape (backup/save)",controlspec.new(1,8,'lin',1,1))
-  params:set_action("backup",update_parameters)
-  params:add_option("continous rate","continous rate",{"no","yes"},2)
-  params:set_action("continous rate",update_parameters)
-  params:add_taper("slew rate","slew rate",0,30,(60/clock.get_tempo())*4,0,"s")
-  params:set_action("slew rate",function(x)
-    for i=1,6 do
-      softcut.level_slew_time(i,x)
-      softcut.rate_slew_time(i,x)
-    end
-  end)
   
   params:add_group("startup",4)
   params:add_option("load on start","load on start",{"no","yes"},1)
@@ -117,6 +106,20 @@ function init()
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
   params:set_action("stop rec after",update_parameters)
+  
+  params:add_group("other",4)
+  params:add_control("backup","tape (backup/save)",controlspec.new(1,8,'lin',1,1))
+  params:set_action("backup",update_parameters)
+  params:add_option("continous rate","continous rate",{"no","yes"},2)
+  params:set_action("continous rate",update_parameters)
+  params:add_taper("slew rate","slew rate",0,30,(60/clock.get_tempo())*4,0,"s")
+  params:set_action("slew rate",function(x)
+    for i=1,6 do
+      softcut.level_slew_time(i,x)
+      softcut.rate_slew_time(i,x)
+    end
+  end)
+  params:add_option("expert mode","expert mode",{"no","yes"},1)
   
   params:add_group("all loops",5)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
@@ -682,7 +685,7 @@ function tape_clear(i)
       uC.bufferMinMax[i][1],
       uC.bufferMinMax[i][2],
     uC.bufferMinMax[i][3]-uC.bufferMinMax[i][2])
-      tape_stop(i)
+    tape_stop(i)
     tape_reset(i)
   end
   -- reinitialize?
@@ -957,46 +960,50 @@ function redraw()
     end
   end
   screen.level(15)
-  if anyRecording then
-    screen.rect(108,1,20,10)
-    screen.move(111,8)
-    screen.text("REC")
-  elseif anyPrimed then
-    screen.rect(108,1,20,10)
-    screen.level(1)
-    screen.move(111,8)
-    screen.text("REC")
-    screen.level(15)
-  elseif uP[uS.loopNum].isStopped then
-    screen.rect(118,1,10,10)
-    screen.move(121,8)
-    screen.text("||")
-  else
-    screen.rect(118,1,10,10)
-    screen.move(121,8)
-    screen.text(">")
-    screen.move(122,4)
-    screen.line(122,8)
+  if params:get("expert mode")==1 then
+    if anyRecording then
+      screen.rect(108,1,20,10)
+      screen.move(111,8)
+      screen.text("REC")
+    elseif anyPrimed then
+      screen.rect(108,1,20,10)
+      screen.level(1)
+      screen.move(111,8)
+      screen.text("REC")
+      screen.level(15)
+    elseif uP[uS.loopNum].isStopped then
+      screen.rect(118,1,10,10)
+      screen.move(121,8)
+      screen.text("||")
+    else
+      screen.rect(118,1,10,10)
+      screen.move(121,8)
+      screen.text(">")
+      screen.move(122,4)
+      screen.line(122,8)
+    end
   end
   
   -- show loop info
   x=4+shift_amount
   y=8+shift_amount
-  screen.move(x,y)
-  if uS.loopNum==7 then
-    screen.text("A")
-  else
-    screen.text(uS.loopNum)
+  if params:get("expert mode")==1 then
+    screen.move(x,y)
+    if uS.loopNum==7 then
+      screen.text("A")
+    else
+      screen.text(uS.loopNum)
+    end
+    screen.move(x,y)
+    screen.rect(x-3,y-7,10,10)
+    screen.stroke()
   end
-  screen.move(x,y)
-  screen.rect(x-3,y-7,10,10)
-  screen.stroke()
   
   x=-7
   y=60
   if uS.loopNum==7 then
     screen.move(x+10,y)
-    if uS.flagSpecial==0 then
+    if uS.flagSpecial==0 and params:get("expert mode")==1 then
       screen.move(x+10,y)
       tape_icon(x+10,y)
     elseif uS.flagSpecial==1 then
@@ -1016,7 +1023,7 @@ function redraw()
     elseif uS.flagSpecial==6 then
       screen.text("rand lfo")
     end
-  elseif uS.selectedPar==0 then
+  elseif uS.selectedPar==0 and params:get("expert mode")==1 then
     screen.move(x+10,y)
     tape_icon(x+10,y)
   elseif uS.selectedPar==1 or uS.selectedPar==2 then
