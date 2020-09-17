@@ -120,6 +120,7 @@ function init()
     end
   end)
   params:add_option("expert mode","expert mode",{"no","yes"},1)
+  params:set_action("expert mode",update_parameters)
   
   params:add_group("all loops",5)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
