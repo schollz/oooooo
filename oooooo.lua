@@ -1,4 +1,4 @@
--- oooooo v0.9.2
+-- oooooo v0.9.3
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -353,10 +353,12 @@ function randomize_lfos()
   for i=1,6 do
     -- params:set(i.."length lfo period",math.random()*30+5)
     -- params:set(i.."length lfo offset",math.random()*60)
-    params:set(i.."vol lfo period",math.random()*12+6)
-    params:set(i.."vol lfo offset",math.random()*60)
-    params:set(i.."pan lfo period",math.random()*12+6)
-    params:set(i.."pan lfo offset",math.random()*60)
+    params:set(i.."vol lfo period",round_time_to_nearest_beat(math.random()*30+1))
+    params:set(i.."vol lfo offset",round_time_to_nearest_beat(math.random()*60))
+    params:set(i.."vol lfo amp",math.random()*0.3+0.1)
+    params:set(i.."pan lfo amp",math.random()*0.8+0.2)
+    params:set(i.."pan lfo period",round_time_to_nearest_beat(math.random()*30+1))
+    params:set(i.."pan lfo offset",round_time_to_nearest_beat(math.random()*60))
   end
 end
 
@@ -1219,3 +1221,11 @@ function sign(x)
   end
 end
 
+function round_time_to_nearest_beat(t)
+  seconds_per_qn=60/clock.get_tempo()
+  remainder=t%seconds_per_qn
+  if remainder==0 then
+    return t
+  end
+  return t+seconds_per_qn-remainder
+end
