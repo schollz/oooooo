@@ -1,4 +1,4 @@
--- oooooo v0.9.3
+-- oooooo v0.9.4
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -93,7 +93,7 @@ function init()
   params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
   params:set_action("start length",update_parameters)
   
-  params:add_group("recording",6)
+  params:add_group("recording",7)
   params:add_taper("pre level","pre level",0,1,1,0)
   params:set_action("pre level",update_parameters)
   params:add_taper("rec level","rec level",0,1,1,0)
@@ -106,6 +106,11 @@ function init()
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
   params:set_action("stop rec after",update_parameters)
+  params:add_option("input type","input type",{"line-in","tape","line-in+tape"},3)
+  params:set_action("input type",function(x)
+    update_softcut_input()
+    update_parameters()
+  end)
   
   params:add_group("other",4)
   params:add_control("backup","tape (backup/save)",controlspec.new(1,8,'lin',1,1))
@@ -228,11 +233,12 @@ function init()
     tape_stop(1)
     tape_reset(1)
   end
+
+  update_softcut_input()
 end
 
 function init_loops(j)
   audio.level_adc(1) -- input volume 1
-  audio.level_adc_cut(1) -- ADC to Softcut input
   audio.level_cut(1) -- Softcut master level (same as in LEVELS screen)
   
   i1=j
@@ -269,7 +275,7 @@ function init_loops(j)
       params:set(i.."length lfo period",0)
       params:set(i.."length lfo offset",0)
       params:set(i.."vol",0.5)
-      params:set(i.."vol lfo amp",0.2)
+      params:set(i.."vol lfo amp",0.3)
       params:set(i.."vol lfo period",0)
       params:set(i.."vol lfo offset",0)
       params:set(i.."rate",8)
@@ -353,11 +359,11 @@ function randomize_lfos()
   for i=1,6 do
     -- params:set(i.."length lfo period",math.random()*30+5)
     -- params:set(i.."length lfo offset",math.random()*60)
-    params:set(i.."vol lfo period",round_time_to_nearest_beat(math.random()*30+1))
+    params:set(i.."vol lfo period",round_time_to_nearest_beat(math.random()*20+2))
     params:set(i.."vol lfo offset",round_time_to_nearest_beat(math.random()*60))
-    params:set(i.."vol lfo amp",math.random()*0.3+0.1)
-    params:set(i.."pan lfo amp",math.random()*0.8+0.2)
-    params:set(i.."pan lfo period",round_time_to_nearest_beat(math.random()*30+1))
+    params:set(i.."vol lfo amp",math.random()*0.25+0.1)
+    params:set(i.."pan lfo amp",math.random()*0.6+0.2)
+    params:set(i.."pan lfo period",round_time_to_nearest_beat(math.random()*20+2))
     params:set(i.."pan lfo offset",round_time_to_nearest_beat(math.random()*60))
   end
 end
@@ -365,6 +371,22 @@ end
 --
 -- updaters
 --
+function update_softcut_input()
+  if params:get("input type")==1 then
+    print("adc only")
+    audio.level_adc_cut(1)
+    audio.level_tape_cut(0)
+  elseif params:get("input type")==2 then 
+    print("tape only")
+    audio.level_tape_cut(1)
+    audio.level_adc_cut(0)
+  else
+    print("tape+adc only")
+    audio.level_adc_cut(1)
+    audio.level_tape_cut(1)
+  end
+end
+
 function update_parameters(x)
   params:write(_path.data..'oooooo/'.."oooooo.pset")
 end
