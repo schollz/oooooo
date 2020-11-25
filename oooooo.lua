@@ -270,6 +270,9 @@ function init_loops(j)
     uP[i].destroying=false
     if i<7 then
       params:set(i.."start",0)
+      params:set(i.."start lfo amp",0.2)
+      params:set(i.."start lfo period",0)
+      params:set(i.."start lfo offset",0)
       params:set(i.."length",uP[i].loopLength)
       params:set(i.."length lfo amp",0.2)
       params:set(i.."length lfo period",0)
@@ -494,10 +497,15 @@ function update_timer()
       uP[i].pan=util.clamp(uP[i].pan,-1,1)
       softcut.pan(i,uP[i].pan)
     end
-    if uP[i].loopUpdate or (params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."length lfo amp")>0) then
+    if uP[i].loopUpdate or (params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."length lfo amp")>0) or 
+       (params:get(i.."start lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."start lfo amp")>0) then
       uS.updateUI=true
       uP[i].loopUpdate=false
       uP[i].loopStart=params:get(i.."start")
+      if params:get(i.."start lfo period")>0 and params:get("pause lfos")==1 then
+        uP[i].loopStart=uP[i].loopStart + uP[i].loopLength+params:get(i.."start lfo amp")*((1+*calculate_lfo(uS.currentTime,params:get(i.."start lfo period"),params:get(i.."start lfo offset")))/2)
+        uP[i].loopStart=util.clamp(up[i].loopStart,params:get(i.."start"),uP[i].loopLength+params:get(i.."start"))
+      end
       uP[i].loopLength=params:get(i.."length")
       if params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 then
         uP[i].loopLength=uP[i].loopLength*(1+params:get(i.."length lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."length lfo period"),params:get(i.."length lfo offset")))/2
