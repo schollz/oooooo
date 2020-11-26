@@ -1,4 +1,4 @@
--- oooooo v1.0.0
+-- oooooo v1.0.1
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -152,7 +152,7 @@ function init()
 
   -- add parameters
   for i=1,6 do
-    params:add_group("loop "..i,22)
+    params:add_group("loop "..i,25)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -169,6 +169,9 @@ function init()
     params:add_option(i.."rate","rate (%)",uC.discreteRates,#uC.discreteRates)
     params:add_control(i.."rate adjust","rate adjust (%)",controlspec.new(-400,400,"lin",0.1,0,"%",0.1/800))
     params:add_option(i.."rate reverse","reverse rate",{"on","off"},2)
+    params:add_control(i.."rate lfo amp","rate lfo amp",controlspec.new(0,1,"lin",0.01,0.25,"",0.01))
+    params:add_control(i.."rate lfo period","rate lfo period",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
+    params:add_control(i.."rate lfo offset","rate lfo offset",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
     params:add_control(i.."pan","pan",controlspec.new(-1,1,"lin",0.01,0,"",0.01/2))
     params:add_control(i.."pan lfo amp","pan lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
     params:add_control(i.."pan lfo period","pan lfo period",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
@@ -287,6 +290,9 @@ function init_loops(j)
       params:set(i.."rate",14)
       params:set(i.."rate adjust",0)
       params:set(i.."rate reverse",2)
+      params:set(i.."rate lfo amp",0.2)
+      params:set(i.."rate lfo period",0)
+      params:set(i.."rate lfo offset",0)
       params:set(i.."pan",0)
       params:set(i.."pan lfo amp",0.5)
       params:set(i.."pan lfo period",0)
@@ -483,10 +489,15 @@ function update_timer()
       end
       softcut.level(i,uP[i].vol)
     end
-    if uP[i].rateUpdate then
+    if uP[i].rateUpdate  or (params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."rate lfo amp")>0) or
+      uP[i].rate ~= uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust") then
       uS.updateUI=true
       uP[i].rateUpdate=false
-      uP[i].rate=uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust")
+      local currentRateIndex = params:get(i.."rate")
+      if params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 then
+        currentRateIndex=util.clamp(round(util.linlin(-1,1,0,1+#uC.discreteRates,params:get(i.."rate lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."rate lfo period"),params:get(i.."rate lfo offset")))),1,#uC.discreteRates)
+      end
+      uP[i].rate=uC.discreteRates[currentRateIndex]+params:get(i.."rate adjust")
       uP[i].rate=uP[i].rate*(params:get(i.."rate reverse")*2-3)/100.0
       softcut.rate(i,uP[i].rate)
     end
