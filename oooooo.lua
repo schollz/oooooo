@@ -73,7 +73,7 @@ uC={
   recArmThreshold=0.03,
   backupNumber=1,
   lfoTime=1,
-  discreteRates={-400,-200,-100,-50,-25,25,50,100,200,400},
+  discreteRates={-400,-200*1.498,-200,-100*1.498,-100,-50*1.498,-50,-25*1.498,-25,25,1.498*25,50,1.498*50,100,1.498*100,200,1.498*200,400},
   discreteBeats={1/4,1/2,1,2},
 }
 
@@ -82,7 +82,7 @@ PATH=_path.audio..'oooooo/'
 function init()
   params:add_separator("oooooo")
   -- add variables into main menu
-  
+
   params:add_group("startup",4)
   params:add_option("load on start","load on start",{"no","yes"},1)
   params:set_action("load on start",update_parameters)
@@ -92,7 +92,7 @@ function init()
   params:set_action("start lfos random",update_parameters)
   params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
   params:set_action("start length",update_parameters)
-  
+
   params:add_group("recording",7)
   params:add_taper("pre level","pre level",0,1,1,0)
   params:set_action("pre level",update_parameters)
@@ -111,7 +111,7 @@ function init()
     update_softcut_input()
     update_parameters()
   end)
-  
+
   params:add_group("other",4)
   params:add_control("backup","tape (backup/save)",controlspec.new(1,8,'lin',1,1))
   params:set_action("backup",update_parameters)
@@ -126,7 +126,7 @@ function init()
   end)
   params:add_option("expert mode","expert mode",{"no","yes"},1)
   params:set_action("expert mode",update_parameters)
-  
+
   params:add_group("all loops",5)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
   params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,0,'% prob'))
@@ -143,18 +143,21 @@ function init()
       params:set(i.."reset every beat",x)
     end
   end)
-  
+
   -- TODO: hook up pausing lfos
   params:read(_path.data..'oooooo/'.."oooooo.pset")
-  
+
   -- reset defaults
   params:set("slew rate",(60/clock.get_tempo())*4)
-  
+
   -- add parameters
   for i=1,6 do
-    params:add_group("loop "..i,19)
+    params:add_group("loop "..i,22)
     --                 id      name min max default k units
     params:add_taper(i.."start","start",0,uC.loopMinMax[2],0,0,"s")
+    params:add_taper(i.."start lfo amp","start lfo amp",0,1,0.2,0,"")
+    params:add_taper(i.."start lfo period","start lfo period",0,60,0,0,"s")
+    params:add_taper(i.."start lfo offset","start lfo offset",0,60,0,0,"s")
     params:add_taper(i.."length","length",uC.loopMinMax[1],uC.loopMinMax[2],(60/clock.get_tempo())*i*4,0,"s")
     params:add_taper(i.."length lfo amp","length lfo amp",0,1,0.2,0,"")
     params:add_taper(i.."length lfo period","length lfo period",0,60,0,0,"s")
@@ -163,7 +166,7 @@ function init()
     params:add_taper(i.."vol lfo amp","vol lfo amp",0,1,0.25,0,"")
     params:add_taper(i.."vol lfo period","vol lfo period",0,60,0,0,"s")
     params:add_taper(i.."vol lfo offset","vol lfo offset",0,60,0,0,"s")
-    params:add_option(i.."rate","rate (%)",uC.discreteRates,8)
+    params:add_option(i.."rate","rate (%)",uC.discreteRates,#uC.discreteRates)
     params:add_taper(i.."rate adjust","rate adjust (%)",-400,400,0,1)
     params:add_option(i.."rate reverse","reverse rate",{"on","off"},2)
     params:add_taper(i.."pan","pan",-1,1,0,0,"")
@@ -174,23 +177,23 @@ function init()
     params:add_option(i.."randomize on reset","randomize on reset",{"no","params","loops","both"},1)
     params:add_option(i.."isempty","is empty",{"false","true"},2)
   end
-  
+
   init_loops(7)
-  
+
   -- make data directory
   if not util.file_exists(PATH) then util.make_dir(PATH) end
-  
+
   -- initialize timer for updating screen
   timer=metro.init()
   timer.time=uC.updateTimerInterval
   timer.count=-1
   timer.event=update_timer
   timer:start()
-  
+
   -- position poll
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
-  
+
   -- listen to audio
   -- and initiate recording on incoming audio
   p_amp_in=poll.set("amp_in_l")
@@ -207,7 +210,7 @@ function init()
     end
   end
   p_amp_in:start()
-  
+
   for i=1,6 do
     params:set_action(i.."vol",function(x) uP[i].volUpdate=true end)
     params:set_action(i.."length",function(x) uP[i].loopUpdate=true end)
@@ -218,11 +221,11 @@ function init()
     params:set_action(i.."rate adjust",function(x) uP[i].rateUpdate=true end)
   end
   redraw()
-  
+
   if params:get("start lfos random")==2 then
     randomize_lfos()
   end
-  
+
   -- end of init
   if params:get("load on start")==2 then
     backup_load()
@@ -240,7 +243,7 @@ end
 function init_loops(j)
   audio.level_adc(1) -- input volume 1
   audio.level_cut(1) -- Softcut master level (same as in LEVELS screen)
-  
+
   i1=j
   i2=j
   if j==7 then
@@ -270,6 +273,9 @@ function init_loops(j)
     uP[i].destroying=false
     if i<7 then
       params:set(i.."start",0)
+      params:set(i.."start lfo amp",0.2)
+      params:set(i.."start lfo period",0)
+      params:set(i.."start lfo offset",0)
       params:set(i.."length",uP[i].loopLength)
       params:set(i.."length lfo amp",0.2)
       params:set(i.."length lfo period",0)
@@ -278,7 +284,7 @@ function init_loops(j)
       params:set(i.."vol lfo amp",0.3)
       params:set(i.."vol lfo period",0)
       params:set(i.."vol lfo offset",0)
-      params:set(i.."rate",8)
+      params:set(i.."rate",14)
       params:set(i.."rate adjust",0)
       params:set(i.."rate reverse",2)
       params:set(i.."pan",0)
@@ -291,7 +297,7 @@ function init_loops(j)
     for j=1,3 do
       uP[i].lfoWarble[j]=math.random(1,60)
     end
-    
+
     if i<7 then
       -- update softcut
       softcut.level(i,0.5)
@@ -304,11 +310,11 @@ function init_loops(j)
       softcut.loop_end(i,uC.bufferMinMax[i][2]+uP[i].loopLength)
       softcut.loop(i,1)
       softcut.rec(i,0)
-      
+
       softcut.fade_time(i,0.2)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
-      
+
       softcut.rec_level(i,params:get("rec level"))
       softcut.pre_level(i,params:get("pre level"))
       softcut.buffer(i,uC.bufferMinMax[i][1])
@@ -330,7 +336,7 @@ function randomize_parameters(j)
     params:set(i.."rate adjust",0)
     -- randomize rates between 25%, 50%, 100%, 200%, 400%
     -- params:set(i.."rate",math.random(#uC.discreteRates))
-    
+
     -- randomize rates between 25%, 50%, 100%
     params:set(i.."rate",math.random(3)+5)
     params:set(i.."rate reverse",math.floor(math.random()*2)+1)
@@ -376,7 +382,7 @@ function update_softcut_input()
     print("adc only")
     audio.level_adc_cut(1)
     audio.level_tape_cut(0)
-  elseif params:get("input type")==2 then 
+  elseif params:get("input type")==2 then
     print("tape only")
     audio.level_tape_cut(1)
     audio.level_adc_cut(0)
@@ -407,7 +413,7 @@ function update_timer()
   --   uC.lfoTime=0
   -- end
   -- tape_warble()
-  
+
   if uS.updateUI then
     redraw()
   end
@@ -494,10 +500,15 @@ function update_timer()
       uP[i].pan=util.clamp(uP[i].pan,-1,1)
       softcut.pan(i,uP[i].pan)
     end
-    if uP[i].loopUpdate or (params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."length lfo amp")>0) then
+    if uP[i].loopUpdate or (params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."length lfo amp")>0) or
+      (params:get(i.."start lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."start lfo amp")>0) then
       uS.updateUI=true
       uP[i].loopUpdate=false
       uP[i].loopStart=params:get(i.."start")
+      if params:get(i.."start lfo period")>0 and params:get("pause lfos")==1 then
+        uP[i].loopStart=params:get(i.."start")+uP[i].loopLength*params:get(i.."start lfo amp")*((1+calculate_lfo(uS.currentTime,params:get(i.."start lfo period"),params:get(i.."start lfo offset")))/2)
+        uP[i].loopStart=util.clamp(uP[i].loopStart,params:get(i.."start"),uP[i].loopLength+params:get(i.."start"))
+      end
       uP[i].loopLength=params:get(i.."length")
       if params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 then
         uP[i].loopLength=uP[i].loopLength*(1+params:get(i.."length lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."length lfo period"),params:get(i.."length lfo offset")))/2
@@ -523,10 +534,10 @@ end
 function backup_save()
   print("backup_save")
   show_message("saved")
-  
+
   -- write file of user data
   params:write(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
-  
+
   -- save tape
   softcut.buffer_write_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,-1)
 end
@@ -534,10 +545,10 @@ end
 function backup_load()
   print("backup_load")
   show_message("loaded")
-  
+
   -- load parameters from file
   params:read(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
-  
+
   -- load buffer from file
   if util.file_exists(PATH.."oooooo"..params:get("backup")..".wav") then
     softcut.buffer_clear()
@@ -640,7 +651,7 @@ function tape_stop_rec(i,change_loop)
     end
     softcut.rec(i,0)
   end)
-  
+
   -- change the loop size if specified
   print('params:get("rec thru loops") '..params:get("rec thru loops"))
   if not still_armed then
@@ -682,7 +693,7 @@ function tape_clear(i)
     redraw()
   end)
   redraw()
-  
+
   if i==7 then
     -- clear everything
     softcut.buffer_clear()
@@ -865,7 +876,7 @@ function key(n,z)
     elseif uS.shift==false and n==3 then
       -- play tape
       tape_play(uS.loopNum)
-      
+
     elseif n==2 then
       -- clear
       tape_clear(uS.loopNum)
@@ -920,9 +931,12 @@ function key(n,z)
         show_message("loop "..uS.loopNum.." lfo on")
         params:set(uS.loopNum.."length lfo offset",math.random()*60)
         params:set(uS.loopNum.."length lfo period",math.random()*60)
+        params:set(uS.loopNum.."start lfo offset",math.random()*60)
+        params:set(uS.loopNum.."start lfo period",math.random()*60)
       else
         show_message("loop "..uS.loopNum.." lfo off")
         params:set(uS.loopNum.."length lfo period",0)
+        params:set(uS.loopNum.."start lfo period",0)
       end
     elseif uS.selectedPar==3 then
       -- toggle lfo for loops
@@ -958,16 +972,16 @@ end
 function redraw()
   uS.updateUI=false
   screen.clear()
-  
+
   -- check shift
   shift_amount=0
   if uS.shift then
     shift_amount=4
   end
-  
+
   -- show header
   screen.level(15)
-  
+
   -- show state symbol
   anyRecording=false
   anyPrimed=false
@@ -1008,7 +1022,7 @@ function redraw()
       screen.line(122,8)
     end
   end
-  
+
   -- show loop info
   x=4+shift_amount
   y=8+shift_amount
@@ -1023,7 +1037,7 @@ function redraw()
     screen.rect(x-3,y-7,10,10)
     screen.stroke()
   end
-  
+
   x=-7
   y=60
   if uS.loopNum==7 then
@@ -1059,11 +1073,11 @@ function redraw()
       screen.level(1)
     end
     screen.text(string.format("%1.1f",uP[uS.loopNum].loopStart))
-    
+
     screen.move(x+24,y)
     screen.level(1)
     screen.text("-")
-    
+
     screen.move(x+30,y)
     if uS.selectedPar==2 then
       screen.level(15)
@@ -1087,7 +1101,7 @@ function redraw()
     screen.move(x+10,y)
     screen.text("warble")
   end
-  
+
   -- draw representation of current loop states
   for i=1,6 do
     if uS.loopNum==i then goto continue end
@@ -1111,7 +1125,7 @@ function redraw()
       screen.circle(x,y,r+1)
     end
     screen.stroke()
-    
+
     -- draw pixels at position if it has data or
     -- its being recorded/primed
     angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
@@ -1145,7 +1159,7 @@ function redraw()
       screen.circle(x,y,r+1)
     end
     screen.stroke()
-    
+
     -- draw pixels at position if it has data or
     -- its being recorded/primed
     angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
@@ -1157,7 +1171,7 @@ function redraw()
     end
     ::continue::
   end
-  
+
   if uS.message~="" then
     screen.level(0)
     x=64
@@ -1171,7 +1185,7 @@ function redraw()
     screen.move(x,y+7)
     screen.text_center(uS.message)
   end
-  
+
   screen.update()
 end
 
@@ -1181,17 +1195,17 @@ end
 -- from https://github.com/frederickk/b-b-b-b-beat
 function tape_icon(x,y)
   local r=2
-  
+
   screen.move(math.floor(x),math.floor(y)-4)
   screen.line_rel(1,0)
   screen.line_rel((r*5),0)
-  
+
   for i=0,6,2 do
     screen.move(math.floor(x)+(r*i),math.floor(y)-4)
     screen.line_rel(0,1)
     screen.line_rel(0,r)
   end
-  
+
   screen.move(math.floor(x),math.floor(y)+(r*2)-4)
   screen.line_rel(1,0)
   screen.line_rel(r,0)
