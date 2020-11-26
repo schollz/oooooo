@@ -152,9 +152,12 @@ function init()
 
   -- add parameters
   for i=1,6 do
-    params:add_group("loop "..i,19)
+    params:add_group("loop "..i,22)
     --                 id      name min max default k units
     params:add_taper(i.."start","start",0,uC.loopMinMax[2],0,0,"s")
+    params:add_taper(i.."start lfo amp","start lfo amp",0,1,0.2,0,"")
+    params:add_taper(i.."start lfo period","start lfo period",0,60,0,0,"s")
+    params:add_taper(i.."start lfo offset","start lfo offset",0,60,0,0,"s")
     params:add_taper(i.."length","length",uC.loopMinMax[1],uC.loopMinMax[2],(60/clock.get_tempo())*i*4,0,"s")
     params:add_taper(i.."length lfo amp","length lfo amp",0,1,0.2,0,"")
     params:add_taper(i.."length lfo period","length lfo period",0,60,0,0,"s")
@@ -503,8 +506,8 @@ function update_timer()
       uP[i].loopUpdate=false
       uP[i].loopStart=params:get(i.."start")
       if params:get(i.."start lfo period")>0 and params:get("pause lfos")==1 then
-        uP[i].loopStart=uP[i].loopStart+uP[i].loopLength+params:get(i.."start lfo amp")*((1+*calculate_lfo(uS.currentTime,params:get(i.."start lfo period"),params:get(i.."start lfo offset")))/2)
-        uP[i].loopStart=util.clamp(up[i].loopStart,params:get(i.."start"),uP[i].loopLength+params:get(i.."start"))
+        uP[i].loopStart=params:get(i.."start")+uP[i].loopLength*params:get(i.."start lfo amp")*((1+calculate_lfo(uS.currentTime,params:get(i.."start lfo period"),params:get(i.."start lfo offset")))/2)
+        uP[i].loopStart=util.clamp(uP[i].loopStart,params:get(i.."start"),uP[i].loopLength+params:get(i.."start"))
       end
       uP[i].loopLength=params:get(i.."length")
       if params:get(i.."length lfo period")>0 and params:get("pause lfos")==1 then
@@ -928,9 +931,12 @@ function key(n,z)
         show_message("loop "..uS.loopNum.." lfo on")
         params:set(uS.loopNum.."length lfo offset",math.random()*60)
         params:set(uS.loopNum.."length lfo period",math.random()*60)
+        params:set(uS.loopNum.."start lfo offset",math.random()*60)
+        params:set(uS.loopNum.."start lfo period",math.random()*60)
       else
         show_message("loop "..uS.loopNum.." lfo off")
         params:set(uS.loopNum.."length lfo period",0)
+        params:set(uS.loopNum.."start lfo period",0)
       end
     elseif uS.selectedPar==3 then
       -- toggle lfo for loops
