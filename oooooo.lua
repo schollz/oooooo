@@ -23,6 +23,8 @@
 -- K2 or K3 activates or lfos
 -- E3 adjusts parameter
 
+local Formatters=require 'formatters'
+
 -- user parameters
 uP={
   -- initialized in init
@@ -73,7 +75,7 @@ uC={
   recArmThreshold=0.03,
   backupNumber=1,
   lfoTime=1,
-  discreteRates={-400,-200*1.498,-200,-100*1.498,-100,-50*1.498,-50,-25*1.498,-25,25,1.498*25,50,1.498*50,100,1.498*100,200,1.498*200,400},
+  discreteRates={-400,-200*1.498,-200,-100*1.498,-100,-50*1.498,-50,-25*1.498,-25,0,25,1.498*25,50,1.498*50,100,1.498*100,200,1.498*200,400},
   discreteBeats={1/4,1/2,1,2},
 }
 
@@ -151,8 +153,10 @@ function init()
   params:set("slew rate",(60/clock.get_tempo())*4)
 
   -- add parameters
+  filter_resonance = controlspec.new(0.05,1,'lin',0,0.25,'')
+  filter_freq = controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,25)
+    params:add_group("loop "..i,28)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -169,6 +173,7 @@ function init()
     params:add_option(i.."rate","rate (%)",uC.discreteRates,#uC.discreteRates)
     params:add_control(i.."rate adjust","rate adjust (%)",controlspec.new(-400,400,"lin",0.1,0,"%",0.1/800))
     params:add_option(i.."rate reverse","reverse rate",{"on","off"},2)
+    params:add_option(i.."rate lfo center","rate lfo center (%)",uC.discreteRates,#uC.discreteRates)
     params:add_control(i.."rate lfo amp","rate lfo amp",controlspec.new(0,1,"lin",0.01,0.25,"",0.01))
     params:add_control(i.."rate lfo period","rate lfo period",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
     params:add_control(i.."rate lfo offset","rate lfo offset",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
@@ -179,6 +184,25 @@ function init()
     params:add_control(i.."reset every beat","reset every",controlspec.new(0,64,"lin",1,0,"beats"))
     params:add_option(i.."randomize on reset","randomize on reset",{"no","params","loops","both"},1)
     params:add_option(i.."isempty","is empty",{"false","true"},2)
+    params:add {
+      type='control',
+      id=i..'filter_frequency',
+      name='filter cutoff',
+      controlspec=filter_freq,
+      formatter=Formatters.format_freq,
+      action=function(value)
+          softcut.post_filter_fc(i,value)
+      end
+    }
+    params:add {
+      type='control',
+      id=i..'filter_reso',
+      name='filter resonance',
+      controlspec=filter_resonance,
+      action=function(value)
+        softcut.post_filter_rq(i,value)
+      end
+    }
   end
 
   init_loops(7)
@@ -287,9 +311,10 @@ function init_loops(j)
       params:set(i.."vol lfo amp",0.3)
       params:set(i.."vol lfo period",0)
       params:set(i.."vol lfo offset",0)
-      params:set(i.."rate",14)
+      params:set(i.."rate",15)
       params:set(i.."rate adjust",0)
       params:set(i.."rate reverse",2)
+      params:set(i.."rate lfo center",10)
       params:set(i.."rate lfo amp",0.2)
       params:set(i.."rate lfo period",0)
       params:set(i.."rate lfo offset",0)
@@ -327,6 +352,16 @@ function init_loops(j)
       softcut.position(i,uC.bufferMinMax[i][2])
       softcut.enable(i,1)
       softcut.phase_quant(i,0.025)
+
+      softcut.post_filter_dry(i,0.0)
+      softcut.post_filter_lp(i,1.0)
+      softcut.post_filter_rq(i,0.3)
+      softcut.post_filter_fc(i,44100)
+
+      softcut.pre_filter_dry(i,1.0)
+      softcut.pre_filter_lp(i,1.0)
+      softcut.pre_filter_rq(i,0.3)
+      softcut.pre_filter_fc(i,44100)
     end
   end
 end
@@ -494,8 +529,9 @@ function update_timer()
       uS.updateUI=true
       uP[i].rateUpdate=false
       local currentRateIndex = params:get(i.."rate")
-      if params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 then
-        currentRateIndex=util.clamp(round(util.linlin(-1,1,0,1+#uC.discreteRates,params:get(i.."rate lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."rate lfo period"),params:get(i.."rate lfo offset")))),1,#uC.discreteRates)
+      if params:get(i.."rate lfo period")>0 and params:get(i.."rate lfo amp")>0 and params:get("pause lfos")==1 then
+        currentRateIndex=util.clamp(params:get(i.."rate lfo center")+round(util.linlin(-1,1,-#uC.discreteRates,#uC.discreteRates,params:get(i.."rate lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."rate lfo period"),params:get(i.."rate lfo offset")))),1,#uC.discreteRates)
+        -- currentRateIndex=util.clamp(round(util.linlin(-1,1,0,1+#uC.discreteRates,params:get(i.."rate lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."rate lfo period"),params:get(i.."rate lfo offset")))),1,#uC.discreteRates)
       end
       uP[i].rate=uC.discreteRates[currentRateIndex]+params:get(i.."rate adjust")
       uP[i].rate=uP[i].rate*(params:get(i.."rate reverse")*2-3)/100.0
@@ -960,8 +996,20 @@ function key(n,z)
         params:set(uS.loopNum.."vol lfo period",0)
       end
     elseif uS.selectedPar==4 then
-      -- toggle reverse
-      params:set(uS.loopNum.."rate reverse",3-params:get(uS.loopNum.."rate reverse"))
+      if uS.shift then 
+        -- toggle rate lfo 
+        if params:get(uS.loopNum.."rate lfo period") == 0 then 
+          params:set(uS.loopNum.."rate lfo period",0.4)
+        end
+        if params:get(uS.loopNum.."rate lfo amp") == 0 then 
+          params:set(uS.loopNum.."rate lfo amp",0.6)
+        else
+          params:set(uS.loopNum.."rate lfo amp",0)
+        end
+      else
+        -- toggle reverse
+        params:set(uS.loopNum.."rate reverse",3-params:get(uS.loopNum.."rate reverse"))
+      end
     elseif uS.selectedPar==5 then
       -- toggle lfo for pan
       if params:get(uS.loopNum.."pan lfo period")==0 and uS.loopNum~=7 then
