@@ -1,4 +1,4 @@
--- oooooo v1.1.1
+-- oooooo v1.2.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -156,7 +156,7 @@ function init()
   filter_resonance = controlspec.new(0.05,1,'lin',0,0.25,'')
   filter_freq = controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,28)
+    params:add_group("loop "..i,30)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -183,7 +183,6 @@ function init()
     params:add_control(i.."pan lfo offset","pan lfo offset",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
     params:add_control(i.."reset every beat","reset every",controlspec.new(0,64,"lin",1,0,"beats"))
     params:add_option(i.."randomize on reset","randomize on reset",{"no","params","loops","both"},1)
-    params:add_option(i.."isempty","is empty",{"false","true"},2)
     params:add {
       type='control',
       id=i..'filter_frequency',
@@ -203,6 +202,27 @@ function init()
         softcut.post_filter_rq(i,value)
       end
     }
+    params:add{ type='binary', name="recording trig", id=i..'recording trig', behavior='momentary', 
+      action=function(v) 
+        if v == 1 then 
+          if uS.recording[i]>0 then
+            tape_stop_rec(i)
+          else
+            tape_rec(i)
+          end
+        end
+    end }
+    params:add{ type='binary', name="arming trig", id=i..'arming trig', behavior='momentary', 
+      action=function(v) 
+        if v == 1 then 
+          if uS.recording[i]>0 then
+            tape_stop_rec(i)
+          else
+            tape_arm_rec(i)
+          end
+        end
+    end }
+    params:add_option(i.."isempty","is empty",{"false","true"},2)
   end
 
   init_loops(7)
@@ -461,7 +481,7 @@ function update_timer()
   for i=1,6 do
     if uS.recording[i]==2 then
       uS.recordingTime[i]=uS.recordingTime[i]+uC.updateTimerInterval
-      if uS.recordingTime[i]>=uP[uS.loopNum].loopLength then
+      if uS.recordingTime[i]>=uP[i].loopLength then
         uS.recordingLoopNum[i]=uS.recordingLoopNum[i]+1
         if uS.recordingLoopNum[i]>=params:get("stop rec after") and uS.recordingLoopNum[i]<64 then
           -- stop recording when reached a full loop
