@@ -109,8 +109,7 @@ function init()
     options=shareable,
     action=function(value)
       print(value)
-    end
-  }
+  end}
   params:add{ type='binary', name="LOAD", id='load_shared', behavior='momentary', 
       action=function(v) 
         choose_shared = params:get("choose_shared")
