@@ -30,9 +30,9 @@ local Formatters=require 'formatters'
 -----------------------
 local json=nil
 local share=nil
-if util.file_exists("/home/we/dust/code/share.norns.online") then
-  json=include("share.norns.online/lib/json")
-  share=include("share.norns.online/lib/share")
+if util.file_exists("/home/we/dust/data/norns.online/username") then
+  json=include("norns.online/lib/json")
+  share=include("norns.online/lib/share")
 end
 -----------------------
 -- end for sharing --
@@ -102,14 +102,15 @@ function init()
     tape_play(7)
   end
   local script_name="oooooo"
+  local save_dir = "/home/we/dust/data/"..script_name.."/share/"
   if json~=nil and share~=nil then
     local curtime=os.clock()
     print(curtime)
-    params:add_group("SHARING",4)
-    local f=io.popen('cd /home/we/dust/data/'..script_name..'; ls -d *')
+    params:add_group("SHARE",5)
+    local f=io.popen('cd '..save_dir..'; ls -d *')
     shareable={"-"}
     for name in f:lines() do
-      if string.match(name,".json") and string.match(name,"20") then
+      if string.match(name,".json") then
         table.insert(shareable,name:match("^(.+).json$"))
       end
     end
@@ -128,54 +129,75 @@ function init()
         if v==1 and choose_shared>1 then
           print("LOADING")
           _menu.redraw()
-          params:set("show_msg","LOADING")
-          datename="/home/we/dust/data/"..script_name.."/"..shareable[choose_shared]
+          params:set("show_msg","loading")
+          dataname=save_dir..shareable[choose_shared]
+
           -- update state
-          data=json.decode(share.read_file(datename..".json"))
+          data=json.decode(share.read_file(dataname..".json"))
           if data~=nil then
             uS=data
           end
           -- update softcut
-          softcut.buffer_read_stereo(datename..".wav",0,0,-1)
+          softcut.buffer_read_stereo(dataname..".wav",0,0,-1)
+
           -- update parameters
           curtime=os.clock() -- prevent bang
-          params:read(datename..".pset")
+          params:read(dataname..".pset")
           params:set("choose_shared",choose_shared)
-          params:set("show_msg","LOADED")
+          params:set("show_msg","loaded")
+
           _menu.redraw()
+
+          -- run script specific stuff
           script_specific()
         end
       end
     }
+    params:add_text('upload_name',"UPLOAD NAME","")
     params:add{type='binary',name="UPLOAD",id='upload_share',behavior='momentary',
       action=function(v)
         print(os.clock()-curtime)
         if v==1 and os.clock()-curtime>0.02 then
           curtime=os.clock()
           print("UPLOADING")
-          params:set("show_msg","UPLOADING")
+          params:set("show_msg","uploading")
           _menu.redraw()
+
           -- generate a date-based name
-          datename=os.date("%Y%m%d%H%M")
+          dataname=os.date("%Y%m%d%H%M")
+          print('params:get("upload_name"): '..params:get("upload_name"))
+          if params:get("upload_name") ~= "" then 
+            dataname = params:get("upload_name")
+          end
+
           -- encode state and upload
-          statejson=json.encode(uS)
-          share.write_file("/dev/shm/"..datename..".json",statejson)
-          share.upload(script_name,datename,"/dev/shm/"..datename..".json","/home/we/dust/data/"..script_name.."/")
-          os.remove("/dev/shm/"..datename..".json")
+          statejson=json.encode(uS) -- <- MAKE SURE TO CHANGE YOUR STATE
+          share.write_file("/dev/shm/"..dataname..".json",statejson)
+          share.upload(script_name,dataname,"/dev/shm/"..dataname..".json",save_dir)
+          os.remove("/dev/shm/"..dataname..".json")
+
           -- encode parameters and upload
-          params:write("/dev/shm/"..datename..".pset")
-          share.upload(script_name,datename,"/dev/shm/"..datename..".pset","/home/we/dust/data/"..script_name.."/")
-          os.remove("/dev/shm/"..datename..".json")
+          params:write("/dev/shm/"..dataname..".pset")
+          share.upload(script_name,dataname,"/dev/shm/"..dataname..".pset",save_dir)
+          os.remove("/dev/shm/"..dataname..".json")
+
           -- dump softcut and upload
-          softcut.buffer_write_stereo("/dev/shm/"..datename..".wav",0,-1)
-          share.upload(script_name,datename,"/dev/shm/"..datename..".wav","/home/we/dust/data/"..script_name.."/")
-          os.remove("/dev/shm/"..datename..".wav")
-          params:set("show_msg","UPLOADED")
+          softcut.buffer_write_stereo("/dev/shm/"..dataname..".wav",0,-1)
+          share.upload(script_name,dataname,"/dev/shm/"..dataname..".wav",save_dir)
+          os.remove("/dev/shm/"..dataname..".wav")
+
+          -- show message
+          params:set("show_msg","uploaded")
         end
       end
     }
     params:add_text('show_msg',"MESSAGE","")
   end
+  clock.run(function()
+    -- reset just in case parameters get loaded
+    clock.sleep(1)
+    params:set("show_msg","")
+  end)
   --------------------------
   -- end of sharing stuff --
   --------------------------
