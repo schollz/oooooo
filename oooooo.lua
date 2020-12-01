@@ -1,4 +1,4 @@
--- oooooo v1.2.0
+-- oooooo v1.3.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -253,7 +253,7 @@ function init()
   filter_resonance=controlspec.new(0.05,1,'lin',0,0.25,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,30)
+    params:add_group("loop "..i,31)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -321,7 +321,22 @@ function init()
         end
       end
     }
+    params:add_file(i.."load_file","load audio","/home/we/dust/audio/")
+    params:set_action(i.."load_file",function(x)
+      print("load_file",i,x)
+      local ch,samples,samplerate=audio.file_info(x)
+      local duration=samples/48000.0
+      print(duration)
+      tape_stop(i)
+      softcut.buffer_read_mono(x,0,uC.bufferMinMax[i][2],uC.loopMinMax[2],1,uC.bufferMinMax[i][1])
+      params:set(i.."rate adjust",100*samplerate/48000.0-100)
+      params:set(i.."start",0)
+      params:set(i.."length",duration)
+      params:set(i.."isempty",1)
+      tape_play(i)
+    end)
     params:add_option(i.."isempty","is empty",{"false","true"},2)
+    params:hide(i.."isempty")
   end
 
   init_loops(7)
