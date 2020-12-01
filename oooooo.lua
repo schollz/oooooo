@@ -133,7 +133,7 @@ function init()
           _menu.redraw()
           tape_play(7)
         end
-  end }
+  end}
   params:add{ type='binary', name="UPLOAD", id='upload_share', behavior='momentary', 
     action=function(v) 
       print(os.clock()-curtime)
@@ -158,7 +158,7 @@ function init()
         os.remove("/dev/shm/"..datename..".wav")        
         params:set("show_msg","UPLOADED")
       end
-  end }
+  end}
   params:add_text('show_msg',"MESSAGE","")
 
   --------------------------
