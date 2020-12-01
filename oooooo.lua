@@ -102,7 +102,7 @@ function init()
     tape_play(7)
   end
   local script_name="oooooo"
-  local save_dir = "/home/we/dust/data/"..script_name.."/share/"
+  local save_dir="/home/we/dust/data/"..script_name.."/share/"
   if json~=nil and share~=nil then
     local curtime=os.clock()
     print(curtime)
@@ -166,8 +166,8 @@ function init()
           -- generate a date-based name
           dataname=os.date("%Y%m%d%H%M")
           print('params:get("upload_name"): '..params:get("upload_name"))
-          if params:get("upload_name") ~= "" then 
-            dataname = params:get("upload_name")
+          if params:get("upload_name")~="" then
+            dataname=params:get("upload_name")
           end
 
           -- encode state and upload
