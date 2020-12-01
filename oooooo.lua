@@ -25,6 +25,9 @@
 
 local Formatters=require 'formatters'
 
+local json=include("share.norns.online/lib/json")
+local share=include("share.norns.online/lib/share")
+
 -- user parameters
 uP={
   -- initialized in init
@@ -82,6 +85,82 @@ uC={
 PATH=_path.audio..'oooooo/'
 
 function init()
+  -----------------------
+  -- start for sharing --
+  -----------------------
+  local curtime = os.clock()
+  print(curtime)
+  params:add_group("SHARING",4)
+  local f=io.popen('cd /home/we/dust/data/oooooo; ls -d *')
+  shareable = {"-"}
+  for name in f:lines() do
+    if string.match(name,".json") and string.match(name,"20") then
+      table.insert(shareable,name:match("^(.+).json$"))
+    end
+  end
+  params:add {
+    type='option',
+    id='choose_shared',
+    name='CHOOSE',
+    options=shareable,
+    action=function(value)
+      print(value)
+    end
+  }
+  params:add{ type='binary', name="LOAD", id='load_shared', behavior='momentary', 
+      action=function(v) 
+        choose_shared = params:get("choose_shared")
+        if v==1 and choose_shared > 1 then
+        print("LOADING") 
+        _menu.redraw()
+        params:set("show_msg","LOADING")
+          datename = "/home/we/dust/data/oooooo/"..shareable[choose_shared]
+          -- update state
+          data = json.decode(share.read_file(datename..".json"))
+          if data ~= nil then 
+            state = data
+          end
+          -- update softcut
+          softcut.buffer_read_stereo(datename..".wav",0,0,-1)
+          -- update parameters
+          curtime=os.clock() -- prevent bang
+          params:read(datename..".pset")
+          params:set("choose_shared",choose_shared)
+          params:set("show_msg","LOADED")
+          _menu.redraw()
+          tape_play(7)
+        end
+  end }
+  params:add{ type='binary', name="UPLOAD", id='upload_share', behavior='momentary', 
+    action=function(v) 
+      print(os.clock()-curtime)
+      if v == 1 and os.clock()-curtime > 0.02 then
+        print("UPLOADING") 
+        params:set("show_msg","UPLOADING")
+        _menu.redraw()
+        -- generate a date-based name
+        datename = os.date("%Y%m%d%H%M")
+        -- encode state and upload
+        statejson = json.encode(uS)
+        share.write_file("/dev/shm/"..datename..".json",statejson)
+        share.upload("oooooo",datename,"/dev/shm/"..datename..".json","/home/we/dust/data/oooooo/")
+        os.remove("/dev/shm/"..datename..".json")
+        -- encode parameters and upload
+        params:write("/dev/shm/"..datename..".pset")
+        share.upload("oooooo",datename,"/dev/shm/"..datename..".pset","/home/we/dust/data/oooooo/")
+        os.remove("/dev/shm/"..datename..".json")
+        -- dump softcut and upload
+        softcut.buffer_write_stereo("/dev/shm/"..datename..".wav",0,-1)
+        share.upload("oooooo",datename,"/dev/shm/"..datename..".wav","/home/we/dust/data/oooooo/")
+        os.remove("/dev/shm/"..datename..".wav")        
+        params:set("show_msg","UPLOADED")
+      end
+  end }
+  params:add_text('show_msg',"MESSAGE","")
+
+  --------------------------
+  -- end of sharing stuff -- 
+  --------------------------
   params:add_separator("oooooo")
   -- add variables into main menu
 
