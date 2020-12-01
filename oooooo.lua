@@ -101,7 +101,7 @@ function init()
   local function script_specific()
     tape_play(7)
   end
-  local script_name="oooooo"
+  local script_name = "oooooo"
   if json~=nil and share~=nil then
     local curtime=os.clock()
     print(curtime)
@@ -133,7 +133,7 @@ function init()
           -- update state
           data=json.decode(share.read_file(datename..".json"))
           if data~=nil then
-            state=data
+            uS=data
           end
           -- update softcut
           softcut.buffer_read_stereo(datename..".wav",0,0,-1)
@@ -151,6 +151,7 @@ function init()
       action=function(v)
         print(os.clock()-curtime)
         if v==1 and os.clock()-curtime>0.02 then
+          curtime=os.clock()
           print("UPLOADING")
           params:set("show_msg","UPLOADING")
           _menu.redraw()
