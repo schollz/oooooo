@@ -101,7 +101,7 @@ function init()
   local function script_specific()
     tape_play(7)
   end
-  local script_name = "oooooo"
+  local script_name="oooooo"
   if json~=nil and share~=nil then
     local curtime=os.clock()
     print(curtime)
