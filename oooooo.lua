@@ -25,8 +25,12 @@
 
 local Formatters=require 'formatters'
 
-local json=include("share.norns.online/lib/json")
-local share=include("share.norns.online/lib/share")
+local json = nil  
+local share = nil 
+if util.file_exists("/home/we/dust/code/share.norns.online") then
+  json=include("share.norns.online/lib/json")
+  share=include("share.norns.online/lib/share")
+end
 
 -- user parameters
 uP={
