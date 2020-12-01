@@ -25,12 +25,18 @@
 
 local Formatters=require 'formatters'
 
-local json = nil  
-local share = nil 
+-----------------------
+-- start for sharing --
+-----------------------
+local json=nil
+local share=nil
 if util.file_exists("/home/we/dust/code/share.norns.online") then
   json=include("share.norns.online/lib/json")
   share=include("share.norns.online/lib/share")
 end
+-----------------------
+-- end for sharing --
+-----------------------
 
 -- user parameters
 uP={
@@ -92,36 +98,42 @@ function init()
   -----------------------
   -- start for sharing --
   -----------------------
-  local curtime = os.clock()
-  print(curtime)
-  params:add_group("SHARING",4)
-  local f=io.popen('cd /home/we/dust/data/oooooo; ls -d *')
-  shareable = {"-"}
-  for name in f:lines() do
-    if string.match(name,".json") and string.match(name,"20") then
-      table.insert(shareable,name:match("^(.+).json$"))
-    end
+  local function script_specific()
+    tape_play(7)
   end
-  params:add {
-    type='option',
-    id='choose_shared',
-    name='CHOOSE',
-    options=shareable,
-    action=function(value)
-      print(value)
-  end}
-  params:add{ type='binary', name="LOAD", id='load_shared', behavior='momentary', 
-      action=function(v) 
-        choose_shared = params:get("choose_shared")
-        if v==1 and choose_shared > 1 then
-        print("LOADING") 
-        _menu.redraw()
-        params:set("show_msg","LOADING")
-          datename = "/home/we/dust/data/oooooo/"..shareable[choose_shared]
+  local script_name = "oooooo"
+  if json~=nil and share~=nil then
+    local curtime=os.clock()
+    print(curtime)
+    params:add_group("SHARING",4)
+    local f=io.popen('cd /home/we/dust/data/'..script_name..'; ls -d *')
+    shareable={"-"}
+    for name in f:lines() do
+      if string.match(name,".json") and string.match(name,"20") then
+        table.insert(shareable,name:match("^(.+).json$"))
+      end
+    end
+    params:add {
+      type='option',
+      id='choose_shared',
+      name='CHOOSE',
+      options=shareable,
+      action=function(value)
+        print(value)
+      end
+    }
+    params:add{type='binary',name="LOAD",id='load_shared',behavior='momentary',
+      action=function(v)
+        choose_shared=params:get("choose_shared")
+        if v==1 and choose_shared>1 then
+          print("LOADING")
+          _menu.redraw()
+          params:set("show_msg","LOADING")
+          datename="/home/we/dust/data/"..script_name.."/"..shareable[choose_shared]
           -- update state
-          data = json.decode(share.read_file(datename..".json"))
-          if data ~= nil then 
-            state = data
+          data=json.decode(share.read_file(datename..".json"))
+          if data~=nil then
+            state=data
           end
           -- update softcut
           softcut.buffer_read_stereo(datename..".wav",0,0,-1)
@@ -131,38 +143,40 @@ function init()
           params:set("choose_shared",choose_shared)
           params:set("show_msg","LOADED")
           _menu.redraw()
-          tape_play(7)
+          script_specific()
         end
-  end}
-  params:add{ type='binary', name="UPLOAD", id='upload_share', behavior='momentary', 
-    action=function(v) 
-      print(os.clock()-curtime)
-      if v == 1 and os.clock()-curtime > 0.02 then
-        print("UPLOADING") 
-        params:set("show_msg","UPLOADING")
-        _menu.redraw()
-        -- generate a date-based name
-        datename = os.date("%Y%m%d%H%M")
-        -- encode state and upload
-        statejson = json.encode(uS)
-        share.write_file("/dev/shm/"..datename..".json",statejson)
-        share.upload("oooooo",datename,"/dev/shm/"..datename..".json","/home/we/dust/data/oooooo/")
-        os.remove("/dev/shm/"..datename..".json")
-        -- encode parameters and upload
-        params:write("/dev/shm/"..datename..".pset")
-        share.upload("oooooo",datename,"/dev/shm/"..datename..".pset","/home/we/dust/data/oooooo/")
-        os.remove("/dev/shm/"..datename..".json")
-        -- dump softcut and upload
-        softcut.buffer_write_stereo("/dev/shm/"..datename..".wav",0,-1)
-        share.upload("oooooo",datename,"/dev/shm/"..datename..".wav","/home/we/dust/data/oooooo/")
-        os.remove("/dev/shm/"..datename..".wav")        
-        params:set("show_msg","UPLOADED")
       end
-  end}
-  params:add_text('show_msg',"MESSAGE","")
-
+    }
+    params:add{type='binary',name="UPLOAD",id='upload_share',behavior='momentary',
+      action=function(v)
+        print(os.clock()-curtime)
+        if v==1 and os.clock()-curtime>0.02 then
+          print("UPLOADING")
+          params:set("show_msg","UPLOADING")
+          _menu.redraw()
+          -- generate a date-based name
+          datename=os.date("%Y%m%d%H%M")
+          -- encode state and upload
+          statejson=json.encode(uS)
+          share.write_file("/dev/shm/"..datename..".json",statejson)
+          share.upload(script_name,datename,"/dev/shm/"..datename..".json","/home/we/dust/data/"..script_name.."/")
+          os.remove("/dev/shm/"..datename..".json")
+          -- encode parameters and upload
+          params:write("/dev/shm/"..datename..".pset")
+          share.upload(script_name,datename,"/dev/shm/"..datename..".pset","/home/we/dust/data/"..script_name.."/")
+          os.remove("/dev/shm/"..datename..".json")
+          -- dump softcut and upload
+          softcut.buffer_write_stereo("/dev/shm/"..datename..".wav",0,-1)
+          share.upload(script_name,datename,"/dev/shm/"..datename..".wav","/home/we/dust/data/"..script_name.."/")
+          os.remove("/dev/shm/"..datename..".wav")
+          params:set("show_msg","UPLOADED")
+        end
+      end
+    }
+    params:add_text('show_msg',"MESSAGE","")
+  end
   --------------------------
-  -- end of sharing stuff -- 
+  -- end of sharing stuff --
   --------------------------
   params:add_separator("oooooo")
   -- add variables into main menu
@@ -235,8 +249,8 @@ function init()
   params:set("slew rate",(60/clock.get_tempo())*4)
 
   -- add parameters
-  filter_resonance = controlspec.new(0.05,1,'lin',0,0.25,'')
-  filter_freq = controlspec.new(20,20000,'exp',0,20000,'Hz')
+  filter_resonance=controlspec.new(0.05,1,'lin',0,0.25,'')
+  filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
     params:add_group("loop "..i,30)
     --                 id      name min max default k units
@@ -272,7 +286,7 @@ function init()
       controlspec=filter_freq,
       formatter=Formatters.format_freq,
       action=function(value)
-          softcut.post_filter_fc(i,value)
+        softcut.post_filter_fc(i,value)
       end
     }
     params:add {
@@ -284,26 +298,28 @@ function init()
         softcut.post_filter_rq(i,value)
       end
     }
-    params:add{ type='binary', name="recording trig", id=i..'recording trig', behavior='momentary', 
-      action=function(v) 
-        if v == 1 then 
+    params:add{type='binary',name="recording trig",id=i..'recording trig',behavior='momentary',
+      action=function(v)
+        if v==1 then
           if uS.recording[i]>0 then
             tape_stop_rec(i)
           else
             tape_rec(i)
           end
         end
-    end }
-    params:add{ type='binary', name="arming trig", id=i..'arming trig', behavior='momentary', 
-      action=function(v) 
-        if v == 1 then 
+      end
+    }
+    params:add{type='binary',name="arming trig",id=i..'arming trig',behavior='momentary',
+      action=function(v)
+        if v==1 then
           if uS.recording[i]>0 then
             tape_stop_rec(i)
           else
             tape_arm_rec(i)
           end
         end
-    end }
+      end
+    }
     params:add_option(i.."isempty","is empty",{"false","true"},2)
   end
 
@@ -626,11 +642,11 @@ function update_timer()
       end
       softcut.level(i,uP[i].vol)
     end
-    if uP[i].rateUpdate  or (params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."rate lfo amp")>0) or
-      uP[i].rate ~= uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust") then
+    if uP[i].rateUpdate or (params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."rate lfo amp")>0) or
+      uP[i].rate~=uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust") then
       uS.updateUI=true
       uP[i].rateUpdate=false
-      local currentRateIndex = params:get(i.."rate")
+      local currentRateIndex=params:get(i.."rate")
       if params:get(i.."rate lfo period")>0 and params:get(i.."rate lfo amp")>0 and params:get("pause lfos")==1 then
         currentRateIndex=util.clamp(params:get(i.."rate lfo center")+round(util.linlin(-1,1,-#uC.discreteRates,#uC.discreteRates,params:get(i.."rate lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."rate lfo period"),params:get(i.."rate lfo offset")))),1,#uC.discreteRates)
         -- currentRateIndex=util.clamp(round(util.linlin(-1,1,0,1+#uC.discreteRates,params:get(i.."rate lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."rate lfo period"),params:get(i.."rate lfo offset")))),1,#uC.discreteRates)
@@ -1098,12 +1114,12 @@ function key(n,z)
         params:set(uS.loopNum.."vol lfo period",0)
       end
     elseif uS.selectedPar==4 then
-      if uS.shift then 
-        -- toggle rate lfo 
-        if params:get(uS.loopNum.."rate lfo period") == 0 then 
+      if uS.shift then
+        -- toggle rate lfo
+        if params:get(uS.loopNum.."rate lfo period")==0 then
           params:set(uS.loopNum.."rate lfo period",0.4)
         end
-        if params:get(uS.loopNum.."rate lfo amp") == 0 then 
+        if params:get(uS.loopNum.."rate lfo amp")==0 then
           params:set(uS.loopNum.."rate lfo amp",0.6)
         else
           params:set(uS.loopNum.."rate lfo amp",0)
