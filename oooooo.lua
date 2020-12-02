@@ -185,21 +185,14 @@ function init()
 
   params:add_group("save/load",3)
   params:add_text('save_name',"save name","")
-  params:add{type='binary',name="action_save",id='save',behavior='momentary',
+  params:set_action("save_name",function(x)
     action=function(x)
-      print("action_save: " .. x)
-      if x==1 then 
-        params:set("action_save",0)
-        print("saving!")
-      end
+      print("save_name: " .. x)
     end
   end
   params:add_file("load_name","load",DATA_DIR.."names")
   params:set_action("load_name",function(x)
     print("load_name: "..x)
-    if x ~= "cancel" then 
-      print("loading!")
-    end
   end)
 
   params:add_group("other",3)
@@ -1084,7 +1077,7 @@ function key(n,z)
     end
   elseif uS.flagSpecial>0 and uS.loopNum==7 then
     -- shit+K2 or shift+K3 activates parameters
-    elseif uS.flagSpecial==1 then
+    if uS.flagSpecial==1 then
       -- pause/start lfos
       if params:get("pause lfos")==1 then
         show_message("pausing lfos")
