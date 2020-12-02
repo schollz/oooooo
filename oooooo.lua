@@ -1063,7 +1063,7 @@ function enc(n,d)
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,7)
     else
       -- toggle between special parameters
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,6)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -1102,12 +1102,6 @@ function enc(n,d)
           uP[uS.loopNum].rate=uP[uS.loopNum].rate/newChange
           softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
         end)
-      end
-    else
-      if uS.flagSpecial==1 or uS.flagSpecial==2 then
-        -- update tape number
-        d=sign(d)
-        params:set("backup",util.clamp(params:get("backup")+d,1,8))
       end
     end
   end
@@ -1148,13 +1142,7 @@ function key(n,z)
     end
   elseif uS.flagSpecial>0 and uS.loopNum==7 then
     -- shit+K2 or shift+K3 activates parameters
-    if uS.flagSpecial==1 then
-      -- save
-      backup_save()
-    elseif uS.flagSpecial==2 then
-      -- load
-      backup_load()
-    elseif uS.flagSpecial==3 then
+    elseif uS.flagSpecial==1 then
       -- pause/start lfos
       if params:get("pause lfos")==1 then
         show_message("pausing lfos")
@@ -1162,15 +1150,15 @@ function key(n,z)
         show_message("unpausing lfos")
       end
       params:set("pause lfos",3-params:get("pause lfos"))
-    elseif uS.flagSpecial==4 then
+    elseif uS.flagSpecial==2 then
       -- randomize!
       show_message("randomizing")
       randomize_parameters(7)
-    elseif uS.flagSpecial==5 then
+    elseif uS.flagSpecial==3 then
       -- randomize loops!
       show_message("randomizing loops")
       randomize_loops(7)
-    elseif uS.flagSpecial==6 then
+    elseif uS.flagSpecial==4 then
       -- randomize lfos!
       show_message("randomizing lfos")
       randomize_lfos()
@@ -1310,20 +1298,16 @@ function redraw()
       screen.move(x+10,y)
       tape_icon(x+10,y)
     elseif uS.flagSpecial==1 then
-      screen.text("save "..params:get("backup"))
-    elseif uS.flagSpecial==2 then
-      screen.text("load "..params:get("backup"))
-    elseif uS.flagSpecial==3 then
       if params:get("pause lfos")==1 then
         screen.text("pause lfos")
       else
         screen.text("unpause lfos")
       end
-    elseif uS.flagSpecial==4 then
+    elseif uS.flagSpecial==2 then
       screen.text("rand pars")
-    elseif uS.flagSpecial==5 then
+    elseif uS.flagSpecial==3 then
       screen.text("rand loop")
-    elseif uS.flagSpecial==6 then
+    elseif uS.flagSpecial==4 then
       screen.text("rand lfo")
     end
   elseif uS.selectedPar==0 and params:get("expert mode")==1 then
