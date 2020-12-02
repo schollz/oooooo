@@ -630,8 +630,8 @@ function update_timer()
         if uS.recordingLoopNum[i]>=params:get("stop rec after") and uS.recordingLoopNum[i]<64 then
           -- stop recording when reached a full loop
           tape_stop_rec(i,false)
-        else 
-          uS.recordingTime[i] = 0
+        else
+          uS.recordingTime[i]=0
         end
       end
     end
@@ -872,8 +872,8 @@ function tape_stop_rec(i,change_loop)
       params:set(i.."length",uP[i].recordedLength)
       uP[i].updateLoop=true
       -- sync all the loops here if this is first loop and enabled
-      if i==1 and params:get("sync lengths to first") == 2 then 
-        for j=2,6 do 
+      if i==1 and params:get("sync lengths to first")==2 then
+        for j=2,6 do
           uP[j].recordedLength=uP[1].recordedLength
           params:set(j.."length",uP[j].recordedLength)
           uP[j].updateLoop=true
