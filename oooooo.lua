@@ -219,7 +219,7 @@ function init()
   params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
   params:set_action("start length",update_parameters)
 
-  params:add_group("recording",7)
+  params:add_group("recording",8)
   params:add_control("pre level","pre level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
   params:set_action("pre level",update_parameters)
   params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
@@ -237,6 +237,8 @@ function init()
     update_softcut_input()
     update_parameters()
   end)
+  params:add_option("sync lengths to first","sync lengths to first",{"no","yes"},1)
+  params:set_action("sync lengths to first",update_parameters)
 
   params:add_group("other",4)
   params:add_control("backup","tape (backup/save)",controlspec.new(1,8,'lin',1,1))
@@ -624,9 +626,12 @@ function update_timer()
       uS.recordingTime[i]=uS.recordingTime[i]+uC.updateTimerInterval
       if uS.recordingTime[i]>=uP[i].loopLength then
         uS.recordingLoopNum[i]=uS.recordingLoopNum[i]+1
+        print("uS.recordingLoopNum[i]: "..uS.recordingLoopNum[i])
         if uS.recordingLoopNum[i]>=params:get("stop rec after") and uS.recordingLoopNum[i]<64 then
           -- stop recording when reached a full loop
           tape_stop_rec(i,false)
+        else 
+          uS.recordingTime[i] = 0
         end
       end
     end
@@ -866,6 +871,14 @@ function tape_stop_rec(i,change_loop)
     if change_loop then
       params:set(i.."length",uP[i].recordedLength)
       uP[i].updateLoop=true
+      -- sync all the loops here if this is first loop and enabled
+      if i==1 and params:get("sync lengths to first") == 2 then 
+        for j=2,6 do 
+          uP[j].recordedLength=uP[1].recordedLength
+          params:set(j.."length",uP[j].recordedLength)
+          uP[j].updateLoop=true
+        end
+      end
     elseif params:get("rec thru loops")==2 then
       -- keep recording onto the next loop
       nextLoop=0
