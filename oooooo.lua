@@ -33,7 +33,7 @@ local share_share=nil
 if util.file_exists("/home/we/dust/code/norns.online") then
   share_json=include("norns.online/lib/json")
   share_share=include("norns.online/lib/share")
-  share_username = share_share.username()
+  share_username=share_share.username()
 end
 -----------------------
 -- end for sharing --
@@ -174,19 +174,19 @@ function init()
 
           -- encode state and upload
           statejson=share_json.encode(uS) -- <- MAKE SURE TO CHANGE YOUR STATE
-          filename = dataname..".json"
+          filename=dataname..".json"
           share_share.write_file("/dev/shm/"..filename,statejson)
           share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
           os.remove("/dev/shm/"..filename)
 
           -- encode parameters and upload
-          filename = dataname..".pset"
+          filename=dataname..".pset"
           params:write("/dev/shm/"..filename)
           share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
           os.remove("/dev/shm/"..filename)
 
           -- dump softcut and upload
-          filename = dataname..".wav"
+          filename=dataname..".wav"
           softcut.buffer_write_stereo("/dev/shm/"..filename,0,-1)
           share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
           os.remove("/dev/shm/"..filename)
