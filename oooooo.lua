@@ -28,11 +28,12 @@ local Formatters=require 'formatters'
 -----------------------
 -- start for sharing --
 -----------------------
-local json=nil
-local share=nil
-if util.file_exists("/home/we/dust/data/norns.online/username") then
-  json=include("norns.online/lib/json")
-  share=include("norns.online/lib/share")
+local share_json=nil
+local share_share=nil
+if util.file_exists("/home/we/dust/code/norns.online") then
+  share_json=include("norns.online/lib/json")
+  share_share=include("norns.online/lib/share")
+  share_username = share_share.username()
 end
 -----------------------
 -- end for sharing --
@@ -103,7 +104,7 @@ function init()
   end
   local script_name="oooooo"
   local save_dir="/home/we/dust/data/"..script_name.."/share/"
-  if json~=nil and share~=nil then
+  if share_json~=nil and share_share~=nil then
     local curtime=os.clock()
     print(curtime)
     params:add_group("SHARE",5)
@@ -133,10 +134,11 @@ function init()
           dataname=save_dir..shareable[choose_shared]
 
           -- update state
-          data=json.decode(share.read_file(dataname..".json"))
+          data=share_json.decode(share_share.read_file(dataname..".json"))
           if data~=nil then
             uS=data
           end
+
           -- update softcut
           softcut.buffer_read_stereo(dataname..".wav",0,0,-1)
 
@@ -156,8 +158,8 @@ function init()
     params:add_text('upload_name',"UPLOAD NAME","")
     params:add{type='binary',name="UPLOAD",id='upload_share',behavior='momentary',
       action=function(v)
-        print(os.clock()-curtime)
-        if v==1 and os.clock()-curtime>0.02 then
+        print(v,os.clock()-curtime)
+        if os.clock()-curtime>0.02 then
           curtime=os.clock()
           print("UPLOADING")
           params:set("show_msg","uploading")
@@ -171,20 +173,23 @@ function init()
           end
 
           -- encode state and upload
-          statejson=json.encode(uS) -- <- MAKE SURE TO CHANGE YOUR STATE
-          share.write_file("/dev/shm/"..dataname..".json",statejson)
-          share.upload(script_name,dataname,"/dev/shm/"..dataname..".json",save_dir)
-          os.remove("/dev/shm/"..dataname..".json")
+          statejson=share_json.encode(uS) -- <- MAKE SURE TO CHANGE YOUR STATE
+          filename = dataname..".json"
+          share_share.write_file("/dev/shm/"..filename,statejson)
+          share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
+          os.remove("/dev/shm/"..filename)
 
           -- encode parameters and upload
-          params:write("/dev/shm/"..dataname..".pset")
-          share.upload(script_name,dataname,"/dev/shm/"..dataname..".pset",save_dir)
-          os.remove("/dev/shm/"..dataname..".json")
+          filename = dataname..".pset"
+          params:write("/dev/shm/"..filename)
+          share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
+          os.remove("/dev/shm/"..filename)
 
           -- dump softcut and upload
-          softcut.buffer_write_stereo("/dev/shm/"..dataname..".wav",0,-1)
-          share.upload(script_name,dataname,"/dev/shm/"..dataname..".wav",save_dir)
-          os.remove("/dev/shm/"..dataname..".wav")
+          filename = dataname..".wav"
+          softcut.buffer_write_stereo("/dev/shm/"..filename,0,-1)
+          share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
+          os.remove("/dev/shm/"..filename)
 
           -- show message
           params:set("show_msg","uploaded")
