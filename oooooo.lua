@@ -25,20 +25,6 @@
 
 local Formatters=require 'formatters'
 
------------------------
--- start for sharing --
------------------------
-local share_json=nil
-local share_share=nil
-if util.file_exists("/home/we/dust/code/norns.online") then
-  share_json=include("norns.online/lib/json")
-  share_share=include("norns.online/lib/share")
-  share_username=share_share.username()
-end
------------------------
--- end for sharing --
------------------------
-
 -- user parameters
 uP={
   -- initialized in init
@@ -96,117 +82,73 @@ uC={
 DATA_DIR='/home/we/dust/data/oooooo/'
 PATH=_path.audio..'oooooo/'
 
-function init()
-  -----------------------
-  -- start for sharing --
-  -----------------------
-  local function script_specific()
-    tape_play(7)
+function setup_sharing(script_name)
+  if not util.file_exists("/home/we/dust/code/norns.online") then
+    print("need to donwload norns.online")
+    do return end 
   end
-  local script_name="oooooo"
-  local save_dir="/home/we/dust/data/"..script_name.."/share/"
-  if share_json~=nil and share_share~=nil then
-    local curtime=os.clock()
-    print(curtime)
-    params:add_group("SHARE",5)
-    local f=io.popen('cd '..save_dir..'; ls -d *')
-    shareable={"-"}
-    for name in f:lines() do
-      if string.match(name,".json") then
-        table.insert(shareable,name:match("^(.+).json$"))
+
+  local share=include("norns.online/lib/share")
+
+  -- start uploader with name of your script
+  uploader = share:new{script_name=script_name}
+  if uploader == nil then 
+    print("uploader failed, no username?")
+    do return end 
+  end
+
+  -- add parameters
+  params:add_group("SHARE",2)
+
+  -- uploader (CHANGE THIS TO FIT WHAT YOU NEED)
+  params:add_file("share_upload","upload","/home/we/dust/data/oooooo/names")
+  params:set_action("share_upload",function(x)
+    if x=="cancel" then do return end 
+    -- hello
+    params:set("share_message","uploading...")
+    _menu.redraw()
+
+    -- choose data name
+    dataname = share.trim_prefix(x,"/home/we/dust/data/oooooo/names")
+
+    -- upload each loop
+    for i=1,6 do 
+      pathtofile = "/home/we/dust/data/oooooo/"..dataname.."/loop"..i..".wav"
+      target = "/home/we/dust/data/oooooo/"..uploader.upload_username.."-"..dataname.."/loop"..i..".wav"
+      if util.file_exists(pathtofile) then 
+        uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
       end
     end
-    params:add {
-      type='option',
-      id='choose_shared',
-      name='CHOOSE',
-      options=shareable,
-      action=function(value)
-        print(value)
-      end
-    }
-    params:add{type='binary',name="LOAD",id='load_shared',behavior='momentary',
-      action=function(v)
-        choose_shared=params:get("choose_shared")
-        if v==1 and choose_shared>1 then
-          print("LOADING")
-          _menu.redraw()
-          params:set("show_msg","loading")
-          dataname=save_dir..shareable[choose_shared]
+    -- upload paramset
+    pathtofile = "/home/we/dust/data/oooooo/"..dataname.."/parameters.pset"
+    target = "/home/we/dust/data/oooooo/"..uploader.upload_username.."-"dataname.."/parameters.pset"
+    uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
 
-          -- update state
-          data=share_json.decode(share_share.read_file(dataname..".json"))
-          if data~=nil then
-            uS=data
-          end
-
-          -- update softcut
-          softcut.buffer_read_stereo(dataname..".wav",0,0,-1)
-
-          -- update parameters
-          curtime=os.clock() -- prevent bang
-          params:read(dataname..".pset")
-          params:set("choose_shared",choose_shared)
-          params:set("show_msg","loaded")
-
-          _menu.redraw()
-
-          -- run script specific stuff
-          script_specific()
-        end
-      end
-    }
-    params:add_text('upload_name',"UPLOAD NAME","")
-    params:add{type='binary',name="UPLOAD",id='upload_share',behavior='momentary',
-      action=function(v)
-        print(v,os.clock()-curtime)
-        if os.clock()-curtime>0.02 then
-          curtime=os.clock()
-          print("UPLOADING")
-          params:set("show_msg","uploading")
-          _menu.redraw()
-
-          -- generate a date-based name
-          dataname=os.date("%Y%m%d%H%M")
-          print('params:get("upload_name"): '..params:get("upload_name"))
-          if params:get("upload_name")~="" then
-            dataname=params:get("upload_name")
-          end
-
-          -- encode state and upload
-          statejson=share_json.encode(uS) -- <- MAKE SURE TO CHANGE YOUR STATE
-          filename=dataname..".json"
-          share_share.write_file("/dev/shm/"..filename,statejson)
-          share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
-          os.remove("/dev/shm/"..filename)
-
-          -- encode parameters and upload
-          filename=dataname..".pset"
-          params:write("/dev/shm/"..filename)
-          share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
-          os.remove("/dev/shm/"..filename)
-
-          -- dump softcut and upload
-          filename=dataname..".wav"
-          softcut.buffer_write_stereo("/dev/shm/"..filename,0,-1)
-          share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
-          os.remove("/dev/shm/"..filename)
-
-          -- show message
-          params:set("show_msg","uploaded")
-        end
-      end
-    }
-    params:add_text('show_msg',"MESSAGE","")
-  end
-  clock.run(function()
-    -- reset just in case parameters get loaded
-    clock.sleep(1)
-    params:set("show_msg","")
+    -- goodbye
+    params:set("share_message","uploaded.")
   end)
-  --------------------------
-  -- end of sharing stuff --
-  --------------------------
+
+  -- downloader
+  params:add_file("share_download","download",share.get_virtual_directory(script_name))
+  params:set_action("share_download",function(x)
+    if x=="cancel" then do return end 
+    params:set("share_message","downloading...")
+    _menu.redraw()
+    foo = share.trim_prefix(x,share.get_virtual_directory(script_name))
+    foo=splitstr(foo,"/")
+    username=foo[1]
+    dataname=foo[2]
+    params:set("share_message","downloading...")
+    msg=share.download(script_name,username,dataname)
+    params:set("share_message",msg)
+    print(msg)
+  end)  
+  params:add_text('share_message',"message","")
+
+end
+
+function init()
+  setup_sharing("oooooo")
   params:add_separator("oooooo")
   -- add variables into main menu
 
