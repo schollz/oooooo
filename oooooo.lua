@@ -93,6 +93,7 @@ uC={
   discreteBeats={1/4,1/2,1,2},
 }
 
+DATA_DIR='/home/we/dust/data/oooooo/'
 PATH=_path.audio..'oooooo/'
 
 function init()
@@ -240,9 +241,26 @@ function init()
   params:add_option("sync lengths to first","sync lengths to first",{"no","yes"},1)
   params:set_action("sync lengths to first",update_parameters)
 
-  params:add_group("other",4)
-  params:add_control("backup","tape (backup/save)",controlspec.new(1,8,'lin',1,1))
-  params:set_action("backup",update_parameters)
+  params:add_group("save/load",3)
+  params:add_text('save_name',"save name","")
+  params:add{type='binary',name="action_save",id='save',behavior='momentary',
+    action=function(x)
+      print("action_save: " .. x)
+      if x==1 then 
+        params:set("action_save",0)
+        print("saving!")
+      end
+    end
+  end
+  params:add_file("load_name","load",DATA_DIR.."names")
+  params:set_action("load_name",function(x)
+    print("load_name: "..x)
+    if x ~= "cancel" then 
+      print("loading!")
+    end
+  end)
+
+  params:add_group("other",3)
   params:add_option("continous rate","continous rate",{"no","yes"},2)
   params:set_action("continous rate",update_parameters)
   params:add_control("slew rate","slew rate",controlspec.new(0,30,'lin',0.1,(60/clock.get_tempo())*4,"s",0.1/30))
@@ -353,15 +371,7 @@ function init()
     params:add_file(i.."load_file","load audio","/home/we/dust/audio/")
     params:set_action(i.."load_file",function(x)
       print("load_file",i,x)
-      local ch,samples,samplerate=audio.file_info(x)
-      local duration=samples/48000.0
-      print(duration)
-      tape_stop(i)
-      softcut.buffer_read_mono(x,0,uC.bufferMinMax[i][2],uC.loopMinMax[2],1,uC.bufferMinMax[i][1])
-      params:set(i.."rate adjust",100*samplerate/48000.0-100)
-      params:set(i.."start",0)
-      params:set(i.."length",duration)
-      params:set(i.."isempty",1)
+      loop_load_wav(i,x)
       tape_play(i)
     end)
     params:add_option(i.."isempty","is empty",{"false","true"},2)
@@ -744,28 +754,49 @@ end
 --
 -- saving and loading
 --
-function backup_save()
-  print("backup_save")
-  show_message("saved")
-
-  -- write file of user data
-  params:write(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
-
-  -- save tape
-  softcut.buffer_write_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,-1)
+function loop_load_wav(i,fname)
+  -- loads fname into loop i 
+  local ch,samples,samplerate=audio.file_info(fname)
+  local duration=samples/48000.0
+  softcut.buffer_read_mono(x,0,uC.bufferMinMax[i][2],uC.loopMinMax[2],1,uC.bufferMinMax[i][1])
+  params:set(i.."rate adjust",100*samplerate/48000.0-100)
+  params:set(i.."start",0)
+  params:set(i.."length",duration)
+  params:set(i.."isempty",1)
+  loopUpdate[i]=true
 end
 
-function backup_load()
-  print("backup_load")
-  show_message("loaded")
+function loop_save_wav(i,savename)
+  buffernum = uC.bufferMinMax[i][0]
+  pos_start = uC.bufferMinMax[1]+params:get(i.."start")
+  softcut.buffer_write_mono(savename,pos_start,params:get(i.."length"),buffernum)
+end
 
-  -- load parameters from file
-  params:read(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
+function backup_save(savename)
+  -- create if doesn't exist
+  os.execute("mkdir -p "..DATA_DIR.."names")
+  os.execute("mkdir -p "..DATA_DIR..savename)
+  os.execute("cat "..savename.." > "..DATA_DIR.."names/"..savename)
 
-  -- load buffer from file
-  if util.file_exists(PATH.."oooooo"..params:get("backup")..".wav") then
-    softcut.buffer_clear()
-    softcut.buffer_read_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,0,-1)
+  -- save the parameter set
+  params:set("action_save",0) -- don't save 
+  params:write(DATA_DIR..savename.."/parameters.pset")
+
+  -- iterate over each loop
+  -- if not "isempty" then save it 
+  for i=1,6 do 
+    if params:get(i.."isempty")==1 then -- not empty
+      loop_save_wav(i,DATA_DIR..savename.."/loop"..i..".wav")
+    end
+  end
+end
+
+function backup_load(savename)
+  params:read(DATA_DIR..savename.."/parameters.pset")
+  for i=1,6 do 
+    if util.file_exists(DATA_DIR..savename.."/loop"..i..".wav") then 
+      loop_load_wav(i,DATA_DIR..savename.."/loop"..i..".wav")
+    end
   end
 end
 
