@@ -125,7 +125,7 @@ function init()
     local x=y
     params:set("save_name","")
     if x=="" then do return end end
-print(x)
+    print(x)
     backup_save(x)
     params:set("save_message","saved as "..x)
   end)
@@ -137,7 +137,7 @@ print(x)
     local x=y
     params:set("load_name",name_folder)
     if #x<=#name_folder then do return end end
-params:set("load_name","")
+    params:set("load_name","")
     print("load_name: "..x)
     pathname,filename,ext=string.match(x,"(.-)([^\\/]-%.?([^%.\\/]*))$")
     print("loading "..filename)
@@ -1472,7 +1472,7 @@ function setup_sharing(script_name)
     local x=y
     params:set("share_download",names_dir)
     if #x<=#names_dir then do return end end
-print("uploading "..x)
+    print("uploading "..x)
 
     -- choose data name
     dataname=share.trim_prefix(x,DATA_DIR.."names/")
@@ -1515,7 +1515,7 @@ print("uploading "..x)
     local x=y
     params:set("share_download",download_dir)
     if #x<=#download_dir then do return end end
-print("downloading!")
+    print("downloading!")
     params:set("share_message","please wait...")
     _menu.redraw()
     msg=share.download_from_virtual_directory(x)
