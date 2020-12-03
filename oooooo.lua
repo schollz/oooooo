@@ -121,7 +121,7 @@ function setup_sharing(script_name)
         uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
       end
     end
-    
+
     -- upload paramset
     pathtofile = "/home/we/dust/data/oooooo/"..dataname.."/parameters.pset"
     target = "/home/we/dust/data/oooooo/"..uploader.upload_username.."-"..dataname.."/parameters.pset"
@@ -145,7 +145,7 @@ function setup_sharing(script_name)
     params:set("share_message","please wait...")
     _menu.redraw()
     msg=share.download_from_virtual_directory(x)
-    params:set("share_message",msg..".")
+    params:set("share_message",msg)
   end)  
   params:add{ type='binary', name='refresh directory',id='share_refresh', behavior='momentary', action=function(v) 
     print("updating directory")
@@ -195,7 +195,7 @@ function init()
   params:set_action("sync lengths to first",update_parameters)
 
   params:add_group("save/load",3)
-  params:add_text('save_name',"save name","")
+  params:add_text('save_name',"save as...","")
   params:set_action("save_name",function(x)
       print(x)
       backup_save(x)
@@ -218,20 +218,8 @@ function init()
   end)
   params:add_text('save_message',">","")
 
-  params:add_group("other",3)
-  params:add_option("continous rate","continous rate",{"no","yes"},2)
-  params:set_action("continous rate",update_parameters)
-  params:add_control("slew rate","slew rate",controlspec.new(0,30,'lin',0.1,(60/clock.get_tempo())*4,"s",0.1/30))
-  params:set_action("slew rate",function(x)
-    for i=1,6 do
-      softcut.level_slew_time(i,x)
-      softcut.rate_slew_time(i,x)
-    end
-  end)
-  params:add_option("expert mode","expert mode",{"no","yes"},1)
-  params:set_action("expert mode",update_parameters)
 
-  params:add_group("all loops",5)
+  params:add_group("all loops",8)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
   params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,0,'% prob'))
   params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0,'',0.01/2))
@@ -247,6 +235,17 @@ function init()
       params:set(i.."reset every beat",x)
     end
   end)
+  params:add_option("continous rate","continous rate",{"no","yes"},2)
+  params:set_action("continous rate",update_parameters)
+  params:add_control("slew rate","slew rate",controlspec.new(0,30,'lin',0.1,(60/clock.get_tempo())*4,"s",0.1/30))
+  params:set_action("slew rate",function(x)
+    for i=1,6 do
+      softcut.level_slew_time(i,x)
+      softcut.rate_slew_time(i,x)
+    end
+  end)
+  params:add_option("expert mode","expert mode",{"no","yes"},1)
+  params:set_action("expert mode",update_parameters)
 
   -- TODO: hook up pausing lfos
   params:read(_path.data..'oooooo/'.."oooooo.pset")
