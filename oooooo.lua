@@ -91,25 +91,27 @@ function setup_sharing(script_name)
   local share=include("norns.online/lib/share")
 
   -- start uploader with name of your script
-  uploader = share:new{script_name=script_name}
+  local uploader = share:new{script_name=script_name}
   if uploader == nil then 
     print("uploader failed, no username?")
     do return end 
   end
 
   -- add parameters
-  params:add_group("SHARE",2)
+  params:add_group("SHARE",4)
 
   -- uploader (CHANGE THIS TO FIT WHAT YOU NEED)
-  params:add_file("share_upload","upload","/home/we/dust/data/oooooo/names")
+  -- select a save
+  params:add_file("share_upload","upload","/home/we/dust/data/oooooo/names/")
   params:set_action("share_upload",function(x)
-    if x=="cancel" then do return end 
-    -- hello
-    params:set("share_message","uploading...")
-    _menu.redraw()
+    if #x <= #"/home/we/dust/data/oooooo/names/" then do return end end
+    print("uploading "..x)
 
     -- choose data name
-    dataname = share.trim_prefix(x,"/home/we/dust/data/oooooo/names")
+    dataname = share.trim_prefix(x,"/home/we/dust/data/oooooo/names/")
+
+    params:set("share_message","uploading...")
+    _menu.redraw()
 
     -- upload each loop
     for i=1,6 do 
@@ -119,9 +121,15 @@ function setup_sharing(script_name)
         uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
       end
     end
+    
     -- upload paramset
     pathtofile = "/home/we/dust/data/oooooo/"..dataname.."/parameters.pset"
-    target = "/home/we/dust/data/oooooo/"..uploader.upload_username.."-"dataname.."/parameters.pset"
+    target = "/home/we/dust/data/oooooo/"..uploader.upload_username.."-"..dataname.."/parameters.pset"
+    uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
+
+    -- upload name file
+    pathtofile = "/home/we/dust/data/oooooo/names/"..dataname
+    target = "/home/we/dust/data/oooooo/names/"..uploader.upload_username.."-"..dataname
     uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
 
     -- goodbye
@@ -129,22 +137,25 @@ function setup_sharing(script_name)
   end)
 
   -- downloader
-  params:add_file("share_download","download",share.get_virtual_directory(script_name))
+  download_dir = share.get_virtual_directory(script_name)
+  params:add_file("share_download","download",download_dir)
   params:set_action("share_download",function(x)
-    if x=="cancel" then do return end 
-    params:set("share_message","downloading...")
+    if #x <= #download_dir then do return end end
+    print("downloading!")
+    params:set("share_message","please wait...")
     _menu.redraw()
-    foo = share.trim_prefix(x,share.get_virtual_directory(script_name))
-    foo=splitstr(foo,"/")
-    username=foo[1]
-    dataname=foo[2]
-    params:set("share_message","downloading...")
-    msg=share.download(script_name,username,dataname)
-    params:set("share_message",msg)
-    print(msg)
+    msg=share.download_from_virtual_directory(x)
+    params:set("share_message",msg..".")
   end)  
-  params:add_text('share_message',"message","")
-
+  params:add{ type='binary', name='refresh directory',id='share_refresh', behavior='momentary', action=function(v) 
+    print("updating directory")
+    params:set("share_message","refreshing directory.")
+    _menu.redraw()
+     share.make_virtual_directory()
+    params:set("share_message","directory updated.")
+   end 
+   }
+  params:add_text('share_message',">","")
 end
 
 function init()
@@ -186,14 +197,26 @@ function init()
   params:add_group("save/load",3)
   params:add_text('save_name',"save name","")
   params:set_action("save_name",function(x)
-    action=function(x)
-      print("save_name: " .. x)
-    end
-  end
-  params:add_file("load_name","load",DATA_DIR.."names")
-  params:set_action("load_name",function(x)
-    print("load_name: "..x)
+      print(x)
+      backup_save(x)
+      params:set("save_message","saved.")
   end)
+  name_folder = DATA_DIR.."names/"
+  params:add_file("load_name","load",name_folder)
+  params:set_action("load_name",function(x)
+    if #x<=#name_folder then do return end end 
+    print("load_name: "..x)
+      pathname,filename,ext = string.match(x,"(.-)([^\\/]-%.?([^%.\\/]*))$")
+      print("loading "..filename)
+      backup_load(filename)
+      for i=1,6 do 
+        if params:get(i.."isempty")==1 then 
+          tape_play(i)
+        end
+      end
+      params:set("save_message","loaded.")
+  end)
+  params:add_text('save_message',">","")
 
   params:add_group("other",3)
   params:add_option("continous rate","continous rate",{"no","yes"},2)
@@ -363,7 +386,7 @@ function init()
 
   -- end of init
   if params:get("load on start")==2 then
-    backup_load()
+    -- backup_load()
     if params:get("play on start")==2 then
       tape_play(7)
     end
@@ -698,12 +721,12 @@ function loop_load_wav(i,fname)
   params:set(i.."start",0)
   params:set(i.."length",duration)
   params:set(i.."isempty",1)
-  loopUpdate[i]=true
+  uP[i].loopUpdate=true
 end
 
 function loop_save_wav(i,savename)
-  buffernum = uC.bufferMinMax[i][0]
-  pos_start = uC.bufferMinMax[1]+params:get(i.."start")
+  buffernum = uC.bufferMinMax[i][1]
+  pos_start = uC.bufferMinMax[i][2]+params:get(i.."start")
   softcut.buffer_write_mono(savename,pos_start,params:get(i.."length"),buffernum)
 end
 
@@ -711,10 +734,9 @@ function backup_save(savename)
   -- create if doesn't exist
   os.execute("mkdir -p "..DATA_DIR.."names")
   os.execute("mkdir -p "..DATA_DIR..savename)
-  os.execute("cat "..savename.." > "..DATA_DIR.."names/"..savename)
+  os.execute("echo "..savename.." > "..DATA_DIR.."names/"..savename)
 
   -- save the parameter set
-  params:set("action_save",0) -- don't save 
   params:write(DATA_DIR..savename.."/parameters.pset")
 
   -- iterate over each loop
