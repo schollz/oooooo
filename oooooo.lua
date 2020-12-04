@@ -25,20 +25,6 @@
 
 local Formatters=require 'formatters'
 
------------------------
--- start for sharing --
------------------------
-local share_json=nil
-local share_share=nil
-if util.file_exists("/home/we/dust/code/norns.online") then
-  share_json=include("norns.online/lib/json")
-  share_share=include("norns.online/lib/share")
-  share_username=share_share.username()
-end
------------------------
--- end for sharing --
------------------------
-
 -- user parameters
 uP={
   -- initialized in init
@@ -93,119 +79,12 @@ uC={
   discreteBeats={1/4,1/2,1,2},
 }
 
+DATA_DIR=_path.data.."oooooo/"
 PATH=_path.audio..'oooooo/'
 
+
 function init()
-  -----------------------
-  -- start for sharing --
-  -----------------------
-  local function script_specific()
-    tape_play(7)
-  end
-  local script_name="oooooo"
-  local save_dir="/home/we/dust/data/"..script_name.."/share/"
-  if share_json~=nil and share_share~=nil then
-    local curtime=os.clock()
-    print(curtime)
-    params:add_group("SHARE",5)
-    local f=io.popen('cd '..save_dir..'; ls -d *')
-    shareable={"-"}
-    for name in f:lines() do
-      if string.match(name,".json") then
-        table.insert(shareable,name:match("^(.+).json$"))
-      end
-    end
-    params:add {
-      type='option',
-      id='choose_shared',
-      name='CHOOSE',
-      options=shareable,
-      action=function(value)
-        print(value)
-      end
-    }
-    params:add{type='binary',name="LOAD",id='load_shared',behavior='momentary',
-      action=function(v)
-        choose_shared=params:get("choose_shared")
-        if v==1 and choose_shared>1 then
-          print("LOADING")
-          _menu.redraw()
-          params:set("show_msg","loading")
-          dataname=save_dir..shareable[choose_shared]
-
-          -- update state
-          data=share_json.decode(share_share.read_file(dataname..".json"))
-          if data~=nil then
-            uS=data
-          end
-
-          -- update softcut
-          softcut.buffer_read_stereo(dataname..".wav",0,0,-1)
-
-          -- update parameters
-          curtime=os.clock() -- prevent bang
-          params:read(dataname..".pset")
-          params:set("choose_shared",choose_shared)
-          params:set("show_msg","loaded")
-
-          _menu.redraw()
-
-          -- run script specific stuff
-          script_specific()
-        end
-      end
-    }
-    params:add_text('upload_name',"UPLOAD NAME","")
-    params:add{type='binary',name="UPLOAD",id='upload_share',behavior='momentary',
-      action=function(v)
-        print(v,os.clock()-curtime)
-        if os.clock()-curtime>0.02 then
-          curtime=os.clock()
-          print("UPLOADING")
-          params:set("show_msg","uploading")
-          _menu.redraw()
-
-          -- generate a date-based name
-          dataname=os.date("%Y%m%d%H%M")
-          print('params:get("upload_name"): '..params:get("upload_name"))
-          if params:get("upload_name")~="" then
-            dataname=params:get("upload_name")
-          end
-
-          -- encode state and upload
-          statejson=share_json.encode(uS) -- <- MAKE SURE TO CHANGE YOUR STATE
-          filename=dataname..".json"
-          share_share.write_file("/dev/shm/"..filename,statejson)
-          share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
-          os.remove("/dev/shm/"..filename)
-
-          -- encode parameters and upload
-          filename=dataname..".pset"
-          params:write("/dev/shm/"..filename)
-          share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
-          os.remove("/dev/shm/"..filename)
-
-          -- dump softcut and upload
-          filename=dataname..".wav"
-          softcut.buffer_write_stereo("/dev/shm/"..filename,0,-1)
-          share_share.upload(share_username,script_name,dataname,"/dev/shm/"..filename,save_dir..filename)
-          os.remove("/dev/shm/"..filename)
-
-          -- show message
-          params:set("show_msg","uploaded")
-        end
-      end
-    }
-    params:add_text('show_msg',"MESSAGE","")
-  end
-  clock.run(function()
-    -- reset just in case parameters get loaded
-    clock.sleep(1)
-    params:set("show_msg","")
-  end)
-  --------------------------
-  -- end of sharing stuff --
-  --------------------------
+  setup_sharing("oooooo")
   params:add_separator("oooooo")
   -- add variables into main menu
 
@@ -240,22 +119,42 @@ function init()
   params:add_option("sync lengths to first","sync lengths to first",{"no","yes"},1)
   params:set_action("sync lengths to first",update_parameters)
 
-  params:add_group("other",4)
-  params:add_control("backup","tape (backup/save)",controlspec.new(1,8,'lin',1,1))
-  params:set_action("backup",update_parameters)
-  params:add_option("continous rate","continous rate",{"no","yes"},2)
-  params:set_action("continous rate",update_parameters)
-  params:add_control("slew rate","slew rate",controlspec.new(0,30,'lin',0.1,(60/clock.get_tempo())*4,"s",0.1/30))
-  params:set_action("slew rate",function(x)
-    for i=1,6 do
-      softcut.level_slew_time(i,x)
-      softcut.rate_slew_time(i,x)
+  params:add_group("save/load",3)
+  params:add_text('save_name',"save as...","")
+  params:set_action("save_name",function(y)
+    -- prevent banging
+    local x=y
+    params:set("save_name","")
+    if x=="" then 
+      do return end 
     end
+    -- save
+    print(x)
+    backup_save(x)
+    params:set("save_message","saved as "..x)
   end)
-  params:add_option("expert mode","expert mode",{"no","yes"},1)
-  params:set_action("expert mode",update_parameters)
+  print("DATA_DIR "..DATA_DIR)
+  local name_folder=DATA_DIR.."names/"
+  print("name_folder: "..name_folder)
+  params:add_file("load_name","load",name_folder)
+  params:set_action("load_name",function(y)
+    -- prevent banging
+    local x=y
+    params:set("load_name",name_folder)
+    if #x<=#name_folder then 
+      do return end 
+    end
+    -- load
+    print("load_name: "..x)
+    pathname,filename,ext=string.match(x,"(.-)([^\\/]-%.?([^%.\\/]*))$")
+    print("loading "..filename)
+    backup_load(filename)
+    params:set("save_message","loaded "..filename..".")
+  end)
+  params:add_text('save_message',">","")
 
-  params:add_group("all loops",5)
+
+  params:add_group("all loops",8)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
   params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,0,'% prob'))
   params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0,'',0.01/2))
@@ -271,9 +170,17 @@ function init()
       params:set(i.."reset every beat",x)
     end
   end)
-
-  -- TODO: hook up pausing lfos
-  params:read(_path.data..'oooooo/'.."oooooo.pset")
+  params:add_option("continous rate","continous rate",{"no","yes"},2)
+  params:set_action("continous rate",update_parameters)
+  params:add_control("slew rate","slew rate",controlspec.new(0,30,'lin',0.1,(60/clock.get_tempo())*4,"s",0.1/30))
+  params:set_action("slew rate",function(x)
+    for i=1,6 do
+      softcut.level_slew_time(i,x)
+      softcut.rate_slew_time(i,x)
+    end
+  end)
+  params:add_option("expert mode","expert mode",{"no","yes"},1)
+  params:set_action("expert mode",update_parameters)
 
   -- reset defaults
   params:set("slew rate",(60/clock.get_tempo())*4)
@@ -350,23 +257,22 @@ function init()
         end
       end
     }
-    params:add_file(i.."load_file","load audio","/home/we/dust/audio/")
+    params:add_file(i.."load_file","load audio",_path.audio)
     params:set_action(i.."load_file",function(x)
+      if #x<=#_path.audio then 
+        do return end 
+      end
       print("load_file",i,x)
-      local ch,samples,samplerate=audio.file_info(x)
-      local duration=samples/48000.0
-      print(duration)
-      tape_stop(i)
-      softcut.buffer_read_mono(x,0,uC.bufferMinMax[i][2],uC.loopMinMax[2],1,uC.bufferMinMax[i][1])
-      params:set(i.."rate adjust",100*samplerate/48000.0-100)
-      params:set(i.."start",0)
-      params:set(i.."length",duration)
-      params:set(i.."isempty",1)
+      loop_load_wav(i,x)
       tape_play(i)
     end)
     params:add_option(i.."isempty","is empty",{"false","true"},2)
     params:hide(i.."isempty")
   end
+
+  params_read_silent(DATA_DIR.."oooooo.pset")
+  params:set('save_message',"")
+  params:set('load_name',name_folder)
 
   init_loops(7)
 
@@ -418,7 +324,7 @@ function init()
 
   -- end of init
   if params:get("load on start")==2 then
-    backup_load()
+    -- backup_load()
     if params:get("play on start")==2 then
       tape_play(7)
     end
@@ -598,7 +504,7 @@ function update_softcut_input()
 end
 
 function update_parameters(x)
-  params:write(_path.data..'oooooo/'.."oooooo.pset")
+  params:write(DATA_DIR.."oooooo.pset")
 end
 
 function update_positions(i,x)
@@ -744,28 +650,65 @@ end
 --
 -- saving and loading
 --
-function backup_save()
-  print("backup_save")
-  show_message("saved")
-
-  -- write file of user data
-  params:write(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
-
-  -- save tape
-  softcut.buffer_write_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,-1)
+function loop_load_wav(i,fname)
+  -- loads fname into loop i
+  local ch,samples,samplerate=audio.file_info(fname)
+  local duration=samples/48000.0
+  softcut.buffer_read_mono(fname,0,uC.bufferMinMax[i][2],uC.loopMinMax[2],1,uC.bufferMinMax[i][1])
+  params:set(i.."rate adjust",100*samplerate/48000.0-100,true)
+  params:set(i.."start",0,true)
+  params:set(i.."length",duration,true)
+  params:set(i.."isempty",1,true)
+  uP[i].loopUpdate=true
 end
 
-function backup_load()
-  print("backup_load")
-  show_message("loaded")
+function loop_save_wav(i,savename)
+  buffernum=uC.bufferMinMax[i][1]
+  pos_start=uC.bufferMinMax[i][2]+params:get(i.."start")
+  softcut.buffer_write_mono(savename,pos_start,params:get(i.."length"),buffernum)
+end
 
-  -- load parameters from file
-  params:read(_path.data..'oooooo/'.."oooooo"..params:get("backup")..".pset")
+function backup_save(savename)
+  -- create if doesn't exist
+  os.execute("mkdir -p "..DATA_DIR.."names")
+  os.execute("mkdir -p "..DATA_DIR..savename)
+  os.execute("echo "..savename.." > "..DATA_DIR.."names/"..savename)
 
-  -- load buffer from file
-  if util.file_exists(PATH.."oooooo"..params:get("backup")..".wav") then
-    softcut.buffer_clear()
-    softcut.buffer_read_stereo(PATH.."oooooo"..params:get("backup")..".wav",0,0,-1)
+  -- save the parameter set
+  params:write(DATA_DIR..savename.."/parameters.pset")
+
+  -- save the user parameters
+  tab.save(uP,DATA_DIR..savename.."/uP.txt")
+
+  --
+  -- iterate over each loop
+  -- if not "isempty" then save it
+  for i=1,6 do
+    if params:get(i.."isempty")==1 then -- not empty
+      loop_save_wav(i,DATA_DIR..savename.."/loop"..i..".wav")
+    end
+  end
+end
+
+function backup_load(savename)
+  for i=1,6 do
+    if util.file_exists(DATA_DIR..savename.."/loop"..i..".wav") then
+      print("loading loop"..i)
+      loop_load_wav(i,DATA_DIR..savename.."/loop"..i..".wav")
+    end
+  end
+  params_read_silent(DATA_DIR..savename.."/parameters.pset")
+  uP=tab.load(DATA_DIR..savename.."/uP.txt")
+  for i=1,6 do
+    if params:get(i.."isempty")==1 then
+      tape_stop(i)
+      tape_reset(i)
+      tape_play(i)
+    end
+    uP[i].loopUpdate=true
+    uP[i].panUpdate=true
+    uP[i].rateUpdate=true
+    uP[i].volUpdate=true
   end
 end
 
@@ -870,13 +813,13 @@ function tape_stop_rec(i,change_loop)
   if not still_armed then
     if change_loop then
       params:set(i.."length",uP[i].recordedLength)
-      uP[i].updateLoop=true
+      uP[i].loopUpdate=true
       -- sync all the loops here if this is first loop and enabled
       if i==1 and params:get("sync lengths to first")==2 then
         for j=2,6 do
           uP[j].recordedLength=uP[1].recordedLength
           params:set(j.."length",uP[j].recordedLength)
-          uP[j].updateLoop=true
+          uP[j].loopUpdate=true
         end
       end
     elseif params:get("rec thru loops")==2 then
@@ -1032,7 +975,7 @@ function enc(n,d)
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,7)
     else
       -- toggle between special parameters
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,6)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -1071,12 +1014,6 @@ function enc(n,d)
           uP[uS.loopNum].rate=uP[uS.loopNum].rate/newChange
           softcut.rate(uS.loopNum,uP[uS.loopNum].rate)
         end)
-      end
-    else
-      if uS.flagSpecial==1 or uS.flagSpecial==2 then
-        -- update tape number
-        d=sign(d)
-        params:set("backup",util.clamp(params:get("backup")+d,1,8))
       end
     end
   end
@@ -1118,12 +1055,6 @@ function key(n,z)
   elseif uS.flagSpecial>0 and uS.loopNum==7 then
     -- shit+K2 or shift+K3 activates parameters
     if uS.flagSpecial==1 then
-      -- save
-      backup_save()
-    elseif uS.flagSpecial==2 then
-      -- load
-      backup_load()
-    elseif uS.flagSpecial==3 then
       -- pause/start lfos
       if params:get("pause lfos")==1 then
         show_message("pausing lfos")
@@ -1131,15 +1062,15 @@ function key(n,z)
         show_message("unpausing lfos")
       end
       params:set("pause lfos",3-params:get("pause lfos"))
-    elseif uS.flagSpecial==4 then
+    elseif uS.flagSpecial==2 then
       -- randomize!
       show_message("randomizing")
       randomize_parameters(7)
-    elseif uS.flagSpecial==5 then
+    elseif uS.flagSpecial==3 then
       -- randomize loops!
       show_message("randomizing loops")
       randomize_loops(7)
-    elseif uS.flagSpecial==6 then
+    elseif uS.flagSpecial==4 then
       -- randomize lfos!
       show_message("randomizing lfos")
       randomize_lfos()
@@ -1279,20 +1210,16 @@ function redraw()
       screen.move(x+10,y)
       tape_icon(x+10,y)
     elseif uS.flagSpecial==1 then
-      screen.text("save "..params:get("backup"))
-    elseif uS.flagSpecial==2 then
-      screen.text("load "..params:get("backup"))
-    elseif uS.flagSpecial==3 then
       if params:get("pause lfos")==1 then
         screen.text("pause lfos")
       else
         screen.text("unpause lfos")
       end
-    elseif uS.flagSpecial==4 then
+    elseif uS.flagSpecial==2 then
       screen.text("rand pars")
-    elseif uS.flagSpecial==5 then
+    elseif uS.flagSpecial==3 then
       screen.text("rand loop")
-    elseif uS.flagSpecial==6 then
+    elseif uS.flagSpecial==4 then
       screen.text("rand lfo")
     end
   elseif uS.selectedPar==0 and params:get("expert mode")==1 then
@@ -1498,3 +1425,145 @@ function round_time_to_nearest_beat(t)
   end
   return t+seconds_per_qn-remainder
 end
+
+local function unquote(s)
+  return s:gsub('^"',''):gsub('"$',''):gsub('\\"','"')
+end
+
+function rerun()
+  norns.script.load(norns.state.script)
+end
+
+params_read_silent=function(fname)
+
+  fh,err=io.open(fname)
+  if err then print("no file");return;end
+  while true do
+    line=fh:read()
+    if line==nil then break end
+    local par_name,par_value=string.match(line,"(\".-\")%s*:%s*(.*)")
+    if par_name and par_value then
+      par_name=unquote(par_name)
+      _,err=pcall(function() params:get(par_name) end)
+      if err == nil then 
+        if type(tonumber(par_value))=="number" then
+          par_value=tonumber(par_value)
+        elseif par_value=="-inf" then
+          par_value=-1*math.huge
+        elseif par_value=="inf" then
+          par_value=math.huge
+        end
+        if par_name and par_value then
+          params:set(par_name,par_value,true)
+        else
+          print(par_name,par_value)
+        end
+      else
+        print("err "..err)
+      end
+    end
+  end
+  fh:close()
+end
+
+function setup_sharing(script_name)
+  if not util.file_exists(_path.code.."norns.online") then
+    print("need to donwload norns.online")
+    do return end
+  end
+
+  local share=include("norns.online/lib/share")
+
+  -- start uploader with name of your script
+  local uploader=share:new{script_name=script_name}
+  if uploader==nil then
+    print("uploader failed, no username?")
+    do return end
+  end
+
+  -- add parameters
+  params:add_group("SHARE",4)
+
+  -- uploader (CHANGE THIS TO FIT WHAT YOU NEED)
+  -- select a save
+  local names_dir=DATA_DIR.."names/"
+  params:add_file("share_upload","upload",names_dir)
+  params:set_action("share_upload",function(y)
+    -- prevent banging
+    local x=y
+    params:set("share_download",names_dir) 
+    if #x<=#names_dir then 
+      do return end 
+    end
+
+
+    -- choose data name
+    -- (here dataname is from the selector)
+    local dataname=share.trim_prefix(x,DATA_DIR.."names/")
+    params:set("share_message","uploading...")
+    _menu.redraw()
+    print("uploading "..x.." as "..dataname)
+
+    -- upload each loop
+    local pathtofile = "" 
+    local target = "" 
+    for i=1,6 do
+      pathtofile=DATA_DIR..dataname.."/loop"..i..".wav"
+      target=DATA_DIR..uploader.upload_username.."-"..dataname.."/loop"..i..".wav"
+      if util.file_exists(pathtofile) then
+        msg = uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
+        if not string.match(msg,"OK") then 
+          params:set("share_message",msg)
+          do return end 
+        end
+      end
+    end
+
+    -- upload paramset
+    pathtofile=DATA_DIR..dataname.."/parameters.pset"
+    target=DATA_DIR..uploader.upload_username.."-"..dataname.."/parameters.pset"
+    uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
+
+    -- upload uP
+    pathtofile=DATA_DIR..dataname.."/uP.txt"
+    target=DATA_DIR..uploader.upload_username.."-"..dataname.."/uP.txt"
+    uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
+
+    -- upload name file
+    pathtofile=DATA_DIR.."names/"..dataname
+    target=DATA_DIR.."names/"..uploader.upload_username.."-"..dataname
+    uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
+
+    -- goodbye
+    params:set("share_message","uploaded.")
+  end)
+
+  -- downloader
+  download_dir=share.get_virtual_directory(script_name)
+  params:add_file("share_download","download",download_dir)
+  params:set_action("share_download",function(y)
+    -- prevent banging
+    local x=y
+    params:set("share_download",download_dir) 
+    if #x<=#download_dir then 
+      do return end 
+    end
+
+    -- download
+    print("downloading!")
+    params:set("share_message","downloading...")
+    _menu.redraw()
+    local msg=share.download_from_virtual_directory(x)
+    params:set("share_message",msg)
+  end)
+  params:add{type='binary',name='refresh directory',id='share_refresh',behavior='momentary',action=function(v)
+    print("updating directory")
+    params:set("share_message","refreshing directory.")
+    _menu.redraw()
+    share.make_virtual_directory()
+    params:set("share_message","directory updated.")
+  end
+}
+params:add_text('share_message',">","")
+end
+
