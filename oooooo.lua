@@ -698,6 +698,7 @@ function backup_load(savename)
     end
   end
   params_read_silent(DATA_DIR..savename.."/parameters.pset")
+  uP=tab.load(DATA_DIR..savename.."/uP.txt")
   for i=1,6 do
     if params:get(i.."isempty")==1 then
       tape_stop(i)
@@ -1434,6 +1435,7 @@ function rerun()
 end
 
 params_read_silent=function(fname)
+
   fh,err=io.open(fname)
   if err then print("no file");return;end
   while true do
@@ -1442,18 +1444,22 @@ params_read_silent=function(fname)
     local par_name,par_value=string.match(line,"(\".-\")%s*:%s*(.*)")
     if par_name and par_value then
       par_name=unquote(par_name)
-      if type(tonumber(par_value))=="number" then
-        par_value=tonumber(par_value)
-      elseif par_value=="-inf" then
-        par_value=-1*math.huge
-      elseif par_value=="inf" then
-        par_value=math.huge
-      end
-      -- print(par_name,par_value)
-      if par_name and par_value then
-        params:set(par_name,par_value,true)
+      _,err=pcall(function() params:get(par_name) end)
+      if err == nil then 
+        if type(tonumber(par_value))=="number" then
+          par_value=tonumber(par_value)
+        elseif par_value=="-inf" then
+          par_value=-1*math.huge
+        elseif par_value=="inf" then
+          par_value=math.huge
+        end
+        if par_name and par_value then
+          params:set(par_name,par_value,true)
+        else
+          print(par_name,par_value)
+        end
       else
-        print(par_name,par_value)
+        print("err "..err)
       end
     end
   end
@@ -1505,7 +1511,11 @@ function setup_sharing(script_name)
       pathtofile=DATA_DIR..dataname.."/loop"..i..".wav"
       target=DATA_DIR..uploader.upload_username.."-"..dataname.."/loop"..i..".wav"
       if util.file_exists(pathtofile) then
-        uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
+        msg = uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
+        if not string.match(msg,"OK") then 
+          params:set("share_message",msg)
+          do return end 
+        end
       end
     end
 
@@ -1541,7 +1551,7 @@ function setup_sharing(script_name)
 
     -- download
     print("downloading!")
-    params:set("share_message","please wait...")
+    params:set("share_message","downloading...")
     _menu.redraw()
     local msg=share.download_from_virtual_directory(x)
     params:set("share_message",msg)
