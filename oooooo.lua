@@ -1444,23 +1444,16 @@ params_read_silent=function(fname)
     local par_name,par_value=string.match(line,"(\".-\")%s*:%s*(.*)")
     if par_name and par_value then
       par_name=unquote(par_name)
-      _,err=pcall(function() params:get(par_name) end)
-      if err == nil then 
-        if type(tonumber(par_value))=="number" then
-          par_value=tonumber(par_value)
-        elseif par_value=="-inf" then
-          par_value=-1*math.huge
-        elseif par_value=="inf" then
-          par_value=math.huge
-        end
-        if par_name and par_value then
-          params:set(par_name,par_value,true)
-        else
-          print(par_name,par_value)
-        end
-      else
-        print("err "..err)
+      if type(tonumber(par_value))=="number" then
+        par_value=tonumber(par_value)
+      elseif par_value=="-inf" then
+        par_value=-1*math.huge
+      elseif par_value=="inf" then
+        par_value=math.huge
       end
+      pcall(function() params:set(par_name,par_value,true) end)
+    else
+      print(par_name,par_value)
     end
   end
   fh:close()
