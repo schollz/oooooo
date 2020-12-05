@@ -408,7 +408,6 @@ function init_loops(j)
       softcut.loop_end(i,uC.bufferMinMax[i][2]+uP[i].loopLength)
       softcut.loop(i,1)
       softcut.rec(i,0)
-
       softcut.fade_time(i,0.2)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
@@ -486,7 +485,6 @@ end
 -- updaters
 --
 function update_softcut_input()
-  
   if params:get("input type")==1 then
     print("input L only")
     if i==7 then
@@ -494,7 +492,7 @@ function update_softcut_input()
     end
     audio.level_adc_cut(1)
     audio.level_tape_cut(0)
-  if params:get("input type")==2 then
+  elseif params:get("input type")==2 then
     print("input R only")
     if i==7 then
       softcut.level_input_cut(2,i,1)
