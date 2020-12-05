@@ -111,7 +111,7 @@ function init()
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
   params:set_action("stop rec after",update_parameters)
-  params:add_option("input type","input type",{"line-in","tape","line-in+tape"},3)
+  params:add_option("input type","input type",{"line-in 1","line-in 2","tape","line-in (1+2)+tape"},4)
   params:set_action("input type",function(x)
     update_softcut_input()
     update_parameters()
@@ -290,9 +290,10 @@ function init()
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
 
-  -- listen to audio
-  -- and initiate recording on incoming audio
-  p_amp_in=poll.set("amp_in_l")
+  
+  -- call update_softcut_input to set polling input
+  p_amp_in = update_softcut_input()
+
   -- set period low when primed, default 1 second
   p_amp_in.time=1
   p_amp_in.callback=function(val)
@@ -332,8 +333,6 @@ function init()
     tape_stop(1)
     tape_reset(1)
   end
-
-  update_softcut_input()
 end
 
 function init_loops(j)
@@ -484,34 +483,39 @@ end
 --
 -- updaters
 --
-function update_softcut_input()
-  if params:get("input type")==1 then
-    print("input L only")
-    if i==7 then
+function update_softcut_input()  
+    if params:get("input type")==1 then
+      p_amp_in=poll.set("amp_in_l")
+      print("listening on input 1")
+      for i=1,6 do
+        print("input L only channel "..i)
+        softcut.level_input_cut(1,i,1)
+        softcut.level_input_cut(2,i,0)
+        audio.level_adc_cut(1)
+        audio.level_tape_cut(0)
+      end
+    elseif params:get("input type")==2 then
+      p_amp_in=poll.set("amp_in_r")
+      print("listening on input 2")
+      for i=1,6 do
+        print("input R only channel "..i)
+        softcut.level_input_cut(1,i,0)
+        softcut.level_input_cut(2,i,1)
+        audio.level_adc_cut(1)
+        audio.level_tape_cut(0)
+      end
+    elseif params:get("input type "..i)==3 then
+      print("tape only")
+      audio.level_tape_cut(1)
+      audio.level_adc_cut(0)
+    else
+      print("tape+input L+R "..i)
       softcut.level_input_cut(1,i,1)
-    end
-    audio.level_adc_cut(1)
-    audio.level_tape_cut(0)
-  elseif params:get("input type")==2 then
-    print("input R only")
-    if i==7 then
       softcut.level_input_cut(2,i,1)
+      audio.level_adc_cut(1)
+      audio.level_tape_cut(1)
     end
-    audio.level_adc_cut(1)
-    audio.level_tape_cut(0)
-  elseif params:get("input type")==3 then
-    print("tape only")
-    audio.level_tape_cut(1)
-    audio.level_adc_cut(0)
-  else
-    print("tape+input L+R")
-    if i==7 then
-      softcut.level_input_cut(1,i,1)
-      softcut.level_input_cut(2,i,1)
-    end
-    audio.level_adc_cut(1)
-    audio.level_tape_cut(1)
-  end
+    return p_amp_in
 end
 
 function update_parameters(x)
