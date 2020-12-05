@@ -291,9 +291,8 @@ function init()
   softcut.poll_start_phase()
 
   
-  -- call update_softcut_input to set polling input
-  p_amp_in = update_softcut_input()
-
+  -- and initiate recording on incoming audio
+  p_amp_in=poll.set("amp_in_l")
   -- set period low when primed, default 1 second
   p_amp_in.time=1
   p_amp_in.callback=function(val)
@@ -333,6 +332,8 @@ function init()
     tape_stop(1)
     tape_reset(1)
   end
+
+  update_softcut_input()
 end
 
 function init_loops(j)
@@ -485,8 +486,6 @@ end
 --
 function update_softcut_input()  
     if params:get("input type")==1 then
-      p_amp_in=poll.set("amp_in_l")
-      print("listening on input 1")
       for i=1,6 do
         print("input L only channel "..i)
         softcut.level_input_cut(1,i,1)
@@ -495,8 +494,6 @@ function update_softcut_input()
         audio.level_tape_cut(0)
       end
     elseif params:get("input type")==2 then
-      p_amp_in=poll.set("amp_in_r")
-      print("listening on input 2")
       for i=1,6 do
         print("input R only channel "..i)
         softcut.level_input_cut(1,i,0)
