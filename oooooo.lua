@@ -401,8 +401,6 @@ function init_loops(j)
     if i<7 then
       -- update softcut
       softcut.level(i,0.5)
-      softcut.level_input_cut(1,i,1)
-      softcut.level_input_cut(2,i,1)
       softcut.pan(i,0)
       softcut.play(i,0)
       softcut.rate(i,1)
@@ -488,16 +486,31 @@ end
 -- updaters
 --
 function update_softcut_input()
+  
   if params:get("input type")==1 then
-    print("adc only")
+    print("input L only")
+    if i==7 then
+      softcut.level_input_cut(1,i,1)
+    end
     audio.level_adc_cut(1)
     audio.level_tape_cut(0)
-  elseif params:get("input type")==2 then
+  if params:get("input type")==2 then
+    print("input R only")
+    if i==7 then
+      softcut.level_input_cut(2,i,1)
+    end
+    audio.level_adc_cut(1)
+    audio.level_tape_cut(0)
+  elseif params:get("input type")==3 then
     print("tape only")
     audio.level_tape_cut(1)
     audio.level_adc_cut(0)
   else
-    print("tape+adc only")
+    print("tape+input L+R")
+    if i==7 then
+      softcut.level_input_cut(1,i,1)
+      softcut.level_input_cut(2,i,1)
+    end
     audio.level_adc_cut(1)
     audio.level_tape_cut(1)
   end
