@@ -297,7 +297,7 @@ function init()
   p_amp_in.callback=function(val)
     for i=1,6 do
       if uS.recording[i]==1 and params:get("input type")==(1 or 4) then
-        print("incoming signal = "..val)
+        -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/1000 then
           tape_rec(i)
         end
@@ -313,7 +313,7 @@ function init()
   p_amp_in2.callback=function(val)
     for i=1,6 do
       if uS.recording[i]==1 and params:get("input type")==(2 or 4) then
-        print("incoming signal = "..val)
+        -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/1000 then
           tape_rec(i)
         end
