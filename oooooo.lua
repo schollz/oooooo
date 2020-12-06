@@ -423,6 +423,7 @@ function init_loops(j)
       softcut.loop_end(i,uC.bufferMinMax[i][2]+uP[i].loopLength)
       softcut.loop(i,1)
       softcut.rec(i,0)
+      
       softcut.fade_time(i,0.2)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
