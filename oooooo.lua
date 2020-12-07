@@ -111,7 +111,7 @@ function init()
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
   params:set_action("stop rec after",update_parameters)
-  params:add_option("input type","input type",{"line-in 1","line-in 2","tape","line-in (1+2)+tape"},4)
+  params:add_option("input type","input type",{"line-in L","line-in R","tape","line-in (L+R)+tape"},4)
   params:set_action("input type",function(x)
     update_softcut_input()
     update_parameters()
@@ -296,7 +296,7 @@ function init()
   p_amp_in.time=1
   p_amp_in.callback=function(val)
     for i=1,6 do
-      if uS.recording[i]==1 and params:get("input type")==(1 or 4) then
+      if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
         -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/1000 then
           tape_rec(i)
@@ -312,7 +312,7 @@ function init()
   p_amp_in2.time=1
   p_amp_in2.callback=function(val)
     for i=1,6 do
-      if uS.recording[i]==1 and params:get("input type")==(2 or 4) then
+      if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
         -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/1000 then
           tape_rec(i)
@@ -812,9 +812,9 @@ function tape_stop_rec(i,change_loop)
     do return end
   end
   print("tape_stop_rec "..i)
-  if uS.recording[i]==1 and params:get("input type")==(1 or 4) then
+  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
     p_amp_in.time=1
-  elseif uS.recording[i]==1 and params:get("input type")==(2 or 4) then
+  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
     p_amp_in2.time=1
   end
   still_armed=(uS.recording[i]==1)
@@ -955,9 +955,9 @@ function tape_arm_rec(i)
   uS.recording[i]=1
   uS.recordingLoopNum[i]=0
   -- monitor input
-  if uS.recording[i]==1 and not params:get("input type")==(1 or 4) then
+  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
     p_amp_in.time=0.025
-  elseif uS.recording[i]==1 and params:get("input type")==(2 or 4) then
+  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
     p_amp_in2.time=0.025
   end
 end
@@ -974,9 +974,9 @@ function tape_rec(i)
     uP[i].volUpdate=true
     uP[i].isStopped=false
   end
-  if uS.recording[i]==1 and not params:get("input type")==(1 or 4) then
+  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
     p_amp_in.time=1
-  elseif uS.recording[i]==1 and params:get("input type")==(2 or 4) then
+  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
     p_amp_in2.time=1
   end
   uS.recordingTime[i]=0
