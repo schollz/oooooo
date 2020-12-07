@@ -111,7 +111,7 @@ function init()
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
   params:set_action("stop rec after",update_parameters)
-  params:add_option("input type","input type",{"line-in","tape","line-in+tape"},3)
+  params:add_option("input type","input type",{"line-in L","line-in R","tape","line-in (L+R)+tape"},4)
   params:set_action("input type",function(x)
     update_softcut_input()
     update_parameters()
@@ -290,14 +290,13 @@ function init()
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
 
-  -- listen to audio
-  -- and initiate recording on incoming audio
+  -- and initiate recording on incoming audio on input 1
   p_amp_in=poll.set("amp_in_l")
   -- set period low when primed, default 1 second
   p_amp_in.time=1
   p_amp_in.callback=function(val)
     for i=1,6 do
-      if uS.recording[i]==1 then
+      if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
         -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/1000 then
           tape_rec(i)
@@ -306,6 +305,22 @@ function init()
     end
   end
   p_amp_in:start()
+
+  -- and initiate recording on incoming on audio input 2
+  p_amp_in2=poll.set("amp_in_r")
+  -- set period low when primed, default 1 second
+  p_amp_in2.time=1
+  p_amp_in2.callback=function(val)
+    for i=1,6 do
+      if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+        -- print("incoming signal = "..val)
+        if val>params:get("rec thresh")/1000 then
+          tape_rec(i)
+        end
+      end
+    end
+  end
+  p_amp_in2:start()
 
   for i=1,6 do
     params:set_action(i.."vol",function(x) uP[i].volUpdate=true end)
@@ -401,8 +416,6 @@ function init_loops(j)
     if i<7 then
       -- update softcut
       softcut.level(i,0.5)
-      softcut.level_input_cut(1,i,1)
-      softcut.level_input_cut(2,i,1)
       softcut.pan(i,0)
       softcut.play(i,0)
       softcut.rate(i,1)
@@ -487,19 +500,31 @@ end
 --
 -- updaters
 --
-function update_softcut_input()
-  if params:get("input type")==1 then
-    print("adc only")
-    audio.level_adc_cut(1)
-    audio.level_tape_cut(0)
-  elseif params:get("input type")==2 then
-    print("tape only")
-    audio.level_tape_cut(1)
-    audio.level_adc_cut(0)
-  else
-    print("tape+adc only")
-    audio.level_adc_cut(1)
-    audio.level_tape_cut(1)
+function update_softcut_input()  
+  for i=1,6 do
+    if params:get("input type")==1 then
+      -- print("input L only channel "..i)
+      softcut.level_input_cut(1,i,1)
+      softcut.level_input_cut(2,i,0)
+      audio.level_adc_cut(1)
+      audio.level_tape_cut(0)
+    elseif params:get("input type")==2 then
+      -- print("input R only channel "..i)
+      softcut.level_input_cut(1,i,0)
+      softcut.level_input_cut(2,i,1)
+      audio.level_adc_cut(1)
+      audio.level_tape_cut(0)
+    elseif params:get("input type")==3 then
+      print("tape only")
+      audio.level_tape_cut(1)
+      audio.level_adc_cut(0)
+    else
+      -- print("tape+input L+R "..i)
+      softcut.level_input_cut(1,i,1)
+      softcut.level_input_cut(2,i,1)
+      audio.level_adc_cut(1)
+      audio.level_tape_cut(1)
+    end
   end
 end
 
@@ -787,7 +812,11 @@ function tape_stop_rec(i,change_loop)
     do return end
   end
   print("tape_stop_rec "..i)
-  p_amp_in.time=1
+  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+    p_amp_in.time=1
+  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+    p_amp_in2.time=1
+  end
   still_armed=(uS.recording[i]==1)
   uS.recording[i]=0
   uS.recordingLoopNum[i]=0
@@ -926,7 +955,11 @@ function tape_arm_rec(i)
   uS.recording[i]=1
   uS.recordingLoopNum[i]=0
   -- monitor input
-  p_amp_in.time=0.025
+  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+    p_amp_in.time=0.025
+  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+    p_amp_in2.time=0.025
+  end
 end
 
 function tape_rec(i)
@@ -941,7 +974,11 @@ function tape_rec(i)
     uP[i].volUpdate=true
     uP[i].isStopped=false
   end
-  p_amp_in.time=1
+  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+    p_amp_in.time=1
+  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+    p_amp_in2.time=1
+  end
   uS.recordingTime[i]=0
   uS.recording[i]=2 -- recording is live
   softcut.rec_level(i,params:get("rec level"))
