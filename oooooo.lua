@@ -615,7 +615,7 @@ function update_timer()
       uS.updateUI=true
       uP[i].volUpdate=false
       uP[i].vol=params:get(i.."vol")
-      if params:get(i.."vol lfo period")>0 and params:get("pause lfos")==1 then
+      if uP[i].vol > 0 and params:get(i.."vol lfo period")>0 and params:get("pause lfos")==1 then
         uP[i].vol=uP[i].vol+params:get(i.."vol lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."vol lfo period"),params:get(i.."vol lfo offset"))
         uP[i].vol=util.clamp(uP[i].vol,0,1)
       end
