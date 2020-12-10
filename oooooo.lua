@@ -25,6 +25,7 @@
 
 local Formatters=require 'formatters'
 
+
 -- user parameters
 uP={
   -- initialized in init
@@ -189,7 +190,7 @@ function init()
   filter_resonance=controlspec.new(0.05,1,'lin',0,0.25,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,31)
+    params:add_group("loop "..i,33)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -233,6 +234,20 @@ function init()
       controlspec=filter_resonance,
       action=function(value)
         softcut.post_filter_rq(i,value)
+      end
+    }
+    params:add{type='binary',name="play trig",id=i..'play trig',behavior='momentary',
+      action=function(v)
+        if v==1 then
+          tape_play(i)
+        end
+      end
+    }
+    params:add{type='binary',name="stop trig",id=i..'stop trig',behavior='momentary',
+      action=function(v)
+        if v==1 then
+          tape_stop_reset(i)
+        end
       end
     }
     params:add{type='binary',name="recording trig",id=i..'recording trig',behavior='momentary',
