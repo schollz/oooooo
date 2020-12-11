@@ -25,6 +25,11 @@
 
 local Formatters=require 'formatters'
 
+-- local midi2osc = include('midi2osc/lib/midi2osc')
+-- midi2osc:init('oooooo.json',true)
+
+engine.name = "SimpleDelay"
+
 
 -- user parameters
 uP={
@@ -85,6 +90,7 @@ PATH=_path.audio..'oooooo/'
 
 
 function init()
+  engine.delay(0.001)
   setup_sharing("oooooo")
   params:add_separator("oooooo")
   -- add variables into main menu
@@ -106,8 +112,13 @@ function init()
   params:set_action("rec level",update_parameters)
   params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
   params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
-  params:set_action("vol pinch",update_parameters)
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,200,'ms'))
+  params:set_action("vol pinch",function(x)
+    for i=1,6 do
+      softcut.recpre_slew_time(i,x/1000)
+    end
+    update_parameters()
+  end)
   params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
@@ -359,8 +370,10 @@ function init()
       tape_play(7)
     end
   else
-    tape_stop(1)
-    tape_reset(1)
+    for i=1,6 do
+      tape_stop(i)
+      tape_reset(i)
+    end
   end
 
   update_softcut_input()
@@ -442,6 +455,7 @@ function init_loops(j)
       softcut.fade_time(i,0.2)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
+      softcut.recpre_slew_time(i,params:get("vol pinch")/1000)
 
       softcut.rec_level(i,params:get("rec level"))
       softcut.pre_level(i,params:get("pre level"))
@@ -516,28 +530,33 @@ end
 -- updaters
 --
 function update_softcut_input()  
+  audio.level_monitor(0)
   for i=1,6 do
     if params:get("input type")==1 then
       -- print("input L only channel "..i)
       softcut.level_input_cut(1,i,1)
       softcut.level_input_cut(2,i,0)
-      audio.level_adc_cut(1)
+      audio.level_eng_cut(1)
+      audio.level_adc_cut(0)
       audio.level_tape_cut(0)
     elseif params:get("input type")==2 then
       -- print("input R only channel "..i)
       softcut.level_input_cut(1,i,0)
       softcut.level_input_cut(2,i,1)
-      audio.level_adc_cut(1)
+      audio.level_eng_cut(1)
+      audio.level_adc_cut(0)
       audio.level_tape_cut(0)
     elseif params:get("input type")==3 then
       print("tape only")
+      audio.level_eng_cut(0)
       audio.level_tape_cut(1)
       audio.level_adc_cut(0)
     else
       -- print("tape+input L+R "..i)
       softcut.level_input_cut(1,i,1)
       softcut.level_input_cut(2,i,1)
-      audio.level_adc_cut(1)
+      audio.level_eng_cut(1)
+      audio.level_adc_cut(0)
       audio.level_tape_cut(1)
     end
   end
@@ -842,13 +861,10 @@ function tape_stop_rec(i,change_loop)
   end
   uS.recordingTime[i]=0
   -- slowly stop
+  softcut.rec_level(i,0)
+  softcut.pre_level(i,1)
   clock.run(function()
-    if params:get("vol pinch")>0 then
-      for j=1,10 do
-        softcut.rec(i,(10-j)*0.1)
-        clock.sleep(params:get("vol pinch")/10/1000)
-      end
-    end
+    clock.sleep(params:get("vol pinch")/1000)
     softcut.rec(i,0)
   end)
 
@@ -996,21 +1012,13 @@ function tape_rec(i)
   end
   uS.recordingTime[i]=0
   uS.recording[i]=2 -- recording is live
-  softcut.rec_level(i,params:get("rec level"))
-  softcut.pre_level(i,params:get("pre level"))
   params:set(i.."isempty",1)
   redraw()
   -- slowly start recording
-  -- ease in recording signal to avoid clicks near loop points
-  clock.run(function()
-    if params:get("vol pinch")>0 then
-      for j=1,10 do
-        softcut.rec(i,j*0.1)
-        clock.sleep(params:get("vol pinch")/10/1000)
-      end
-    end
-    softcut.rec(i,1)
-  end)
+  softcut.rec_level(i,params:get("rec level"))
+  softcut.pre_level(i,params:get("pre level"))
+  softcut.rec(i,1)
+
 end
 
 --
