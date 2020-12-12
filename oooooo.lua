@@ -25,6 +25,11 @@
 
 local Formatters=require 'formatters'
 
+-- local midi2osc = include('midi2osc/lib/midi2osc')
+-- midi2osc:init('oooooo.json',true)
+
+engine.name = "SimpleDelay"
+
 
 -- user parameters
 uP={
@@ -48,6 +53,8 @@ uS={
   message="",
   currentBeat=0,
   currentTime=0,
+  lagActivated=false,
+  timeSinceArming=0,
 }
 
 -- user constants
@@ -78,6 +85,8 @@ uC={
   lfoTime=1,
   discreteRates={-400,-200*1.498,-200,-100*1.498,-100,-50*1.498,-50,-25*1.498,-25,0,25,1.498*25,50,1.498*50,100,1.498*100,200,1.498*200,400},
   discreteBeats={1/4,1/2,1,2},
+  pampfast=0.025,
+  timeUntilLagInitiates=0.1,
 }
 
 DATA_DIR=_path.data.."oooooo/"
@@ -85,6 +94,8 @@ PATH=_path.audio..'oooooo/'
 
 
 function init()
+  engine.delay(0.001)
+  engine.volume(0.0)
   setup_sharing("oooooo")
   params:add_separator("oooooo")
   -- add variables into main menu
@@ -106,8 +117,13 @@ function init()
   params:set_action("rec level",update_parameters)
   params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
   params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,500,'ms'))
-  params:set_action("vol pinch",update_parameters)
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,200,'ms'))
+  params:set_action("vol pinch",function(x)
+    for i=1,6 do
+      softcut.recpre_slew_time(i,x/1000)
+    end
+    update_parameters()
+  end)
   params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
@@ -312,6 +328,11 @@ function init()
   p_amp_in.callback=function(val)
     for i=1,6 do
       if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+        -- if arming has occured for more than timeUntilLagInitiates seconds, then switch to lagged
+        uS.timeSinceArming = uS.timeSinceArming + uC.pampfast
+        if uS.timeSinceArming > uC.timeUntilLagInitiates then 
+          update_softcut_input_lag(true)
+        end
         -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/1000 then
           tape_rec(i)
@@ -328,6 +349,11 @@ function init()
   p_amp_in2.callback=function(val)
     for i=1,6 do
       if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+        -- if arming has occured for more than 0.5 seconds, then switch to lagged
+        uS.timeSinceArming = uS.timeSinceArming + uC.pampfast
+        if uS.timeSinceArming > uC.timeUntilLagInitiates then 
+          update_softcut_input_lag(true)
+        end
         -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/1000 then
           tape_rec(i)
@@ -359,11 +385,14 @@ function init()
       tape_play(7)
     end
   else
-    tape_stop(1)
-    tape_reset(1)
+    for i=1,6 do
+      tape_stop(i)
+      tape_reset(i)
+    end
   end
 
   update_softcut_input()
+  update_softcut_input_lag(false)
 end
 
 function init_loops(j)
@@ -442,6 +471,7 @@ function init_loops(j)
       softcut.fade_time(i,0.2)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
+      softcut.recpre_slew_time(i,params:get("vol pinch")/1000)
 
       softcut.rec_level(i,params:get("rec level"))
       softcut.pre_level(i,params:get("pre level"))
@@ -540,6 +570,28 @@ function update_softcut_input()
       audio.level_adc_cut(1)
       audio.level_tape_cut(1)
     end
+  end
+end
+
+function update_softcut_input_lag(on)
+  if params:get("input type")==3 or on==uS.lagActivated then 
+    -- do nothing if using just tape or already activated
+    do return end
+  end
+  uS.lagActivated = on 
+  if on then
+    print("update_softcut_input_lag: activated")
+    engine.volume(1.0)
+    -- add lag to recording using a simple delay engine
+    audio.level_monitor(0) -- turn off monitor to keep from hearing doubled audio
+    audio.level_eng_cut(1)
+    audio.level_adc_cut(0)
+  else
+    print("update_softcut_input_lag: deactivated")
+    engine.volume(0.0)
+    audio.level_monitor(1) -- turn on monitor
+    audio.level_eng_cut(0)
+    audio.level_adc_cut(1)
   end
 end
 
@@ -832,6 +884,7 @@ function tape_stop_rec(i,change_loop)
   elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
     p_amp_in2.time=1
   end
+  update_softcut_input_lag(false)
   still_armed=(uS.recording[i]==1)
   uS.recording[i]=0
   uS.recordingLoopNum[i]=0
@@ -842,13 +895,10 @@ function tape_stop_rec(i,change_loop)
   end
   uS.recordingTime[i]=0
   -- slowly stop
+  softcut.rec_level(i,0)
+  softcut.pre_level(i,1)
   clock.run(function()
-    if params:get("vol pinch")>0 then
-      for j=1,10 do
-        softcut.rec(i,(10-j)*0.1)
-        clock.sleep(params:get("vol pinch")/10/1000)
-      end
-    end
+    clock.sleep(params:get("vol pinch")/1000)
     softcut.rec(i,0)
   end)
 
@@ -969,11 +1019,12 @@ function tape_arm_rec(i)
   -- arm  recording
   uS.recording[i]=1
   uS.recordingLoopNum[i]=0
+  uS.timeSinceArming=0
   -- monitor input
   if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
-    p_amp_in.time=0.025
+    p_amp_in.time=uC.pampfast
   elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
-    p_amp_in2.time=0.025
+    p_amp_in2.time=uC.pampfast
   end
 end
 
@@ -996,21 +1047,13 @@ function tape_rec(i)
   end
   uS.recordingTime[i]=0
   uS.recording[i]=2 -- recording is live
-  softcut.rec_level(i,params:get("rec level"))
-  softcut.pre_level(i,params:get("pre level"))
   params:set(i.."isempty",1)
   redraw()
   -- slowly start recording
-  -- ease in recording signal to avoid clicks near loop points
-  clock.run(function()
-    if params:get("vol pinch")>0 then
-      for j=1,10 do
-        softcut.rec(i,j*0.1)
-        clock.sleep(params:get("vol pinch")/10/1000)
-      end
-    end
-    softcut.rec(i,1)
-  end)
+  softcut.rec_level(i,params:get("rec level"))
+  softcut.pre_level(i,params:get("pre level"))
+  softcut.rec(i,1)
+
 end
 
 --
