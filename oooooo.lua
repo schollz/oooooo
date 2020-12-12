@@ -1014,12 +1014,7 @@ function tape_arm_rec(i)
   -- arm  recording
   uS.recording[i]=1
   if params:get("catch transients w lag")==2 then 
-    clock.run(function() 
-      clock.sleep(0.25)
-      if uS.recording[i]==1 then 
-        update_softcut_input_lag(true)
-      end
-    end)
+      update_softcut_input_lag(true)
   end
   uS.recordingLoopNum[i]=0
   uS.timeSinceArming=clock.get_beats()*clock.get_beat_sec()
