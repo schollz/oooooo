@@ -53,6 +53,8 @@ uS={
   message="",
   currentBeat=0,
   currentTime=0,
+  lagActivated=false,
+  timeSinceArming=0,
 }
 
 -- user constants
@@ -83,6 +85,8 @@ uC={
   lfoTime=1,
   discreteRates={-400,-200*1.498,-200,-100*1.498,-100,-50*1.498,-50,-25*1.498,-25,0,25,1.498*25,50,1.498*50,100,1.498*100,200,1.498*200,400},
   discreteBeats={1/4,1/2,1,2},
+  pampfast=0.025,
+  timeUntilLagInitiates=0.1,
 }
 
 DATA_DIR=_path.data.."oooooo/"
@@ -91,6 +95,7 @@ PATH=_path.audio..'oooooo/'
 
 function init()
   engine.delay(0.001)
+  engine.volume(0.0)
   setup_sharing("oooooo")
   params:add_separator("oooooo")
   -- add variables into main menu
@@ -323,6 +328,11 @@ function init()
   p_amp_in.callback=function(val)
     for i=1,6 do
       if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+        -- if arming has occured for more than timeUntilLagInitiates seconds, then switch to lagged
+        uS.timeSinceArming = uS.timeSinceArming + uC.pampfast
+        if uS.timeSinceArming > uC.timeUntilLagInitiates then 
+          update_softcut_input_lag(true)
+        end
         -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/1000 then
           tape_rec(i)
@@ -339,6 +349,11 @@ function init()
   p_amp_in2.callback=function(val)
     for i=1,6 do
       if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+        -- if arming has occured for more than 0.5 seconds, then switch to lagged
+        uS.timeSinceArming = uS.timeSinceArming + uC.pampfast
+        if uS.timeSinceArming > uC.timeUntilLagInitiates then 
+          update_softcut_input_lag(true)
+        end
         -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/1000 then
           tape_rec(i)
@@ -377,6 +392,7 @@ function init()
   end
 
   update_softcut_input()
+  update_softcut_input_lag(false)
 end
 
 function init_loops(j)
@@ -530,35 +546,52 @@ end
 -- updaters
 --
 function update_softcut_input()  
-  audio.level_monitor(0)
   for i=1,6 do
     if params:get("input type")==1 then
       -- print("input L only channel "..i)
       softcut.level_input_cut(1,i,1)
       softcut.level_input_cut(2,i,0)
-      audio.level_eng_cut(1)
-      audio.level_adc_cut(0)
+      audio.level_adc_cut(1)
       audio.level_tape_cut(0)
     elseif params:get("input type")==2 then
       -- print("input R only channel "..i)
       softcut.level_input_cut(1,i,0)
       softcut.level_input_cut(2,i,1)
-      audio.level_eng_cut(1)
-      audio.level_adc_cut(0)
+      audio.level_adc_cut(1)
       audio.level_tape_cut(0)
     elseif params:get("input type")==3 then
       print("tape only")
-      audio.level_eng_cut(0)
       audio.level_tape_cut(1)
       audio.level_adc_cut(0)
     else
       -- print("tape+input L+R "..i)
       softcut.level_input_cut(1,i,1)
       softcut.level_input_cut(2,i,1)
-      audio.level_eng_cut(1)
-      audio.level_adc_cut(0)
+      audio.level_adc_cut(1)
       audio.level_tape_cut(1)
     end
+  end
+end
+
+function update_softcut_input_lag(on)
+  if params:get("input type")==3 or on==uS.lagActivated then 
+    -- do nothing if using just tape or already activated
+    do return end
+  end
+  uS.lagActivated = on 
+  if on then
+    print("update_softcut_input_lag: activated")
+    engine.volume(1.0)
+    -- add lag to recording using a simple delay engine
+    audio.level_monitor(0) -- turn off monitor to keep from hearing doubled audio
+    audio.level_eng_cut(1)
+    audio.level_adc_cut(0)
+  else
+    print("update_softcut_input_lag: deactivated")
+    engine.volume(0.0)
+    audio.level_monitor(1) -- turn on monitor
+    audio.level_eng_cut(0)
+    audio.level_adc_cut(1)
   end
 end
 
@@ -851,6 +884,7 @@ function tape_stop_rec(i,change_loop)
   elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
     p_amp_in2.time=1
   end
+  update_softcut_input_lag(false)
   still_armed=(uS.recording[i]==1)
   uS.recording[i]=0
   uS.recordingLoopNum[i]=0
@@ -985,11 +1019,12 @@ function tape_arm_rec(i)
   -- arm  recording
   uS.recording[i]=1
   uS.recordingLoopNum[i]=0
+  uS.timeSinceArming=0
   -- monitor input
   if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
-    p_amp_in.time=0.025
+    p_amp_in.time=uC.pampfast
   elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
-    p_amp_in2.time=0.025
+    p_amp_in2.time=uC.pampfast
   end
 end
 

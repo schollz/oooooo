@@ -6,11 +6,12 @@ Engine_SimpleDelay : CroneEngine {
   }
 
   alloc { 
-    synth = { arg delay=0.005;
+    synth = { arg delay=0.005, volume=0.0;
       var input = SoundIn.ar([0, 1]);
-      DelayC.ar(input, maxDelayTime:0.01, delayTime:delay)
+      volume*DelayC.ar(input, maxDelayTime:0.01, delayTime:delay)
     }.play(context.server);
 
     this.addCommand("delay", "f", { arg msg; synth.set(\delay, msg[1]); });
+    this.addCommand("volume", "f", { arg msg; synth.set(\volume, msg[1]); });
   }
 }
