@@ -899,7 +899,7 @@ function tape_stop_rec(i,change_loop)
   softcut.rec_level(i,0)
   softcut.pre_level(i,1)
   clock.run(function()
-    clock.sleep(params:get("vol pinch")/1000)
+    clock.sleep(0.5)
     softcut.rec(i,0)
   end)
 
