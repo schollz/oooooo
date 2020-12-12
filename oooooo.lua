@@ -55,6 +55,7 @@ uS={
   currentTime=0,
   lagActivated=false,
   timeSinceArming=0,
+  lastOnset=0,
 }
 
 -- user constants
@@ -85,7 +86,7 @@ uC={
   lfoTime=1,
   discreteRates={-400,-200*1.498,-200,-100*1.498,-100,-50*1.498,-50,-25*1.498,-25,0,25,1.498*25,50,1.498*50,100,1.498*100,200,1.498*200,400},
   discreteBeats={1/4,1/2,1,2},
-  pampfast=0.025,
+  pampfast=0.02,
   timeUntilLagInitiates=0.1,
 }
 
@@ -94,7 +95,6 @@ PATH=_path.audio..'oooooo/'
 
 
 function init()
-  engine.delay(0.0005)
   engine.volume(0.0)
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -110,20 +110,22 @@ function init()
   params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
   params:set_action("start length",update_parameters)
 
-  params:add_group("recording",8)
+  params:add_group("recording",9)
   params:add_control("pre level","pre level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
   params:set_action("pre level",update_parameters)
   params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
   params:set_action("rec level",update_parameters)
-  params:add_control("rec thresh","rec thresh",controlspec.new(1,100,'exp',1,10,'amp/1k'))
+  params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,80,'amp/10k'))
   params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,200,'ms'))
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,100,'ms'))
   params:set_action("vol pinch",function(x)
     for i=1,6 do
       softcut.recpre_slew_time(i,x/1000)
     end
     update_parameters()
   end)
+  params:add_option("catch transients w lag","catch transients w lag",{"no","yes"},1)
+  params:set_action("catch transients w lag",update_parameters)
   params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
@@ -317,6 +319,9 @@ function init()
   timer.event=update_timer
   timer:start()
 
+  -- -- osc input 
+  -- osc.event = osc_in
+
   -- position poll
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
@@ -328,13 +333,8 @@ function init()
   p_amp_in.callback=function(val)
     for i=1,6 do
       if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
-        -- if arming has occured for more than timeUntilLagInitiates seconds, then switch to lagged
-        uS.timeSinceArming = uS.timeSinceArming + uC.pampfast
-        if uS.timeSinceArming > uC.timeUntilLagInitiates then 
-          update_softcut_input_lag(true)
-        end
         -- print("incoming signal = "..val)
-        if val>params:get("rec thresh")/1000 then
+        if val>params:get("rec thresh")/10000 then
           tape_rec(i)
         end
       end
@@ -349,13 +349,8 @@ function init()
   p_amp_in2.callback=function(val)
     for i=1,6 do
       if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
-        -- if arming has occured for more than 0.5 seconds, then switch to lagged
-        uS.timeSinceArming = uS.timeSinceArming + uC.pampfast
-        if uS.timeSinceArming > uC.timeUntilLagInitiates then 
-          update_softcut_input_lag(true)
-        end
         -- print("incoming signal = "..val)
-        if val>params:get("rec thresh")/1000 then
+        if val>params:get("rec thresh")/10000 then
           tape_rec(i)
         end
       end
@@ -1018,8 +1013,16 @@ function tape_arm_rec(i)
   print("tape_arm_rec "..i)
   -- arm  recording
   uS.recording[i]=1
+  if params:get("catch transients w lag")==2 then 
+    clock.run(function() 
+      clock.sleep(0.25)
+      if uS.recording[i]==1 then 
+        update_softcut_input_lag(true)
+      end
+    end)
+  end
   uS.recordingLoopNum[i]=0
-  uS.timeSinceArming=0
+  uS.timeSinceArming=clock.get_beats()*clock.get_beat_sec()
   -- monitor input
   if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
     p_amp_in.time=uC.pampfast
@@ -1655,3 +1658,24 @@ function setup_sharing(script_name)
 params:add_text('share_message',">","")
 end
 
+
+
+-- --
+-- -- osc
+-- -- 
+-- function osc_in(path, args, from)
+--   if path == "onset" then 
+--     cur_onset = args[2]
+--     print("onset "..cur_onset)
+--     if (cur_onset-uS.lastOnset) < 0.5 then 
+--       do return end 
+--     end
+--     print("onset detected")
+--     uS.lastOnset = cur_onset
+--     for i=1,6 do
+--       if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+--           tape_rec(i)
+--       end
+--     end
+--   end
+-- end
