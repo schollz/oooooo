@@ -574,7 +574,6 @@ function update_softcut_input()
 end
 
 function update_softcut_input_lag(on)
-  do return end
   if params:get("input type")==3 or on==uS.lagActivated then 
     -- do nothing if using just tape or already activated
     do return end
