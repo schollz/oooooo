@@ -1,4 +1,4 @@
--- oooooo v1.4.0
+-- oooooo v1.5.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -94,7 +94,7 @@ PATH=_path.audio..'oooooo/'
 
 
 function init()
-  engine.delay(0.001)
+  engine.delay(0.0005)
   engine.volume(0.0)
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -203,7 +203,7 @@ function init()
   params:set("slew rate",(60/clock.get_tempo())*4)
 
   -- add parameters
-  filter_resonance=controlspec.new(0.05,1,'lin',0,0.25,'')
+  filter_resonance=controlspec.new(0.05,1,'lin',0,1,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
     params:add_group("loop "..i,33)
@@ -574,6 +574,7 @@ function update_softcut_input()
 end
 
 function update_softcut_input_lag(on)
+  do return end
   if params:get("input type")==3 or on==uS.lagActivated then 
     -- do nothing if using just tape or already activated
     do return end
