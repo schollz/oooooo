@@ -95,6 +95,7 @@ PATH=_path.audio..'oooooo/'
 
 
 function init()
+  engine.delay(0.1)
   engine.volume(0.0)
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -893,7 +894,7 @@ function tape_stop_rec(i,change_loop)
   softcut.rec_level(i,0)
   softcut.pre_level(i,1)
   clock.run(function()
-    clock.sleep(0.5)
+    clock.sleep(params:get("vol pinch")/1000)
     softcut.rec(i,0)
   end)
 
