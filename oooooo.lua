@@ -116,11 +116,12 @@ function init()
   params:set_action("pre level",update_parameters)
   params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
   params:set_action("rec level",update_parameters)
-  params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,80,'amp/10k'))
+  params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k'))
   params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,100,'ms'))
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,30,'ms'))
   params:set_action("vol pinch",function(x)
     for i=1,6 do
+      -- softcut.fade_time(i,x/1000)
       softcut.recpre_slew_time(i,x/1000)
     end
     update_parameters()
@@ -403,7 +404,6 @@ function init_loops(j)
   end
   for i=i1,i2 do
     print("initializing  "..i)
-    -- TODO: if using save file, then load the last save
     uP[i]={}
     uP[i].loopStart=0
     uP[i].loopLength=(60/clock.get_tempo())*i*4
@@ -411,7 +411,7 @@ function init_loops(j)
       uP[i].loopLength=(60/clock.get_tempo())*params:get("start length")
     end
     uP[i].loopUpdate=false
-    uP[i].position=uP[i].loopStart
+    uP[i].position=0
     uP[i].recordedLength=0
     uP[i].isStopped=true
     uP[i].vol=0.5
@@ -464,7 +464,8 @@ function init_loops(j)
       softcut.loop(i,1)
       softcut.rec(i,0)
 
-      softcut.fade_time(i,0.2)
+      -- fade time is redundant with recpre
+      -- softcut.fade_time(i,params:get("vol pinch")/1000)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
       softcut.recpre_slew_time(i,params:get("vol pinch")/1000)
@@ -597,7 +598,14 @@ end
 
 function update_positions(i,x)
   -- adjust position so it is relative to loop start
+  currentPosition = uP[i].position
   uP[i].position=x-uC.bufferMinMax[i][2]
+  if currentPosition == uP[i].position then 
+    do return end 
+  end
+  if uP[i].position < 0 then 
+    uP[i].position = 0
+  end
   uS.updateUI=true
 end
 
@@ -725,7 +733,7 @@ function update_timer()
         uP[i].loopLength=uC.loopMinMax[2]-uP[i].loopStart
       end
       -- move to start of loop if position is outside of loop
-      if uP[i].position<uP[i].loopStart or uP[i].position>uP[i].loopStart+uP[i].loopLength then
+      if (uP[i].position<uP[i].loopStart or uP[i].position>uP[i].loopStart+uP[i].loopLength) then
         uP[i].position=uP[i].loopStart
         softcut.position(i,uP[i].position+uC.bufferMinMax[i][2])
       end
@@ -894,8 +902,11 @@ function tape_stop_rec(i,change_loop)
   softcut.rec_level(i,0)
   softcut.pre_level(i,1)
   clock.run(function()
+    -- allow pre level to go down
     clock.sleep(params:get("vol pinch")/1000)
     softcut.rec(i,0)
+    -- DEBUGGING PURPOSES
+    -- loop_save_wav(i,"/tmp/save1.wav")
   end)
 
   -- change the loop size if specified
@@ -1015,7 +1026,7 @@ function tape_arm_rec(i)
   -- arm  recording
   uS.recording[i]=1
   if params:get("catch transients w lag")==2 then 
-      update_softcut_input_lag(true)
+    update_softcut_input_lag(true)
   end
   uS.recordingLoopNum[i]=0
   uS.timeSinceArming=clock.get_beats()*clock.get_beat_sec()
@@ -1032,9 +1043,8 @@ function tape_rec(i)
     do return end
   end
   print("tape_rec "..i)
-  if uP[i].isStopped then
+  if uP[i].isStopped then 
     softcut.play(i,1)
-    -- print("setting rate to "..uP[i].rate)
     softcut.rate(i,uP[i].rate)
     uP[i].volUpdate=true
     uP[i].isStopped=false
@@ -1047,12 +1057,11 @@ function tape_rec(i)
   uS.recordingTime[i]=0
   uS.recording[i]=2 -- recording is live
   params:set(i.."isempty",1)
-  redraw()
-  -- slowly start recording
+  -- start recording
   softcut.rec_level(i,params:get("rec level"))
   softcut.pre_level(i,params:get("pre level"))
   softcut.rec(i,1)
-
+  redraw()
 end
 
 --
