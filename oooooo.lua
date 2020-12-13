@@ -116,12 +116,12 @@ function init()
   params:set_action("pre level",update_parameters)
   params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
   params:set_action("rec level",update_parameters)
-  params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k'))
+  params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k',5/1000))
   params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,30,'ms'))
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,25,'ms',5/1000))
   params:set_action("vol pinch",function(x)
     for i=1,6 do
-      -- softcut.fade_time(i,x/1000)
+      softcut.fade_time(i,x/1000*2)
       softcut.recpre_slew_time(i,x/1000)
     end
     update_parameters()
@@ -465,9 +465,9 @@ function init_loops(j)
       softcut.rec(i,0)
 
       -- fade time is redundant with recpre
-      -- softcut.fade_time(i,params:get("vol pinch")/1000)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
+      softcut.fade_time(i,params:get("vol pinch")/1000*2)
       softcut.recpre_slew_time(i,params:get("vol pinch")/1000)
 
       softcut.rec_level(i,params:get("rec level"))
