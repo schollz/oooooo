@@ -625,6 +625,7 @@ function update_timer()
   end
   for i=1,6 do
     if uS.recording[i]==2 then
+      previousRecordingTime=uS.recordingTime[i]
       uS.recordingTime[i]=uS.recordingTime[i]+uC.updateTimerInterval
       if uS.recordingTime[i]>=uP[i].loopLength then
         uS.recordingLoopNum[i]=uS.recordingLoopNum[i]+1
@@ -634,7 +635,11 @@ function update_timer()
           tape_stop_rec(i,false)
         else
           uS.recordingTime[i]=0
-        end
+        end 
+      elseif uS.recordingTime[i]>=uP[i].loopLength/2 and previousRecordingTime<uP[i].loopLength/2 then 
+	clock.run(function()
+	   softcut_add_postroll(i)
+	end)
       end
     end
   end
@@ -857,7 +862,7 @@ function tape_reset(i)
       randomize_parameters(i)
     elseif params:get(i.."randomize on reset")==3 then
       randomize_loops(i)
-    elseif params:get(i.."randomize on reset")==4then
+    elseif params:get(i.."randomize on reset")==4 then
       randomize_parameters(i)
       randomize_loops(i)
     end
@@ -909,22 +914,6 @@ function tape_stop_rec(i,change_loop)
     -- loop_save_wav(i,"/tmp/save1.wav")
   end)
 
-  clock.run(function()
-    -- TODO add post roll
-    clock.sleep(uP[i].loopLength/2)
-    src_ch=uC.bufferMinMax[i][1]
-    dst_ch=src_ch
-    start_src=uP[i].loopStart+uC.bufferMinMax[i][2]
-    start_dst=uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength
-    dur=uP[i].loopLength
-    if dur>1 then
-      dur=1
-    end
-    fade_time=0
-    reverse=0
-    softcut.buffer_copy_mono(src_ch,dst_ch,start_src,start_dst,dur,fade_time,reverse)
-    print("copied buffer to post roll")
-  end)
 
   -- change the loop size if specified
   print('params:get("rec thru loops") '..params:get("rec thru loops"))
@@ -1498,6 +1487,22 @@ end
 --
 -- utils
 --
+
+function softcut_add_postroll(i)
+    src_ch=uC.bufferMinMax[i][1]
+    dst_ch=src_ch
+    start_src=uP[i].loopStart+uC.bufferMinMax[i][2]
+    start_dst=uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength
+    dur=uP[i].loopLength/2
+    if dur>1 then
+      dur=1
+    end
+    fade_time=0
+    reverse=0
+    softcut.buffer_copy_mono(src_ch,dst_ch,start_src,start_dst,dur,fade_time,reverse)
+    print("copied buffer to post roll")
+end
+
 function show_message(message)
   clock.run(function()
     uS.message=message
