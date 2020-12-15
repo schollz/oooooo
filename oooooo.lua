@@ -1,4 +1,4 @@
--- oooooo v1.5.0
+-- oooooo v1.5.1
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -118,7 +118,7 @@ function init()
   params:set_action("rec level",update_parameters)
   params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k'))
   params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,30,'ms'))
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,30,'ms',1/1000))
   params:set_action("vol pinch",function(x)
     for i=1,6 do
       -- softcut.fade_time(i,x/1000)
@@ -229,7 +229,7 @@ function init()
     params:add_option(i.."rate reverse","reverse rate",{"on","off"},2)
     params:add_option(i.."rate lfo center","rate lfo center (%)",uC.discreteRates,#uC.discreteRates)
     params:add_control(i.."rate lfo amp","rate lfo amp",controlspec.new(0,1,"lin",0.01,0.25,"",0.01))
-    params:add_control(i.."rate lfo period","rate lfo period",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
+    params:add_control(i.."rate lfo period","rate lfo period",controlspec.new(0,60,"lin",0,0,"s",0.01/60))
     params:add_control(i.."rate lfo offset","rate lfo offset",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
     params:add_control(i.."pan","pan",controlspec.new(-1,1,"lin",0.01,0,"",0.01/2))
     params:add_control(i.."pan lfo amp","pan lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -636,10 +636,10 @@ function update_timer()
         else
           uS.recordingTime[i]=0
         end 
-      elseif uS.recordingTime[i]>=uP[i].loopLength/2 and previousRecordingTime<uP[i].loopLength/2 then 
-	clock.run(function()
-	   softcut_add_postroll(i)
-	end)
+      elseif params:get("vol pinch") > 0 and uS.recordingTime[i]>=uP[i].loopLength/2 and previousRecordingTime<uP[i].loopLength/2 then 
+      	clock.run(function()
+      	   softcut_add_postroll(i)
+      	end)
       end
     end
   end
