@@ -1,4 +1,4 @@
--- oooooo v1.4.0
+-- oooooo v1.5.1
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -28,7 +28,7 @@ local Formatters=require 'formatters'
 -- local midi2osc = include('midi2osc/lib/midi2osc')
 -- midi2osc:init('oooooo.json',true)
 
-engine.name = "SimpleDelay"
+engine.name="SimpleDelay"
 
 
 -- user parameters
@@ -116,12 +116,12 @@ function init()
   params:set_action("pre level",update_parameters)
   params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
   params:set_action("rec level",update_parameters)
-  params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k',5/1000))
+  params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k'))
   params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,25,'ms',5/1000))
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,30,'ms',1/1000))
   params:set_action("vol pinch",function(x)
     for i=1,6 do
-      softcut.fade_time(i,x/1000*2)
+      -- softcut.fade_time(i,x/1000)
       softcut.recpre_slew_time(i,x/1000)
     end
     update_parameters()
@@ -146,8 +146,8 @@ function init()
     -- prevent banging
     local x=y
     params:set("save_name","")
-    if x=="" then 
-      do return end 
+    if x=="" then
+      do return end
     end
     -- save
     print(x)
@@ -162,8 +162,8 @@ function init()
     -- prevent banging
     local x=y
     params:set("load_name",name_folder)
-    if #x<=#name_folder then 
-      do return end 
+    if #x<=#name_folder then
+      do return end
     end
     -- load
     print("load_name: "..x)
@@ -229,7 +229,7 @@ function init()
     params:add_option(i.."rate reverse","reverse rate",{"on","off"},2)
     params:add_option(i.."rate lfo center","rate lfo center (%)",uC.discreteRates,#uC.discreteRates)
     params:add_control(i.."rate lfo amp","rate lfo amp",controlspec.new(0,1,"lin",0.01,0.25,"",0.01))
-    params:add_control(i.."rate lfo period","rate lfo period",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
+    params:add_control(i.."rate lfo period","rate lfo period",controlspec.new(0,60,"lin",0,0,"s",0.01/60))
     params:add_control(i.."rate lfo offset","rate lfo offset",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
     params:add_control(i.."pan","pan",controlspec.new(-1,1,"lin",0.01,0,"",0.01/2))
     params:add_control(i.."pan lfo amp","pan lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -294,8 +294,8 @@ function init()
     }
     params:add_file(i.."load_file","load audio",_path.audio)
     params:set_action(i.."load_file",function(x)
-      if #x<=#_path.audio then 
-        do return end 
+      if #x<=#_path.audio then
+        do return end
       end
       print("load_file",i,x)
       loop_load_wav(i,x)
@@ -321,7 +321,7 @@ function init()
   timer.event=update_timer
   timer:start()
 
-  -- -- osc input 
+  -- -- osc input
   -- osc.event = osc_in
 
   -- position poll
@@ -465,9 +465,9 @@ function init_loops(j)
       softcut.rec(i,0)
 
       -- fade time is redundant with recpre
+      -- softcut.fade_time(i,params:get("vol pinch")/1000)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
-      softcut.fade_time(i,params:get("vol pinch")/1000*2)
       softcut.recpre_slew_time(i,params:get("vol pinch")/1000)
 
       softcut.rec_level(i,params:get("rec level"))
@@ -542,7 +542,7 @@ end
 --
 -- updaters
 --
-function update_softcut_input()  
+function update_softcut_input()
   for i=1,6 do
     if params:get("input type")==1 then
       -- print("input L only channel "..i)
@@ -571,11 +571,11 @@ function update_softcut_input()
 end
 
 function update_softcut_input_lag(on)
-  if params:get("input type")==3 or on==uS.lagActivated then 
+  if params:get("input type")==3 or on==uS.lagActivated then
     -- do nothing if using just tape or already activated
     do return end
   end
-  uS.lagActivated = on 
+  uS.lagActivated=on
   if on then
     print("update_softcut_input_lag: activated")
     engine.volume(1.0)
@@ -598,13 +598,13 @@ end
 
 function update_positions(i,x)
   -- adjust position so it is relative to loop start
-  currentPosition = uP[i].position
+  currentPosition=uP[i].position
   uP[i].position=x-uC.bufferMinMax[i][2]
-  if currentPosition == uP[i].position then 
-    do return end 
+  if currentPosition==uP[i].position then
+    do return end
   end
-  if uP[i].position < 0 then 
-    uP[i].position = 0
+  if uP[i].position<0 then
+    uP[i].position=0
   end
   uS.updateUI=true
 end
@@ -625,6 +625,7 @@ function update_timer()
   end
   for i=1,6 do
     if uS.recording[i]==2 then
+      previousRecordingTime=uS.recordingTime[i]
       uS.recordingTime[i]=uS.recordingTime[i]+uC.updateTimerInterval
       if uS.recordingTime[i]>=uP[i].loopLength then
         uS.recordingLoopNum[i]=uS.recordingLoopNum[i]+1
@@ -634,7 +635,11 @@ function update_timer()
           tape_stop_rec(i,false)
         else
           uS.recordingTime[i]=0
-        end
+        end 
+      elseif params:get("vol pinch") > 0 and uS.recordingTime[i]>=uP[i].loopLength/2 and previousRecordingTime<uP[i].loopLength/2 then 
+      	clock.run(function()
+      	   softcut_add_postroll(i)
+      	end)
       end
     end
   end
@@ -686,7 +691,7 @@ function update_timer()
       uS.updateUI=true
       uP[i].volUpdate=false
       uP[i].vol=params:get(i.."vol")
-      if uP[i].vol > 0 and params:get(i.."vol lfo period")>0 and params:get("pause lfos")==1 then
+      if uP[i].vol>0 and params:get(i.."vol lfo period")>0 and params:get("pause lfos")==1 then
         uP[i].vol=uP[i].vol+params:get(i.."vol lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."vol lfo period"),params:get(i.."vol lfo offset"))
         uP[i].vol=util.clamp(uP[i].vol,0,1)
       end
@@ -857,7 +862,7 @@ function tape_reset(i)
       randomize_parameters(i)
     elseif params:get(i.."randomize on reset")==3 then
       randomize_loops(i)
-    elseif params:get(i.."randomize on reset")==4then
+    elseif params:get(i.."randomize on reset")==4 then
       randomize_parameters(i)
       randomize_loops(i)
     end
@@ -908,6 +913,7 @@ function tape_stop_rec(i,change_loop)
     -- DEBUGGING PURPOSES
     -- loop_save_wav(i,"/tmp/save1.wav")
   end)
+
 
   -- change the loop size if specified
   print('params:get("rec thru loops") '..params:get("rec thru loops"))
@@ -1025,7 +1031,7 @@ function tape_arm_rec(i)
   print("tape_arm_rec "..i)
   -- arm  recording
   uS.recording[i]=1
-  if params:get("catch transients w lag")==2 then 
+  if params:get("catch transients w lag")==2 then
     update_softcut_input_lag(true)
   end
   uS.recordingLoopNum[i]=0
@@ -1043,7 +1049,7 @@ function tape_rec(i)
     do return end
   end
   print("tape_rec "..i)
-  if uP[i].isStopped then 
+  if uP[i].isStopped then
     softcut.play(i,1)
     softcut.rate(i,uP[i].rate)
     uP[i].volUpdate=true
@@ -1481,6 +1487,22 @@ end
 --
 -- utils
 --
+
+function softcut_add_postroll(i)
+    src_ch=uC.bufferMinMax[i][1]
+    dst_ch=src_ch
+    start_src=uP[i].loopStart+uC.bufferMinMax[i][2]
+    start_dst=uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength
+    dur=uP[i].loopLength/2
+    if dur>1 then
+      dur=1
+    end
+    fade_time=0
+    reverse=0
+    softcut.buffer_copy_mono(src_ch,dst_ch,start_src,start_dst,dur,fade_time,reverse)
+    print("copied buffer to post roll")
+end
+
 function show_message(message)
   clock.run(function()
     uS.message=message
@@ -1587,9 +1609,9 @@ function setup_sharing(script_name)
   params:set_action("share_upload",function(y)
     -- prevent banging
     local x=y
-    params:set("share_download",names_dir) 
-    if #x<=#names_dir then 
-      do return end 
+    params:set("share_download",names_dir)
+    if #x<=#names_dir then
+      do return end
     end
 
 
@@ -1601,16 +1623,16 @@ function setup_sharing(script_name)
     print("uploading "..x.." as "..dataname)
 
     -- upload each loop
-    local pathtofile = "" 
-    local target = "" 
+    local pathtofile=""
+    local target=""
     for i=1,6 do
       pathtofile=DATA_DIR..dataname.."/loop"..i..".wav"
       target=DATA_DIR..uploader.upload_username.."-"..dataname.."/loop"..i..".wav"
       if util.file_exists(pathtofile) then
-        msg = uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
-        if not string.match(msg,"OK") then 
+        msg=uploader:upload{dataname=dataname,pathtofile=pathtofile,target=target}
+        if not string.match(msg,"OK") then
           params:set("share_message",msg)
-          do return end 
+          do return end
         end
       end
     end
@@ -1640,9 +1662,9 @@ function setup_sharing(script_name)
   params:set_action("share_download",function(y)
     -- prevent banging
     local x=y
-    params:set("share_download",download_dir) 
-    if #x<=#download_dir then 
-      do return end 
+    params:set("share_download",download_dir)
+    if #x<=#download_dir then
+      do return end
     end
 
     -- download
@@ -1667,13 +1689,13 @@ end
 
 -- --
 -- -- osc
--- -- 
+-- --
 -- function osc_in(path, args, from)
---   if path == "onset" then 
+--   if path == "onset" then
 --     cur_onset = args[2]
 --     print("onset "..cur_onset)
---     if (cur_onset-uS.lastOnset) < 0.5 then 
---       do return end 
+--     if (cur_onset-uS.lastOnset) < 0.5 then
+--       do return end
 --     end
 --     print("onset detected")
 --     uS.lastOnset = cur_onset
