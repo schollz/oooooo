@@ -479,13 +479,13 @@ function init_loops(j)
 
       softcut.post_filter_dry(i,0.0)
       softcut.post_filter_lp(i,1.0)
-      softcut.post_filter_rq(i,0.3)
-      softcut.post_filter_fc(i,44100)
+      softcut.post_filter_rq(i,1.0)
+      softcut.post_filter_fc(i,20100)
 
       softcut.pre_filter_dry(i,1.0)
       softcut.pre_filter_lp(i,1.0)
-      softcut.pre_filter_rq(i,0.3)
-      softcut.pre_filter_fc(i,44100)
+      softcut.pre_filter_rq(i,1.0)
+      softcut.pre_filter_fc(i,20100)
     end
   end
 end
