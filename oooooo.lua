@@ -122,7 +122,7 @@ function init()
   params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,30,'ms',1/1000))
   params:set_action("vol pinch",function(x)
     for i=1,6 do
-      -- softcut.fade_time(i,x/1000)
+      softcut.fade_time(i,x/1000+0.1)
       softcut.recpre_slew_time(i,x/1000)
     end
     update_parameters()
