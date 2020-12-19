@@ -25,8 +25,9 @@
 
 local Formatters=require 'formatters'
 
--- local midi2osc = include('midi2osc/lib/midi2osc')
--- midi2osc:init('oooooo.json',true)
+local MidiMidi=include("midimidi/lib/midimidi")
+mm=MidiMidi:init({log_level="debug",device=1,filename="/home/we/dust/code/midimidi/examples/nanokontrol-oooooo.json"})
+mm:init_midi()
 
 engine.name="SimpleDelay"
 
@@ -132,7 +133,7 @@ function init()
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
   params:set_action("stop rec after",update_parameters)
-  params:add_option("input type","input type",{"line-in L","line-in R","tape","line-in (L+R)+tape"},4)
+  params:add_option("input type","input type",{"line-in L","line-in R","tape","line-in (L+R)+tape","stereo"},4)
   params:set_action("input type",function(x)
     update_softcut_input()
     update_parameters()
@@ -334,7 +335,7 @@ function init()
   p_amp_in.time=1
   p_amp_in.callback=function(val)
     for i=1,6 do
-      if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+      if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
         -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/10000 then
           tape_rec(i)
@@ -350,7 +351,7 @@ function init()
   p_amp_in2.time=1
   p_amp_in2.callback=function(val)
     for i=1,6 do
-      if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+      if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
         -- print("incoming signal = "..val)
         if val>params:get("rec thresh")/10000 then
           tape_rec(i)
@@ -560,6 +561,17 @@ function update_softcut_input()
       print("tape only")
       audio.level_tape_cut(1)
       audio.level_adc_cut(0)
+    elseif params:get("input type")==5 then
+      -- print("stereo "..i)
+      if i%2==0 then
+        softcut.level_input_cut(1,i,1)
+        softcut.level_input_cut(2,i,0)
+      else
+        softcut.level_input_cut(1,i,0)
+        softcut.level_input_cut(2,i,1)
+      end
+      audio.level_adc_cut(1)
+      audio.level_tape_cut(1)
     else
       -- print("tape+input L+R "..i)
       softcut.level_input_cut(1,i,1)
@@ -888,9 +900,9 @@ function tape_stop_rec(i,change_loop)
     do return end
   end
   print("tape_stop_rec "..i)
-  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
     p_amp_in.time=1
-  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
     p_amp_in2.time=1
   end
   update_softcut_input_lag(false)
@@ -1037,9 +1049,9 @@ function tape_arm_rec(i)
   uS.recordingLoopNum[i]=0
   uS.timeSinceArming=clock.get_beats()*clock.get_beat_sec()
   -- monitor input
-  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
     p_amp_in.time=uC.pampfast
-  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
     p_amp_in2.time=uC.pampfast
   end
 end
@@ -1055,9 +1067,9 @@ function tape_rec(i)
     uP[i].volUpdate=true
     uP[i].isStopped=false
   end
-  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
+  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
     p_amp_in.time=1
-  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")==4) then
+  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
     p_amp_in2.time=1
   end
   uS.recordingTime[i]=0
