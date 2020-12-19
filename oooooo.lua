@@ -1,4 +1,4 @@
--- oooooo v1.4.1
+-- oooooo v1.5.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -25,9 +25,6 @@
 
 local Formatters=require 'formatters'
 
-local MidiMidi=include("midimidi/lib/midimidi")
-mm=MidiMidi:init({log_level="debug",device=1,filename="/home/we/dust/code/midimidi/examples/nanokontrol-oooooo.json"})
-mm:init_midi()
 
 engine.name="SimpleDelay"
 
@@ -98,6 +95,14 @@ PATH=_path.audio..'oooooo/'
 function init()
   engine.delay(0.1)
   engine.volume(0.0)
+
+  if util.file_exists("/home/we/dust/code/middy") then 
+    local middy=include("middy/lib/middy")
+    mm=middy:init({log_level="debug",device=1})
+    mm:init_map("/home/we/dust/code/middy/examples/nanokontrol-oooooo.json")
+    mm:init_midi()
+  end
+
   setup_sharing("oooooo")
   params:add_separator("oooooo")
   -- add variables into main menu
