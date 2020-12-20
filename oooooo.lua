@@ -99,8 +99,8 @@ function init()
   if util.file_exists("/home/we/dust/code/middy") then 
     local middy=include("middy/lib/middy")
     mm=middy:init({log_level="debug",device=1})
-    mm:init_map("/home/we/dust/code/middy/examples/nanokontrol-oooooo.json")
-    mm:init_midi()
+    -- mm:init_map("/home/we/dust/code/middy/examples/nanokontrol-oooooo.json")
+    mm:init_menu()
   end
 
   setup_sharing("oooooo")
