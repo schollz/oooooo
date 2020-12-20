@@ -556,6 +556,7 @@ end
 
 function activate_mode_default()
   for i=1,6 do
+    params:set(i.."sync tape with",1)
     tape_stop(i)
     tape_reset(i)
   end
