@@ -86,7 +86,7 @@ uC={
   discreteBeats={1/4,1/2,1,2},
   pampfast=0.02,
   timeUntilLagInitiates=0.1,
-  availableModes={"default","stereo looping"}
+  availableModes={"select one","default","stereo looping","delaylaylay"}
 }
 
 DATA_DIR=_path.data.."oooooo/"
@@ -120,9 +120,7 @@ function init()
 
   params:add_group("recording",9)
   params:add_control("pre level","pre level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
-  params:set_action("pre level",update_parameters)
   params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
-  params:set_action("rec level",update_parameters)
   params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k'))
   params:set_action("rec thresh",update_parameters)
   params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,30,'ms',1/1000))
@@ -139,7 +137,7 @@ function init()
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
   params:set_action("stop rec after",update_parameters)
-  params:add_option("input type","input type",{"line-in L","line-in R","tape","line-in (L+R)+tape","stereo"},4)
+  params:add_option("input type","input type",{"line-in L","line-in R","tape","line-in (L+R)+tape","split L/R+tape"},4)
   params:set_action("input type",function(x)
     update_softcut_input()
     update_parameters()
@@ -198,7 +196,7 @@ function init()
       params:set(i.."reset every beat",x)
     end
   end)
-  params:add_option("continous rate","continous rate",{"no","yes"},2)
+  params:add_option("continous rate","continous rate",{"no","yes"},1)
   params:set_action("continous rate",update_parameters)
   params:add_control("slew rate","slew rate",controlspec.new(0,30,'lin',0.1,(60/clock.get_tempo())*4,"s",0.1/30))
   params:set_action("slew rate",function(x)
@@ -209,9 +207,6 @@ function init()
   end)
   params:add_option("expert mode","expert mode",{"no","yes"},1)
   params:set_action("expert mode",update_parameters)
-
-  -- reset defaults
-  params:set("slew rate",(60/clock.get_tempo())*4)
 
   -- add parameters
   filter_resonance=controlspec.new(0.05,1,'lin',0,1,'')
@@ -416,11 +411,11 @@ function init()
 
 
   -- DEV TODO comment this out
-  params:set("choose mode",2)
+  params:set("choose mode",3)
   activate_mode()
 end
 
-function init_loops(j)
+function init_loops(j,ignore_pan)
   audio.level_adc(1) -- input volume 1
   audio.level_cut(1) -- Softcut master level (same as in LEVELS screen)
 
@@ -430,6 +425,7 @@ function init_loops(j)
     i1=1
     i2=7
   end
+  previous_uP = {table.unpack(uP)}
   for i=i1,i2 do
     print("initializing  "..i)
     uP[i]={}
@@ -446,7 +442,11 @@ function init_loops(j)
     uP[i].volUpdate=false
     uP[i].rate=1
     uP[i].rateUpdate=false
-    uP[i].pan=0
+    if ignore_pan == nil or not ignore_pan then 
+      uP[i].pan=0
+    else
+      uP[i].pan = previous_uP[i].pan
+    end
     uP[i].panUpdate=false
     uP[i].lfoWarble={}
     uP[i].destroying=false
@@ -470,7 +470,9 @@ function init_loops(j)
       params:set(i.."rate lfo amp",0.2)
       params:set(i.."rate lfo period",0)
       params:set(i.."rate lfo offset",0)
-      params:set(i.."pan",0)
+      if ignore_pan == nil or not ignore_pan then 
+        params:set(i.."pan",0)
+      end
       params:set(i.."pan lfo amp",0.5)
       params:set(i.."pan lfo period",0)
       params:set(i.."pan lfo offset",0)
@@ -521,14 +523,63 @@ end
 function activate_mode()
   print(uC.availableModes[params:get("choose mode")])
   if uC.availableModes[params:get("choose mode")]=="stereo looping" then 
+    activate_mode_default()
     for i=1,6 do
       params:set(i.."pan",((i+1)%2+1)*2-3+math.floor(i/2)/10*(((i)%2+1)*2-3))
     end
     params:set("1sync tape with",2)
     params:set("3sync tape with",2)
     params:set("5sync tape with",2)
+    params:set("input type",5)
+  elseif uC.availableModes[params:get("choose mode")]=="delaylaylay" then 
+    activate_mode_default()
+    for i=1,5 do
+      params:set(i.."sync tape with",2)
+    end
+    params:set("stop rec after",64)
+    params:set("rec level",0.5)
+    params:set("pre level",0.4)
+    for i=1,6 do
+      params:set(i.."length",math.random()*2)
+      randomize_parameters(7)
+      randomize_loops(7)
+      randomize_lfos(7)
+      tape_rec(i)
+      params:set(i.."length lfo period",math.random()*30+5)
+      params:set(i.."length lfo offset",math.random()*60)
+    end
+  elseif uC.availableModes[params:get("choose mode")]=="default" then 
+    activate_mode_default()
   end
   params:set("choose mode",1)
+end
+
+function activate_mode_default()
+  for i=1,6 do
+    tape_stop(i)
+    tape_reset(i)
+  end
+  default_global_parameters = {
+    ["pre level"]=1,
+    ["rec level"]=1,
+    ["rec thresh"]=85,
+    ["catch transients w lag"]=1,
+    ["rec thru loops"]=1,
+    ["stop rec after"]=1,
+    ["input type"]=4,
+    ["sync lengths to first"]=1,
+    ["pause lfos"]=1,
+    ["destroy loops"]=0,
+    ["vol ramp"]=0,
+    ["randomize all on reset"]=1,
+    ["reset all every"]=0,
+    ["continous rate"]=1,
+    ["slew rate"]=(60/clock.get_tempo())*4,
+  }
+  for k,v in pairs(default_global_parameters) do 
+    params:set(k,v)
+  end
+  init_loops(7)
 end
 
 function randomize_parameters(j)
@@ -681,7 +732,7 @@ function update_timer()
       uS.recordingTime[i]=uS.recordingTime[i]+uC.updateTimerInterval
       if uS.recordingTime[i]>=uP[i].loopLength then
         uS.recordingLoopNum[i]=uS.recordingLoopNum[i]+1
-        print("uS.recordingLoopNum[i]: "..uS.recordingLoopNum[i])
+        -- print("uS.recordingLoopNum[i]: "..uS.recordingLoopNum[i])
         if uS.recordingLoopNum[i]>=params:get("stop rec after") and uS.recordingLoopNum[i]<64 then
           -- stop recording when reached a full loop
           tape_stop_rec(i,false)
@@ -1013,6 +1064,9 @@ function tape_stop_rec(i,change_loop)
 end
 
 function tape_clear(i)
+  if i<7 and params:get(i.."sync tape with") > 1 then 
+    tape_clear(i+params:get(i.."sync tape with")-1)
+  end
   print("tape_clear "..i)
   -- prevent double clear
   if uS.flagClearing[i] then
@@ -1035,7 +1089,7 @@ function tape_clear(i)
     softcut.buffer_clear()
     for j=1,6 do
       if params:get(j.."isempty")==2 then
-        init_loops(j)
+        init_loops(j,true)
         uS.message="resetting"
         redraw()
       end
@@ -1047,7 +1101,7 @@ function tape_clear(i)
   else
     -- clear a specific section of buffer
     if params:get(i.."isempty")==2 then
-      init_loops(i)
+      init_loops(i,true)
       uS.message="resetting"
       redraw()
     end
@@ -1062,9 +1116,6 @@ function tape_clear(i)
   end
   -- reinitialize?
   -- init_loops(i)
-  if i<7 and params:get(i.."sync tape with") > 1 then 
-    tape_clear(i+params:get(i.."sync tape with")-1)
-  end
 end
 
 function tape_play(j)
@@ -1322,7 +1373,6 @@ end
 function redraw()
   uS.updateUI=false
   screen.clear()
-  print("updating ui")
 
   -- check shift
   shift_amount=0
@@ -1451,8 +1501,8 @@ function redraw()
 
   -- draw representation of current loop states
   local highlighted_loops = {uS.loopNum}
-  -- TODO highlight multiple
-  while highlighted_loops[#highlighted_loops] > 0 do
+  -- highlight multiple
+  while highlighted_loops[#highlighted_loops] > 0  and uS.loopNum ~= 7 do
     local next_loop = params:get(highlighted_loops[#highlighted_loops].."sync tape with")-1
     if next_loop > 0 then 
       next_loop = highlighted_loops[#highlighted_loops]+next_loop
@@ -1587,6 +1637,7 @@ end
 
 
 function softcut_add_postroll(i)
+    if params:get("stop rec after") == 64 then do return end end
     src_ch=uC.bufferMinMax[i][1]
     dst_ch=src_ch
     start_src=uP[i].loopStart+uC.bufferMinMax[i][2]
