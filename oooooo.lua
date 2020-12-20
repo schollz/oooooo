@@ -97,12 +97,12 @@ function init()
   engine.delay(0.1)
   engine.volume(0.0)
 
-  if util.file_exists("/home/we/dust/code/middy") then 
-    local middy=include("middy/lib/middy")
-    mm=middy:init({log_level="debug",device=1})
-    -- mm:init_map("/home/we/dust/code/middy/examples/nanokontrol-oooooo.json")
-    mm:init_menu()
-  end
+  -- if util.file_exists("/home/we/dust/code/middy") then 
+  --   local middy=include("middy/lib/middy")
+  --   mm=middy:init({log_level="debug",device=1})
+  --   -- mm:init_map("/home/we/dust/code/middy/examples/nanokontrol-oooooo.json")
+  --   mm:init_menu()
+  -- end
 
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -410,9 +410,9 @@ function init()
   update_softcut_input_lag(false)
 
 
-  -- DEV TODO comment this out
-  params:set("choose mode",3)
-  activate_mode()
+  -- DEV comment this out
+  -- params:set("choose mode",3)
+  -- activate_mode()
 end
 
 function init_loops(j,ignore_pan)
