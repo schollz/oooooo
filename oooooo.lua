@@ -99,7 +99,11 @@ function init()
 
   if util.file_exists("/home/we/dust/code/middy") then 
     local middy=include("middy/lib/middy")
-    middy:init()
+    local m1 = middy:init()
+    -- these lines of code are if you want to autoload 
+    -- a specific file on startup:
+    -- m1:init_midi()
+    -- m1:init_map('/home/we/dust/data/middy/maps/nanokontrol-oooooo.json')
   end
 
   setup_sharing("oooooo")
