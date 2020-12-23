@@ -97,12 +97,10 @@ function init()
   engine.delay(0.1)
   engine.volume(0.0)
 
-  -- if util.file_exists("/home/we/dust/code/middy") then 
-  --   local middy=include("middy/lib/middy")
-  --   mm=middy:init({log_level="debug",device=1})
-  --   -- mm:init_map("/home/we/dust/code/middy/examples/nanokontrol-oooooo.json")
-  --   mm:init_menu()
-  -- end
+  if util.file_exists("/home/we/dust/code/middy") then 
+    local middy=include("middy/lib/middy")
+    middy:init()
+  end
 
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -267,6 +265,7 @@ function init()
       action=function(v)
         if v==1 then
           tape_play(i)
+          uS.updateUI=true
         end
       end
     }
@@ -274,6 +273,7 @@ function init()
       action=function(v)
         if v==1 then
           tape_stop_reset(i)
+          uS.updateUI=true
         end
       end
     }
@@ -285,6 +285,7 @@ function init()
           else
             tape_rec(i)
           end
+          uS.updateUI=true
         end
       end
     }
@@ -296,6 +297,7 @@ function init()
           else
             tape_arm_rec(i)
           end
+          uS.updateUI=true
         end
       end
     }
@@ -307,6 +309,7 @@ function init()
       print("load_file",i,x)
       loop_load_wav(i,x)
       tape_play(i)
+      uS.updateUI=true
     end)
     params:add_option(i.."isempty","is empty",{"false","true"},2)
     params:hide(i.."isempty")
@@ -319,6 +322,7 @@ function init()
         do return end 
       end
       activate_mode()
+      uS.updateUI=true
     end
   }
 
