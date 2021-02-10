@@ -97,6 +97,19 @@ function init()
   engine.delay(0.1)
   engine.volume(0.0)
 
+  -- import kolor
+  if utils.file_exsts("/home/we/dust/code/kolor") then 
+	local kolor = include("kolor/lib/kolor")
+	kolor:new()
+  end
+
+  -- import tmi
+  if util.file_exists("/home/we/dust/code/tmi") then 
+	local tmi = include("tmi/lib/tmi")
+	local tmia = tmi:new()
+  end
+
+  -- import middy
   if util.file_exists("/home/we/dust/code/middy") then 
     local middy=include("middy/lib/middy")
     local m1 = middy:init()
