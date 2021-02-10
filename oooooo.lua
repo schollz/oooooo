@@ -103,20 +103,16 @@ function init()
 	kolor:new()
   end
 
-  -- import tmi
-  if util.file_exists("/home/we/dust/code/tmi") then 
-	local tmi = include("tmi/lib/tmi")
-	local tmia = tmi:new()
-  end
+ --  -- import tmi
+ --  if util.file_exists("/home/we/dust/code/tmi") then 
+	-- local tmi = include("tmi/lib/tmi")
+	-- local tmia = tmi:new()
+ --  end
 
   -- import middy
   if util.file_exists("/home/we/dust/code/middy") then 
     local middy=include("middy/lib/middy")
-    local m1 = middy:init()
-    -- these lines of code are if you want to autoload 
-    -- a specific file on startup:
-    -- m1:init_midi()
-    -- m1:init_map('/home/we/dust/data/middy/maps/nanokontrol-oooooo.json')
+    middy:init({filename='/home/we/dust/data/middy/maps/nanokontrol-oooooo2.json',device='nanokontrol'})
   end
 
   setup_sharing("oooooo")
