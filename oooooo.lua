@@ -430,6 +430,12 @@ function init()
   update_softcut_input_lag(false)
 
 
+  -- zack-specific
+  -- tone down volume lfo amplitude
+  randomize_lfos()
+  for i=1,6 do
+	  params:set(i.."vol lfo amp",0.1)
+  end
   -- DEV comment this out
   -- params:set("choose mode",3)
   -- activate_mode()
