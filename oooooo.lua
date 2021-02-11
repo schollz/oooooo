@@ -734,14 +734,14 @@ function update_parameters(x)
 end
 
 function update_positions(i,x)
-  -- adjust position so it is relative to loop start
   currentPosition=uP[i].position
+  -- adjust position so it is relative to buffer start
   uP[i].position=x-uC.bufferMinMax[i][2]
   if currentPosition==uP[i].position then
     do return end
   end
   if uP[i].position<0 then
-    uP[i].position=0
+    uP[i].position=uP[i].loopStart
   end
   uS.updateUI=true
 end
