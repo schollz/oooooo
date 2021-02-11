@@ -111,8 +111,8 @@ function init()
 
   -- import middy
   if util.file_exists("/home/we/dust/code/middy") then 
-    -- local middy=include("middy/lib/middy")
-    -- middy:init({filename='/home/we/dust/data/middy/maps/nanokontrol-oooooo2.json',device='nanokontrol'})
+    local middy=include("middy/lib/middy")
+    middy:init({filename='/home/we/dust/data/middy/maps/nanokontrol-oooooo2.json',device='nanokontrol'})
   end
 
   setup_sharing("oooooo")
