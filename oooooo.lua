@@ -98,9 +98,9 @@ function init()
   engine.volume(0.0)
 
   -- import kolor
-  if utils.file_exsts("/home/we/dust/code/kolor") then 
-	local kolor = include("kolor/lib/kolor")
-	kolor:new()
+  if util.file_exists("/home/we/dust/code/kolor") then 
+  	-- local kolor = include("kolor/lib/kolor")
+  	-- kolor:new()
   end
 
  --  -- import tmi
@@ -111,8 +111,8 @@ function init()
 
   -- import middy
   if util.file_exists("/home/we/dust/code/middy") then 
-    local middy=include("middy/lib/middy")
-    middy:init({filename='/home/we/dust/data/middy/maps/nanokontrol-oooooo2.json',device='nanokontrol'})
+    -- local middy=include("middy/lib/middy")
+    -- middy:init({filename='/home/we/dust/data/middy/maps/nanokontrol-oooooo2.json',device='nanokontrol'})
   end
 
   setup_sharing("oooooo")
@@ -222,7 +222,7 @@ function init()
   filter_resonance=controlspec.new(0.05,1,'lin',0,1,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,34)
+    params:add_group("loop "..i,35)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -309,6 +309,17 @@ function init()
           else
             tape_arm_rec(i)
           end
+          uS.updateUI=true
+        end
+      end
+    }
+    params:add{type='binary',name="reset trig",id=i..'reset trig',behavior='momentary',
+      action=function(v)
+        if v==1 then
+          if uS.recording[i]>0 then
+            tape_stop_rec(i)
+          end
+          tape_reset(i)
           uS.updateUI=true
         end
       end
@@ -984,11 +995,11 @@ function tape_reset(i)
   if i<7 and params:get(i.."sync tape with") > 1 then 
     tape_reset(i+params:get(i.."sync tape with")-1)
   end
-  if uP[i].position==0 then
+  if uP[i].position==uP[i].loopStart then
     do return end
   end
   print("tape_reset "..i)
-  uP[i].position=0
+  uP[i].position=uP[i].loopStart
   softcut.position(i,uC.bufferMinMax[i][2]+uP[i].loopStart)
   if params:get(i.."randomize on reset")>1 then
     if params:get(i.."randomize on reset")==2 then
@@ -1558,7 +1569,7 @@ function redraw()
 
     -- draw pixels at position if it has data or
     -- its being recorded/primed
-    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
+    angle=-1*360*(uP[i].position-uP[i].loopStart)/(uP[i].loopLength)+90
     if params:get(i.."isempty")==1 or i==uS.loopNum or uS.recording[i]>0 then
       for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
@@ -1592,7 +1603,7 @@ function redraw()
 
     -- draw pixels at position if it has data or
     -- its being recorded/primed
-    angle=360*(uP[i].loopLength-uP[i].position)/(uP[i].loopLength)+90
+    angle=-1*360*(uP[i].position-uP[i].loopStart)/(uP[i].loopLength)+90
     if params:get(i.."isempty")==1 or i==uS.loopNum or uS.recording[i]>0 then
       for j=-1,1 do
         screen.pixel(x+(r-j)*math.sin(math.rad(angle)),y+(r-j)*math.cos(math.rad(angle)))
