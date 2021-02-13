@@ -450,6 +450,7 @@ function init()
 
   grido:new()
   
+  params:set("scale_mode",9)
   -- DEV comment this out
   -- params:set("choose mode",3)
   -- activate_mode()

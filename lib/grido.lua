@@ -135,7 +135,7 @@ end
 
 function Grido:change_selection_scale(selection)
   self.selection_scale = selection
-  if self.selection == 5 then
+  if self.selection == 6 then
     -- change slew rate if on rate ji
     params:set("slew rate",util.linlin(1,16,0.1,10,selection))
   end
@@ -162,7 +162,8 @@ function Grido:change_volume(row)
     loopCenter = (loopStart+loopEnder)/2
     params:set(row.."vol",(loopCenter)/15)
     params:set(row.."vol lfo amp",(loopEnder-loopStart)/15/2)
-    params:set(row.."vol lfo period",periods[self.selection_scale]) 
+    params:set(row.."vol lfo period",periods[self.selection_scale]+math.random(1,100)/100) 
+    params:set(row.."vol lfo offset",math.random(10,60)/math.random(1,6)) 
   else
     params:set(row.."vol lfo amp",0)
     params:set(row.."vol",(loopStart-1)/15)
@@ -175,7 +176,8 @@ function Grido:change_pan(row)
     loopCenter = (loopStart+loopEnder)/2
     params:set(row.."pan",util.linlin(1,16,-1,1,loopCenter))
     params:set(row.."pan lfo amp",(loopEnder-loopStart)/15)
-    params:set(row.."pan lfo period",periods[self.selection_scale]) 
+    params:set(row.."pan lfo period",periods[self.selection_scale]+math.random(1,100)/100) 
+    params:set(row.."pan lfo offset",math.random(10,60)/math.random(1,6)) 
   else
     params:set(row.."pan lfo amp",0)
     params:set(row.."pan",util.linlin(1,16,-1,1,loopStart))
@@ -188,7 +190,8 @@ function Grido:change_filter(row)
     loopCenter = (loopStart+loopEnder)/2
     params:set(row.."filter_frequency",util.linlin(1,16,50,18000,loopCenter))
     params:set(row.."filter lfo amp",(loopEnder-loopStart)/15)
-    params:set(row.."filter lfo period",periods[self.selection_scale]) 
+    params:set(row.."filter lfo period",periods[self.selection_scale]+math.random(1,100)/100) 
+    params:set(row.."filter lfo offset",math.random(10,60)/math.random(1,6)) 
   else
     params:set(row.."filter lfo amp",0)
     params:set(row.."filter_frequency",util.linlin(1,16,50,18000,loopStart))
@@ -202,6 +205,7 @@ function Grido:change_rate(row)
     params:set(row.."rate lfo center",loopCenter)
     params:set(row.."rate lfo amp",(loopEnder-loopCenter)/15)
     params:set(row.."rate lfo period",periods[self.selection_scale]) 
+    params:set(row.."rate lfo offset",math.random(10,60)/math.random(1,6)) 
   else
     params:set(row.."rate lfo amp",0)
   end
