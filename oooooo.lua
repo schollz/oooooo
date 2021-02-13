@@ -82,7 +82,7 @@ uC={
   recArmThreshold=0.03,
   backupNumber=1,
   lfoTime=1,
-  discreteRates={-400,-200*1.498,-200,-100*1.498,-100,-50*1.498,-50,-25*1.498,-25,0,25,1.498*25,50,1.498*50,100,1.498*100,200,1.498*200,400},
+  discreteRates= {-400,-200,-150,-100,-75,-50,-25,-12.5,12.5,25,50,75,100,150,200,400},
   discreteBeats={1/4,1/2,1,2},
   pampfast=0.02,
   timeUntilLagInitiates=0.1,
@@ -255,6 +255,7 @@ function init()
         softcut.post_filter_fc(i,value)
       end
     }
+    -- TODO: add filter LFO!
     params:add {
       type='control',
       id=i..'filter_reso',
@@ -483,7 +484,7 @@ function init_loops(j,ignore_pan)
       params:set(i.."vol lfo amp",0.3)
       params:set(i.."vol lfo period",0)
       params:set(i.."vol lfo offset",0)
-      params:set(i.."rate",15)
+      params:set(i.."rate",13)
       params:set(i.."rate adjust",0)
       params:set(i.."rate reverse",2)
       params:set(i.."rate lfo center",10)

@@ -2,9 +2,16 @@
 
 local Grido={}
 
+local rates = {-400,-200,-150,-100,-75,-50,-25,-12.5,12.5,25,50,75,100,150,200,400}
+local periods = {96,48,24,12,10,8,6,4,3.2,2.4,1.6,1.2,0.8,0.4,0.2,0.1}
+
 function Grido:new(args)
   local m=setmetatable({},{__index=Grido})
   local args=args==nil and {} or args
+
+  -- selection 
+  m.selection = 1
+  m.selection_lfo = 1
 
   -- setup visual
   m.visual={}
@@ -57,11 +64,52 @@ function Grido:key_press(row,col,on)
     self.pressed_buttons[row..","..col]=nil
   end
 
-  if row <= 6 then 
-    if on then 
+  if row <= 6 and on then 
+    if self.selection == 1 then 
       self:change_loop(row)
+    elseif self.selection == 2 then
+      self:change_rate(row)
+    end
+  elseif row==7 and on then 
+    if self.selection > 1 then 
+      self:change_lfo(col)
+    end
+  elseif row==8 and on  then 
+      self:change_selection(col)
+  end
+end
+
+function Grido:change_selection(selection)
+  if selection <= 2 then 
+    self.selection = selection 
+  end
+end
+
+function Grido:change_lfo(selection)
+  self.selection_lfo = selection
+end
+
+function Grido:change_rate(row)
+  local loopStart = 0 
+  local loopEnder = 0 
+  for i=1,16 do 
+    if self.pressed_buttons[row..","..i]==true then 
+      if loopStart == 0 then 
+        loopStart = i
+      else
+        loopEnder = i
+      end
     end
   end
+  if loopEnder > 0 then 
+    loopCenter = math.floor((loopStart+loopEnder)/2)
+    params:set(row.."rate lfo center",loopCenter)
+    params:set(row.."rate lfo amp",(loopEnder-loopCenter)/16)
+    params:set(row.."rate lfo period",periods[self.selection_lfo]) 
+  else
+    params:set(row.."rate lfo amp",0)
+  end
+  params:set(row.."rate",loopStart)
 end
 
 function Grido:change_loop(row)
@@ -109,20 +157,49 @@ function Grido:get_visual()
     end
   end
 
-  -- get the current state for the loops
-  for i=1,6 do
-    -- get current position
-    local colStart=params:get(i.."start")/self.loopMax*16+1
-    local colEnder=(params:get(i.."start")+params:get(i.."length"))/self.loopMax*16
-    local colPoser=(uP[i].position-uP[i].loopStart)/(uP[i].loopLength)*(colEnder-colStart+1)
-    colStart = math.floor(colStart)
-    colEnder = math.floor(colEnder)
-    colPoser = math.floor(colPoser)+colStart
-    for j=colStart,colEnder do
-      self.visual[i][j]=5
+  if self.selection == 1 then
+    -- get the current state for the loops
+    for i=1,6 do
+      -- get current position
+      local colStart=params:get(i.."start")/self.loopMax*16+1
+      local colEnder=(params:get(i.."start")+params:get(i.."length"))/self.loopMax*16
+      local colPoser=(uP[i].position-uP[i].loopStart)/(uP[i].loopLength)*(colEnder-colStart+1)
+      colStart = math.floor(colStart)
+      colEnder = math.floor(colEnder)
+      colPoser = math.floor(colPoser)+colStart
+      for j=colStart,colEnder do
+        self.visual[i][j]=5
+      end
+      self.visual[i][colPoser]=15
     end
-    self.visual[i][colPoser]=15
+  elseif self.selection == 2 then 
+    -- set current rate for the loops
+    for i=1,6 do 
+      if params:get(i.."rate lfo amp") > 0 and params:get(i.."rate lfo period") > 0 then 
+        local closestRate = {1,10000}
+        for j,rate in ipairs(rates) do
+          local diff = math.abs(100*uP[i].rate-rate)
+          if diff < closestRate[2] then 
+            closestRate = {j,diff}
+          end
+        end
+        self.visual[i][closestRate[1]] = 15
+      else
+        self.visual[i][params:get(i.."rate")] = 15
+      end
+    end
   end
+
+  -- show lfo period scale if selection > 1
+  if self.selection > 1 then 
+    for i=1,16 do
+      self.visual[7][i]=i-1
+    end
+    self.visual[7][self.selection_lfo]=15*self.blinky[17-self.selection_lfo]
+  end
+
+  -- illuminate selection 
+  self.visual[8][self.selection] = 15 
 
   -- illuminate currently pressed button
   for k,_ in pairs(self.pressed_buttons) do
