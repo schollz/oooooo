@@ -24,7 +24,7 @@
 -- E3 adjusts parameter
 
 local Formatters=require 'formatters'
-
+local grido=include("oooooo/lib/grido")
 
 engine.name="SimpleDelay"
 
@@ -428,6 +428,8 @@ function init()
   update_softcut_input_lag(false)
 
 
+  grido:new()
+  
   -- DEV comment this out
   -- params:set("choose mode",3)
   -- activate_mode()
