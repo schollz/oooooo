@@ -77,15 +77,11 @@ function Grido:change_loop(row)
     end
   end
 
-
-  loopStart = util.linlin(1,16,0,self.loopMax,loopStart)
-  params:set(row.."start",loopStart)
   if loopEnder > 0 then 
-    loopEnder = util.linlin(1,16,0,self.loopMax,loopEnder)
-    params:set(row.."length",loopEnder-loopStart)
-  else
-    params:delta(row.."reset trig",1)
+    params:set(row.."start",(loopStart-1)/16*self.loopMax)
+    params:set(row.."length",(loopEnder-loopStart+1)/16*self.loopMax)
   end
+  softcut.position(row,(loopStart-1)/16*self.loopMax+uC.bufferMinMax[row][2])
 end
 
 function Grido:get_visual()
@@ -115,15 +111,17 @@ function Grido:get_visual()
 
   -- get the current state for the loops
   for i=1,6 do
-    local row=i
     -- get current position
-    local colStart=util.linlin(uC.bufferMinMax[i][2],uC.bufferMinMax[i][2]+self.loopMax,1,16,uP[i].loopStart+uC.bufferMinMax[i][2])
-    local colEnder=util.linlin(uC.bufferMinMax[i][2],uC.bufferMinMax[i][2]+self.loopMax,1,16,uP[i].loopStart+uP[i].loopLength+uC.bufferMinMax[i][2])
-    local colPoser=util.linlin(uC.bufferMinMax[i][2],uC.bufferMinMax[i][2]+self.loopMax,1,16,uP[i].position+uC.bufferMinMax[i][2])
-    for col=colStart,colEnder do
-      self.visual[row][col]=5
+    local colStart=params:get(i.."start")/self.loopMax*16+1
+    local colEnder=(params:get(i.."start")+params:get(i.."length"))/self.loopMax*16
+    local colPoser=(uP[i].position-uP[i].loopStart)/(uP[i].loopLength)*(colEnder-colStart+1)
+    colStart = math.floor(colStart)
+    colEnder = math.floor(colEnder)
+    colPoser = math.floor(colPoser)+colStart
+    for j=colStart,colEnder do
+      self.visual[i][j]=5
     end
-    self.visual[row][colPoser]=15
+    self.visual[i][colPoser]=15
   end
 
   -- illuminate currently pressed button
@@ -131,16 +129,16 @@ function Grido:get_visual()
     row,col=k:match("(%d+),(%d+)")
     self.visual[tonumber(row)][tonumber(col)]=15
   end
+
+  return self.visual
 end
 
 function Grido:grid_redraw()
   self.g:all(0)
   local gd=self:get_visual()
-  rows=#gd
-  cols=#gd[1]
-  for row=1,rows do
-    for col=1,cols do
-      if gd[row][col]~=0 then
+  for row=1,8 do
+    for col=1,16 do
+      if gd[row][col]~=0  then
         self.g:led(col,row,gd[row][col])
       end
     end
@@ -148,4 +146,4 @@ function Grido:grid_redraw()
   self.g:refresh()
 end
 
-return Grid
+return Grido
