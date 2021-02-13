@@ -226,7 +226,7 @@ function init()
   filter_resonance=controlspec.new(0.05,1,'lin',0,1,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,36)
+    params:add_group("loop "..i,39)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -267,7 +267,7 @@ function init()
       controlspec=filter_freq,
       formatter=Formatters.format_freq,
       action=function(value)
-        softcut.post_filter_fc(i,value)
+        uP[i].filterUpdate=true
       end
     }
     -- TODO: add filter LFO!
@@ -280,6 +280,9 @@ function init()
         softcut.post_filter_rq(i,value)
       end
     }
+    params:add_control(i.."filter lfo amp","filter lfo amp",controlspec.new(0,1,"lin",0.01,0.25,"",0.01))
+    params:add_control(i.."filter lfo period","filter lfo period",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
+    params:add_control(i.."filter lfo offset","filter lfo offset",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
     params:add{type='binary',name="play trig",id=i..'play trig',behavior='momentary',
       action=function(v)
         if v==1 then
@@ -420,6 +423,7 @@ function init()
     params:set_action(i.."rate",function(x) uP[i].rateUpdate=true end)
     params:set_action(i.."rate reverse",function(x) uP[i].rateUpdate=true end)
     params:set_action(i.."rate adjust",function(x) uP[i].rateUpdate=true end)
+    params:set_action(i.."filter_frequency",function(x) uP[i].filterUpdate=true end)
   end
   redraw()
 
@@ -484,6 +488,7 @@ function init_loops(j,ignore_pan)
       uP[i].pan = previous_uP[i].pan
     end
     uP[i].panUpdate=false
+    uP[i].filterUpdate=false
     uP[i].lfoWarble={}
     uP[i].destroying=false
     if i<7 then
@@ -512,6 +517,9 @@ function init_loops(j,ignore_pan)
       params:set(i.."pan lfo amp",0.5)
       params:set(i.."pan lfo period",0)
       params:set(i.."pan lfo offset",0)
+      params:set(i.."filter lfo amp",0.5)
+      params:set(i.."filter lfo period",0)
+      params:set(i.."filter lfo offset",0)
       params:set(i.."reset every beat",0)
       params:set(i.."isempty",2)
     end
@@ -899,6 +907,16 @@ function update_timer()
       end
       softcut.loop_start(i,uP[i].loopStart+uC.bufferMinMax[i][2])
       softcut.loop_end(i,uP[i].loopStart+uC.bufferMinMax[i][2]+uP[i].loopLength)
+    end
+    if uP[i].filterUpdate or (params:get(i.."filter lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."filter lfo amp")>0) then
+      uP[i].filterUpdate=false
+      local fc=params:get(i.."filter_frequency")
+      if fc>0 and params:get(i.."filter lfo period")>0 and params:get("pause lfos")==1 then
+        fc = util.linlin(20,20000,-1,1,fc) 
+        fc=fc+params:get(i.."filter lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."filter lfo period"),params:get(i.."filter lfo offset"))
+        fc = util.linlin(-1,1,150,20000,util.clamp(fc,-1,1))
+      end
+      softcut.post_filter_fc(i,fc)
     end
   end
 end
