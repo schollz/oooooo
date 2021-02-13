@@ -214,7 +214,7 @@ function init()
     end
   end)
   params:add{type = "option", id = "scale_mode", name = "scale mode",
-      options = scale_names, default = 5,
+      options = scale_names, default = 1,
       action = function() 
       build_ji_rates() 
     uS.rateUpdate=true 
@@ -476,6 +476,7 @@ function init_loops(j,ignore_pan)
     end
     uP[i].loopUpdate=false
     uP[i].position=0
+    uP[i].fc=20000
     uP[i].recordedLength=0
     uP[i].isStopped=true
     uP[i].vol=0.5
@@ -912,10 +913,11 @@ function update_timer()
       uP[i].filterUpdate=false
       local fc=params:get(i.."filter_frequency")
       if fc>0 and params:get(i.."filter lfo period")>0 and params:get("pause lfos")==1 then
-        fc = util.linlin(20,20000,-1,1,fc) 
+        fc = util.linlin(50,18000,-1,1,fc) 
         fc=fc+params:get(i.."filter lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."filter lfo period"),params:get(i.."filter lfo offset"))
-        fc = util.linlin(-1,1,150,20000,util.clamp(fc,-1,1))
+        fc = util.linlin(-1,1,50,18000,util.clamp(fc,-1,1))
       end
+      uP[i].fc = fc
       softcut.post_filter_fc(i,fc)
     end
   end
