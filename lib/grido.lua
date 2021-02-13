@@ -18,6 +18,7 @@ function Grido:new(args)
   m.selection_scale = 10
   m.current_octave = {4,4,4,4,4,4}
   m.show_graphic = {nil,0}
+  m.selected_loop = 1
 
   -- setup visual
   m.visual={}
@@ -80,38 +81,38 @@ function Grido:key_press(row,col,on)
     elseif self.selection == 4 then
       self:change_rate(row)
     elseif self.selection == 5 then
-      self:change_rate_ji(row,col)
-    elseif self.selection == 6 then
       self:change_filter(row)
-    elseif self.selection == 7 then
-      self:change_play_status(row,col)
+    elseif self.selection == 6 then
+      self:change_rate_ji(row,col)
     end
   elseif row==7 and on then 
     if self.selection > 1 then 
       self:change_selection_scale(col)
+    else
+      self:change_play_status(self.selected_loop,col)
     end
   elseif row==8 and on  then 
       self:change_selection(col)
   end
 end
 
-function Grido:change_play_status(row,col)
+function Grido:change_play_status(i,col)
   if col==1 then 
     -- stop
-    params:set(row.."stop trig",0)
-    params:set(row.."stop trig",1)
+    params:set(i.."stop trig",0)
+    params:set(i.."stop trig",1)
   elseif col==2 then 
     -- play 
-    params:set(row.."play trig",0)
-    params:set(row.."play trig",1)
+    params:set(i.."play trig",0)
+    params:set(i.."play trig",1)
   elseif col==3 then 
     -- arm 
-    params:set(row.."arming trig",0)
-    params:set(row.."arming trig",1)
+    params:set(i.."arming trig",0)
+    params:set(i.."arming trig",1)
   elseif col==4 then 
     -- rec 
-    params:set(row.."recording trig",0)
-    params:set(row.."recording trig",1)
+    params:set(i.."recording trig",0)
+    params:set(i.."recording trig",1)
   end
 end
 
@@ -123,13 +124,11 @@ function Grido:change_selection(selection)
   elseif selection == 4 then 
     self:show_text("rate")
   elseif selection == 5 then 
-    self:show_text("tone")
-  elseif selection == 6 then 
     self:show_text("freq")
-  elseif selection == 7 then 
-    self:show_text(" REC")
+  elseif selection == 6 then 
+    self:show_text("tone")
   end
-  if selection <= 7 then 
+  if selection <= 6 then 
     self.selection = selection 
   end
 end
@@ -227,6 +226,7 @@ function Grido:change_rate_ji(row,col)
 end
 
 function Grido:change_loop(row)
+  self.selected_loop = row 
   loopStart,loopEnder = self:get_touch_points(row)
   if loopEnder > 0 then 
     params:set(row.."start",(loopStart-1)/16*self.loopMax)
@@ -283,10 +283,18 @@ function Grido:get_visual()
       colEnder = math.floor(colEnder)
       colPoser = math.floor(colPoser)+colStart
       for j=colStart,colEnder do
-        self.visual[i][j]=5
+        if i==self.selected_loop then 
+          self.visual[i][j]=7
+        else
+          self.visual[i][j]=3
+        end
       end
       self.visual[i][colPoser]=15
     end
+    self.visual[7][1] = uP[self.selected_loop].isStopped and 15 or 0
+    self.visual[7][2] = uP[self.selected_loop].isStopped and 0 or 15
+    self.visual[7][3] = uS.recording[self.selected_loop] == 1 and 15 or 0
+    self.visual[7][4] = uS.recording[self.selected_loop] == 2 and 15 or 0
   elseif self.selection == 2 then 
     -- show current volume for the loops
     for i=1,6 do 
@@ -314,6 +322,11 @@ function Grido:get_visual()
       end
     end
   elseif self.selection == 5 then 
+    -- show current filter fc for the loops
+    for i=1,6 do 
+        self.visual[i][util.round(util.linlin(50,18000,1,16,uP[i].fc),1)] = 15
+    end
+  elseif self.selection == 6 then 
     -- show current rate ji for the loops
     for i=1,6 do 
         self.visual[i][params:get(i.."rate tone")+5] = 15
@@ -329,19 +342,6 @@ function Grido:get_visual()
         if params:get(i.."rate reverse") == 1 then 
           self.visual[i][4]=15
         end
-    end
-  elseif self.selection == 6 then 
-    -- show current filter fc for the loops
-    for i=1,6 do 
-        self.visual[i][util.round(util.linlin(50,18000,1,16,uP[i].fc),1)] = 15
-    end
-  elseif self.selection == 7 then 
-    -- show current play status
-    for i=1,6 do 
-        self.visual[i][1] = uP[i].isStopped and 15 or 0
-        self.visual[i][2] = uP[i].isStopped and 0 or 15
-        self.visual[i][3] = uS.recording[i] == 1 and 15 or 0
-        self.visual[i][4] = uS.recording[i] == 2 and 15 or 0
     end
   end
 

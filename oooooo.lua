@@ -523,6 +523,12 @@ function init_loops(j,ignore_pan)
       params:set(i.."filter lfo offset",0)
       params:set(i.."reset every beat",0)
       params:set(i.."isempty",2)
+      params:set(i.."play trig",0)
+      params:set(i.."arming trig",0)
+      params:set(i.."recording trig",0)
+      params:set(i.."reset trig",0)
+      params:set(i.."stop trig",0)
+      params:set(i.."rate tone",0)
     end
     for j=1,3 do
       uP[i].lfoWarble[j]=math.random(1,60)
