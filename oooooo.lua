@@ -25,7 +25,8 @@
 
 local Formatters=require 'formatters'
 local grido=include("oooooo/lib/grido")
-
+local MusicUtil = require "musicutil"
+local intonation=require "intonation"
 engine.name="SimpleDelay"
 
 
@@ -54,6 +55,7 @@ uS={
   lagActivated=false,
   timeSinceArming=0,
   lastOnset=0,
+  toneRates = {},
 }
 
 -- user constants
@@ -91,6 +93,7 @@ uC={
 
 DATA_DIR=_path.data.."oooooo/"
 PATH=_path.audio..'oooooo/'
+local scale_names={}
 
 
 function init()
@@ -181,7 +184,11 @@ function init()
   params:add_text('save_message',">","")
 
 
-  params:add_group("all loops",8)
+  for i = 1, #MusicUtil.SCALES do
+    table.insert(scale_names, string.lower(MusicUtil.SCALES[i].name))
+  end
+
+  params:add_group("all loops",9)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
   params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,0,'% prob'))
   params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0,'',0.01/2))
@@ -206,6 +213,12 @@ function init()
       softcut.rate_slew_time(i,x)
     end
   end)
+  params:add{type = "option", id = "scale_mode", name = "scale mode",
+      options = scale_names, default = 5,
+      action = function() 
+      build_ji_rates() 
+    uS.rateUpdate=true 
+  end}
   params:add_option("expert mode","expert mode",{"no","yes"},1)
   params:set_action("expert mode",update_parameters)
 
@@ -213,7 +226,7 @@ function init()
   filter_resonance=controlspec.new(0.05,1,'lin',0,1,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,35)
+    params:add_group("loop "..i,36)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -229,6 +242,8 @@ function init()
     params:add_control(i.."vol lfo offset","vol lfo offset",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
     params:add_option(i.."rate","rate (%)",uC.discreteRates,#uC.discreteRates)
     params:add_control(i.."rate adjust","rate adjust (%)",controlspec.new(-400,400,"lin",0.1,0,"%",0.1/800))
+    params:add_control(i.."rate tone","rate tone",controlspec.new(0,16,"lin",1,0,""))
+    params:set_action(i.."rate tone",function(v)  uP[i].rateUpdate = true end)
     params:add_option(i.."rate reverse","reverse rate",{"on","off"},2)
     params:add_option(i.."rate lfo center","rate lfo center (%)",uC.discreteRates,#uC.discreteRates)
     params:add_control(i.."rate lfo amp","rate lfo amp",controlspec.new(0,1,"lin",0.01,0.25,"",0.01))
@@ -539,6 +554,21 @@ function init_loops(j,ignore_pan)
       softcut.pre_filter_fc(i,20100)
     end
   end
+
+  build_ji_rates() 
+end
+
+function build_ji_rates() 
+  notes = MusicUtil.generate_scale_of_length(60, params:get("scale_mode"), 24)
+  tones = intonation.normal()
+  uS.toneRates = {}
+  for i,note in ipairs(notes) do
+    ratio_index = note - 60 + 1 
+    if ratio_index > #tones then 
+      break
+    end
+    table.insert(uS.toneRates,tones[ratio_index])
+  end
 end
 
 function activate_mode()
@@ -831,7 +861,8 @@ function update_timer()
         currentRateIndex=util.clamp(params:get(i.."rate lfo center")+round(util.linlin(-1,1,-#uC.discreteRates,#uC.discreteRates,params:get(i.."rate lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."rate lfo period"),params:get(i.."rate lfo offset")))),1,#uC.discreteRates)
         -- currentRateIndex=util.clamp(round(util.linlin(-1,1,0,1+#uC.discreteRates,params:get(i.."rate lfo amp")*calculate_lfo(uS.currentTime,params:get(i.."rate lfo period"),params:get(i.."rate lfo offset")))),1,#uC.discreteRates)
       end
-      uP[i].rate=(uC.discreteRates[currentRateIndex]+params:get(i.."rate adjust"))*(params:get(i.."rate reverse")*2-3)/100.0
+      local toneRate = uS.toneRates[params:get(i.."rate tone")%#uS.toneRates+1]
+      uP[i].rate=(uC.discreteRates[currentRateIndex]+params:get(i.."rate adjust"))*(params:get(i.."rate reverse")*2-3)/100.0*toneRate
       softcut.rate(i,uP[i].rate)
     end
     if uP[i].panUpdate or (params:get(i.."pan lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."pan lfo amp")>0) then
