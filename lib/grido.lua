@@ -43,7 +43,6 @@ function Grido:new(args)
   m.selection_scale = math.floor(2/3*m.grid_width)
   m.current_octave = {4,4,4,4,4,4}
   m.show_graphic = {nil,0}
-  m.selected_loop = 1
 
   -- setup visual
   m.shown_text={false,false,false,false,false,false,false}
@@ -115,7 +114,7 @@ function Grido:key_press(row,col,on)
     if self.selection > 1 then 
       self:change_selection_scale(col)
     else
-      self:change_play_status(self.selected_loop,col)
+      self:change_play_status(uS.loopNum,col)
     end
   elseif row==8 and on  then 
       self:change_selection(col)
@@ -209,6 +208,8 @@ function Grido:change_volume(row)
     params:set(row.."vol lfo amp",0)
     params:set(row.."vol",util.linlin(1,self.grid_width+1,0,1,loopStart))
   end
+  uS.loopNum = row
+  redraw()
 end
 
 function Grido:change_pan(row)
@@ -223,6 +224,8 @@ function Grido:change_pan(row)
     params:set(row.."pan lfo amp",0)
     params:set(row.."pan",util.linlin(1,self.grid_width,-1,1,loopStart))
   end
+  uS.loopNum = row
+  redraw()
 end
 
 function Grido:change_filter(row)
@@ -237,6 +240,8 @@ function Grido:change_filter(row)
     params:set(row.."filter lfo amp",0)
     params:set(row.."filter_frequency",util.linlin(1,self.grid_width,50,18000,loopStart))
   end
+  uS.loopNum = row
+  redraw()
 end
 
 function Grido:change_rate(row)
@@ -251,6 +256,8 @@ function Grido:change_rate(row)
     params:set(row.."rate lfo amp",0)
   end
   params:set(row.."rate",self.rates_index[loopStart])
+  uS.loopNum = row
+  redraw()
 end
 
 function Grido:change_rate_ji(row,col)
@@ -268,16 +275,19 @@ function Grido:change_rate_ji(row,col)
     -- reverse
     params:set(row.."rate reverse",3-params:get(row.."rate reverse"))
   end
+  uS.loopNum = row
+  redraw()
 end
 
 function Grido:change_loop(row)
-  self.selected_loop = row 
   loopStart,loopEnder = self:get_touch_points(row)
   if loopEnder > 0 then 
     params:set(row.."start",(loopStart-1)/self.grid_width*self.loopMax)
     params:set(row.."length",(loopEnder-loopStart+1)/self.grid_width*self.loopMax)
   end
   softcut.position(row,(loopStart-1)/self.grid_width*self.loopMax+uC.bufferMinMax[row][2])
+  uS.loopNum = row 
+  redraw()
 end
 
 function Grido:get_visual()
@@ -331,7 +341,7 @@ function Grido:get_visual()
         colPoser = 1
       end
       for j=colStart,colEnder do
-        if i==self.selected_loop then 
+        if i==uS.loopNum then 
           self.visual[i][j]=7
         else
           self.visual[i][j]=3
@@ -339,10 +349,10 @@ function Grido:get_visual()
       end
       self.visual[i][colPoser]=15
     end
-    self.visual[7][1] = uP[self.selected_loop].isStopped and 15 or 0
-    self.visual[7][2] = uP[self.selected_loop].isStopped and 0 or 15
-    self.visual[7][3] = uS.recording[self.selected_loop] == 1 and 15 or 0
-    self.visual[7][4] = uS.recording[self.selected_loop] == 2 and 15 or 0
+    self.visual[7][1] = uP[uS.loopNum].isStopped and 15 or 0
+    self.visual[7][2] = uP[uS.loopNum].isStopped and 0 or 15
+    self.visual[7][3] = uS.recording[uS.loopNum] == 1 and 15 or 0
+    self.visual[7][4] = uS.recording[uS.loopNum] == 2 and 15 or 0
   elseif self.selection == page_volume then 
     -- show current volume for the loops
     for i=1,6 do 
