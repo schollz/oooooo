@@ -21,6 +21,7 @@ function Grido:new(args)
   m.g.key=function(x,y,z)
     m:grid_key(x,y,z)
   end
+  print("grid columns: "..m.g.cols)
 
   -- 16 or 8 width
   m.grid_width = 16 
@@ -75,7 +76,9 @@ function Grido:new(args)
   m.grid_refresh=metro.init()
   m.grid_refresh.time=0.05
   m.grid_refresh.event=function()
-    m:grid_redraw()
+    if m.g.cols > 0 then 
+      m:grid_redraw()
+    end
   end
   m.grid_refresh:start()
 
