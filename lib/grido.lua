@@ -373,7 +373,7 @@ function Grido:get_visual()
         self.visual[i][1]=closestIndex[1]*2
         self.visual[i][2]=closestIndex[1]*2
         if params:get(i.."rate reverse") == 1 then 
-          self.visual[i][4]=15
+          self.visual[i][3]=15
         end
     end
   end
