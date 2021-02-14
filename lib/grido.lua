@@ -35,6 +35,7 @@ function Grido:new(args)
     m.octave_index = {5,6,7,8}
     m.periods = {60,30,15,7,4,2,1,0.3}
   end
+  print("grid width: "..m.grid_width)
 
   -- selection 
   m.selection = 1
@@ -61,7 +62,12 @@ function Grido:new(args)
   end
 
   -- grid uses pre-defined max loop length
-  m.loopMax=(60/clock.get_tempo())*params:get("start length")
+  m.loopMax=0
+  for i=1,6 do
+    if params:get(i.."length") > m.loopMax then 
+      m.loopMax = params:get(i.."length")
+    end
+  end
 
   m.pressed_buttons={}
 
@@ -318,6 +324,9 @@ function Grido:get_visual()
       colStart = math.floor(colStart)
       colEnder = math.floor(colEnder)
       colPoser = math.floor(colPoser)+colStart
+      if  tostring(colPoser) == "nan" then
+        colPoser = 1
+      end
       for j=colStart,colEnder do
         if i==self.selected_loop then 
           self.visual[i][j]=7
