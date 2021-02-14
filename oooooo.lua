@@ -1,4 +1,4 @@
--- oooooo v1.5.2
+-- oooooo v1.6.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -26,9 +26,11 @@
 local Formatters=require 'formatters'
 local grido=include("oooooo/lib/grido")
 local MusicUtil = require "musicutil"
-local intonation=require "intonation"
 engine.name="SimpleDelay"
 
+
+-- from https://github.com/monome/norns/blob/main/lua/lib/intonation.lua
+local intonation =  {1/1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 16/9, 15/8, 2*1/1, 2*16/15, 2*9/8, 2*6/5, 2*5/4, 2*4/3, 2*45/32, 2*3/2, 2*8/5, 2*5/3, 2*16/9, 2*15/8}
 
 -- user parameters
 uP={
@@ -458,7 +460,6 @@ end
 
 function init_loops(j,ignore_pan)
   audio.level_adc(1) -- input volume 1
-  audio.level_cut(1) -- Softcut master level (same as in LEVELS screen)
 
   i1=j
   i2=j
@@ -576,7 +577,7 @@ end
 
 function build_ji_rates() 
   notes = MusicUtil.generate_scale_of_length(60, params:get("scale_mode"), 24)
-  tones = intonation.normal()
+  tones = intonation
   uS.toneRates = {}
   for i,note in ipairs(notes) do
     ratio_index = note - 60 + 1 

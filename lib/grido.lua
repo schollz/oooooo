@@ -5,26 +5,50 @@ local graphic_pixels=include("oooooo/lib/glyphs")
 local Grido={}
 
 -- copied from ooooooo
-local rates = {-400,-200,-150,-100,-75,-50,-25,-12.5,12.5,25,50,75,100,150,200,400}
-local octave_index = {9,10,11,13,15,16}
-local periods = {96,48,24,12,10,8,6,4,3.2,2.4,1.6,1.2,0.8,0.4,0.2,0.1}
+local page_loops = 1
+local page_tones = 2
+local page_volume = 3
+local page_pan = 4
+local page_rate = 5
+local page_frequency = 6
 
 function Grido:new(args)
   local m=setmetatable({},{__index=Grido})
   local args=args==nil and {} or args
 
+  -- initiate the grid
+  m.g=grid.connect()
+  m.g.key=function(x,y,z)
+    m:grid_key(x,y,z)
+  end
+
+  -- 16 or 8 width
+  m.grid_width = 16 
+  m.rates = {-400,-200,-150,-100,-75,-50,-25,-12.5,12.5,25,50,75,100,150,200,400}
+  m.rates_index = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}
+  m.octave_index = {9,10,11,13,15,16}
+  m.periods = {96,48,24,12,10,8,6,4,3.2,2.4,1.6,1.2,0.8,0.4,0.2,0.1}
+  if m.g.cols == 8 then 
+    m.grid_width = 8
+    m.rates = {-200,-100,-50,-25,25,50,100,200}
+    m.rates_index = {2,4,6,7,10,11,13,15}
+    m.octave_index = {5,6,7,8}
+    m.periods = {60,30,15,7,4,2,1,0.3}
+  end
+
   -- selection 
   m.selection = 1
-  m.selection_scale = 10
+  m.selection_scale = math.floor(2/3*m.grid_width)
   m.current_octave = {4,4,4,4,4,4}
   m.show_graphic = {nil,0}
   m.selected_loop = 1
 
   -- setup visual
+  m.shown_text={false,false,false,false,false,false,false}
   m.visual={}
   for i=1,8 do
     m.visual[i]={}
-    for j=1,16 do
+    for j=1,m.grid_width do
       m.visual[i][j]=0
     end
   end
@@ -32,7 +56,7 @@ function Grido:new(args)
   -- debouncing and blinking
   m.blink_count=0
   m.blinky={}
-  for i=1,16 do
+  for i=1,m.grid_width do
     m.blinky[i]=1 -- 1 = fast, 16 = slow
   end
 
@@ -40,13 +64,6 @@ function Grido:new(args)
   m.loopMax=(60/clock.get_tempo())*params:get("start length")
 
   m.pressed_buttons={}
-  -- initiate the grid
-  -- grid specific
-  m.g=grid.connect()
-  m.g.key=function(x,y,z)
-    m:grid_key(x,y,z)
-  end
-  print("grid columns: "..m.g.cols)
 
   -- grid refreshing
   m.grid_refresh=metro.init()
@@ -72,17 +89,17 @@ function Grido:key_press(row,col,on)
   end
 
   if row <= 6 and on then 
-    if self.selection == 1 then 
+    if self.selection == page_loops then 
       self:change_loop(row)
-    elseif self.selection == 2 then
+    elseif self.selection == page_volume then
       self:change_volume(row)
-    elseif self.selection == 3 then
+    elseif self.selection == page_pan then
       self:change_pan(row)
-    elseif self.selection == 4 then
+    elseif self.selection == page_rate then
       self:change_rate(row)
-    elseif self.selection == 5 then
+    elseif self.selection == page_frequency then
       self:change_filter(row)
-    elseif self.selection == 6 then
+    elseif self.selection == page_tones then
       self:change_rate_ji(row,col)
     end
   elseif row==7 and on then 
@@ -117,16 +134,31 @@ function Grido:change_play_status(i,col)
 end
 
 function Grido:change_selection(selection)
-  if selection == 2 then 
-    self:show_text("volume")
-  elseif selection == 3 then 
-    self:show_text("pan")
-  elseif selection == 4 then 
-    self:show_text("rate")
-  elseif selection == 5 then 
-    self:show_text("freq")
-  elseif selection == 6 then 
-    self:show_text("tone")
+  if selection == page_volume then 
+    if not self.shown_text[page_volume] then
+      self:show_text("volume")
+      self.shown_text[page_volume] = true
+    end
+  elseif selection == page_pan then 
+    if not self.shown_text[page_pan] then
+      self:show_text("pan")
+      self.shown_text[page_pan] = true
+    end
+  elseif selection == page_rate then 
+    if not self.shown_text[page_rate] then
+      self:show_text("rate")
+      self.shown_text[page_rate] = true
+    end
+  elseif selection == page_frequency then 
+    if not self.shown_text[page_frequency] then
+      self:show_text("freq")
+      self.shown_text[page_frequency] = true
+    end
+  elseif selection == page_tones then 
+    if not self.shown_text[page_tones] then
+      self:show_text("tone")
+      self.shown_text[page_tones] = true
+    end
   end
   if selection <= 6 then 
     self.selection = selection 
@@ -135,16 +167,16 @@ end
 
 function Grido:change_selection_scale(selection)
   self.selection_scale = selection
-  if self.selection == 6 then
+  if self.selection == page_tones then
     -- change slew rate if on rate ji
-    params:set("slew rate",util.linlin(1,16,0.1,10,selection))
+    params:set("slew rate",util.linlin(1,self.grid_width,0.1,10,selection))
   end
 end
 
 function Grido:get_touch_points(row)
   local loopStart = 0 
   local loopEnder = 0 
-  for i=1,16 do 
+  for i=1,self.grid_width do 
     if self.pressed_buttons[row..","..i]==true then 
       if loopStart == 0 then 
         loopStart = i
@@ -160,13 +192,13 @@ function Grido:change_volume(row)
   loopStart,loopEnder = self:get_touch_points(row)
   if loopEnder > 0 then 
     loopCenter = (loopStart+loopEnder)/2
-    params:set(row.."vol",(loopCenter)/15)
-    params:set(row.."vol lfo amp",(loopEnder-loopStart)/15/2)
-    params:set(row.."vol lfo period",periods[self.selection_scale]+math.random(1,100)/100) 
+    params:set(row.."vol",util.linlin(1,self.grid_width+1,0,1,loopCenter))
+    params:set(row.."vol lfo amp",(loopEnder-loopStart)/(self.grid_width-1)/2)
+    params:set(row.."vol lfo period",self.periods[self.selection_scale]+math.random(1,100)/100) 
     params:set(row.."vol lfo offset",math.random(10,60)/math.random(1,6)) 
   else
     params:set(row.."vol lfo amp",0)
-    params:set(row.."vol",(loopStart-1)/15)
+    params:set(row.."vol",util.linlin(1,self.grid_width+1,0,1,loopStart))
   end
 end
 
@@ -174,13 +206,13 @@ function Grido:change_pan(row)
   loopStart,loopEnder = self:get_touch_points(row)
   if loopEnder > 0 then 
     loopCenter = (loopStart+loopEnder)/2
-    params:set(row.."pan",util.linlin(1,16,-1,1,loopCenter))
-    params:set(row.."pan lfo amp",(loopEnder-loopStart)/15)
-    params:set(row.."pan lfo period",periods[self.selection_scale]+math.random(1,100)/100) 
+    params:set(row.."pan",util.linlin(1,self.grid_width,-1,1,loopCenter))
+    params:set(row.."pan lfo amp",(loopEnder-loopStart)/(self.grid_width-1))
+    params:set(row.."pan lfo period",self.periods[self.selection_scale]+math.random(1,100)/100) 
     params:set(row.."pan lfo offset",math.random(10,60)/math.random(1,6)) 
   else
     params:set(row.."pan lfo amp",0)
-    params:set(row.."pan",util.linlin(1,16,-1,1,loopStart))
+    params:set(row.."pan",util.linlin(1,self.grid_width,-1,1,loopStart))
   end
 end
 
@@ -188,13 +220,13 @@ function Grido:change_filter(row)
   loopStart,loopEnder = self:get_touch_points(row)
   if loopEnder > 0 then 
     loopCenter = (loopStart+loopEnder)/2
-    params:set(row.."filter_frequency",util.linlin(1,16,50,18000,loopCenter))
-    params:set(row.."filter lfo amp",(loopEnder-loopStart)/15)
-    params:set(row.."filter lfo period",periods[self.selection_scale]+math.random(1,100)/100) 
+    params:set(row.."filter_frequency",util.linlin(1,self.grid_width,50,18000,loopCenter))
+    params:set(row.."filter lfo amp",(loopEnder-loopStart)/(self.grid_width-1))
+    params:set(row.."filter lfo period",self.periods[self.selection_scale]+math.random(1,100)/100) 
     params:set(row.."filter lfo offset",math.random(10,60)/math.random(1,6)) 
   else
     params:set(row.."filter lfo amp",0)
-    params:set(row.."filter_frequency",util.linlin(1,16,50,18000,loopStart))
+    params:set(row.."filter_frequency",util.linlin(1,self.grid_width,50,18000,loopStart))
   end
 end
 
@@ -202,28 +234,28 @@ function Grido:change_rate(row)
   loopStart,loopEnder = self:get_touch_points(row)
   if loopEnder > 0 then 
     loopCenter = math.floor((loopStart+loopEnder)/2)
-    params:set(row.."rate lfo center",loopCenter)
-    params:set(row.."rate lfo amp",(loopEnder-loopCenter)/15)
-    params:set(row.."rate lfo period",periods[self.selection_scale]) 
+    params:set(row.."rate lfo center",self.rates_index[loopCenter])
+    params:set(row.."rate lfo amp",(loopEnder-loopCenter)/(self.grid_width-1))
+    params:set(row.."rate lfo period",self.periods[self.selection_scale]) 
     params:set(row.."rate lfo offset",math.random(10,60)/math.random(1,6)) 
   else
     params:set(row.."rate lfo amp",0)
   end
-  params:set(row.."rate",loopStart)
+  params:set(row.."rate",self.rates_index[loopStart])
 end
 
 function Grido:change_rate_ji(row,col)
-  if col > 4 then 
-    params:set(row.."rate tone",col-5)
-  elseif col == 2 then 
+  if col > 3 then 
+    params:set(row.."rate tone",col-4)
+  elseif col == 1 then 
     -- octave down
-    self.current_octave[row]= util.clamp(self.current_octave[row]-1,1,#octave_index)
-    params:set(row.."rate",octave_index[self.current_octave[row]])
-  elseif col == 3 then 
+    self.current_octave[row]= util.clamp(self.current_octave[row]-1,1,#self.octave_index)
+    params:set(row.."rate",self.octave_index[self.current_octave[row]])
+  elseif col == 2 then 
     -- octave up
-    self.current_octave[row] = util.clamp(self.current_octave[row]+1,1,#octave_index)
-    params:set(row.."rate",octave_index[self.current_octave[row]])
-  elseif col == 4 then 
+    self.current_octave[row] = util.clamp(self.current_octave[row]+1,1,#self.octave_index)
+    params:set(row.."rate",self.octave_index[self.current_octave[row]])
+  elseif col == 3 then 
     -- reverse
     params:set(row.."rate reverse",3-params:get(row.."rate reverse"))
   end
@@ -233,10 +265,10 @@ function Grido:change_loop(row)
   self.selected_loop = row 
   loopStart,loopEnder = self:get_touch_points(row)
   if loopEnder > 0 then 
-    params:set(row.."start",(loopStart-1)/16*self.loopMax)
-    params:set(row.."length",(loopEnder-loopStart+1)/16*self.loopMax)
+    params:set(row.."start",(loopStart-1)/self.grid_width*self.loopMax)
+    params:set(row.."length",(loopEnder-loopStart+1)/self.grid_width*self.loopMax)
   end
-  softcut.position(row,(loopStart-1)/16*self.loopMax+uC.bufferMinMax[row][2])
+  softcut.position(row,(loopStart-1)/self.grid_width*self.loopMax+uC.bufferMinMax[row][2])
 end
 
 function Grido:get_visual()
@@ -262,7 +294,7 @@ function Grido:get_visual()
 
   -- clear visual
   for row=1,8 do
-    for col=1,16 do
+    for col=1,self.grid_width do
       self.visual[row][col]=0
     end
   end
@@ -276,12 +308,12 @@ function Grido:get_visual()
     end
   end
 
-  if self.selection == 1 then
+  if self.selection == page_loops then
     -- show the current state for the loops
     for i=1,6 do
       -- get current position
-      local colStart=params:get(i.."start")/self.loopMax*16+1
-      local colEnder=(params:get(i.."start")+params:get(i.."length"))/self.loopMax*16
+      local colStart=params:get(i.."start")/self.loopMax*self.grid_width+1
+      local colEnder=(params:get(i.."start")+params:get(i.."length"))/self.loopMax*self.grid_width
       local colPoser=(uP[i].position-uP[i].loopStart)/(uP[i].loopLength)*(colEnder-colStart+1)
       colStart = math.floor(colStart)
       colEnder = math.floor(colEnder)
@@ -299,50 +331,47 @@ function Grido:get_visual()
     self.visual[7][2] = uP[self.selected_loop].isStopped and 0 or 15
     self.visual[7][3] = uS.recording[self.selected_loop] == 1 and 15 or 0
     self.visual[7][4] = uS.recording[self.selected_loop] == 2 and 15 or 0
-  elseif self.selection == 2 then 
+  elseif self.selection == page_volume then 
     -- show current volume for the loops
     for i=1,6 do 
-        self.visual[i][util.round(uP[i].vol*15,1)+1] = 15
+        self.visual[i][util.round(uP[i].vol*self.grid_width)+1] = 15
     end
-  elseif self.selection == 3 then 
+  elseif self.selection == page_pan then 
     -- show current pan for the loops
     for i=1,6 do 
-        self.visual[i][util.round(util.linlin(-1,1,1,16,uP[i].pan),1)] = 15
+        self.visual[i][util.round(util.linlin(-1,1,1,self.grid_width,uP[i].pan),1)] = 15
     end
-  elseif self.selection == 4 then 
+  elseif self.selection == page_rate then 
     -- show current rate for the loops
     for i=1,6 do 
-      if params:get(i.."rate lfo amp") > 0 and params:get(i.."rate lfo period") > 0 then 
-        local closestRate = {1,10000}
-        for j,rate in ipairs(rates) do
-          local diff = math.abs(100*uP[i].rate-rate)
-          if diff < closestRate[2] then 
-            closestRate = {j,diff}
-          end
+      local closestRate = {1,10000}
+      for j,rate in ipairs(self.rates) do
+        local diff = math.abs(100*uP[i].rate-rate)
+        if diff < closestRate[2] then 
+          closestRate = {j,diff}
         end
-        self.visual[i][closestRate[1]] = 15
-      else
-        self.visual[i][params:get(i.."rate")] = 15
       end
+      self.visual[i][closestRate[1]] = 15
     end
-  elseif self.selection == 5 then 
+  elseif self.selection == page_frequency then 
     -- show current filter fc for the loops
     for i=1,6 do 
-        self.visual[i][util.round(util.linlin(50,18000,1,16,uP[i].fc),1)] = 15
+        self.visual[i][util.round(util.linlin(50,18000,1,self.grid_width,uP[i].fc),1)] = 15
     end
-  elseif self.selection == 6 then 
+  elseif self.selection == page_tones then 
     -- show current rate ji for the loops
     for i=1,6 do 
-        self.visual[i][params:get(i.."rate tone")+5] = 15
+        self.visual[i][params:get(i.."rate tone")+4] = 15
         -- show current octave
         local closestIndex = {1,10000}
-        for j,index in ipairs(octave_index) do
+        for j,index in ipairs(self.octave_index) do
           local diff = math.abs(params:get(i.."rate")-index)
           if diff < closestIndex[2] then 
             closestIndex = {j,diff}
           end
         end
         self.visual[i][1]=closestIndex[1]*2
+        self.visual[i][2]=closestIndex[1]*2
         if params:get(i.."rate reverse") == 1 then 
           self.visual[i][4]=15
         end
@@ -350,11 +379,11 @@ function Grido:get_visual()
   end
 
   -- show lfo period scale if selection > 1
-  if self.selection ~= 1 and self.selection ~= 7   then 
-    for i=1,16 do
+  if self.selection ~= page_loops   then 
+    for i=1,self.grid_width do
       self.visual[7][i]=i-1
     end
-    self.visual[7][self.selection_scale]=15*self.blinky[17-self.selection_scale]
+    self.visual[7][self.selection_scale]=15*self.blinky[self.grid_width+1-self.selection_scale]
   end
 
   -- illuminate selection 
@@ -373,7 +402,7 @@ function Grido:grid_redraw()
   self.g:all(0)
   local gd=self:get_visual()
   for row=1,8 do
-    for col=1,16 do
+    for col=1,self.grid_width do
       if gd[row][col]~=0  then
         self.g:led(col,row,gd[row][col])
       end
