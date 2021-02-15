@@ -38,9 +38,6 @@ Engine_SimpleDelayKolor : CroneEngine {
     //       // postln('['++time++']');
     //       NetAddr("127.0.0.1", 10111).sendMsg("onset",1,time); 
     //     },'/tr', context.server.addr);
-
-    this.addCommand("delay", "f", { arg msg; synth.set(\delay, msg[1]); });
-    this.addCommand("volume", "f", { arg msg; synth.set(\volume, msg[1]);});
 		
 // Kolor specific v0.1.0
 		sampleBuffKolor = Array.fill(12, { arg i; 
@@ -148,6 +145,9 @@ Engine_SimpleDelayKolor : CroneEngine {
 		samplePlayerKolor = Array.fill(12,{arg i;
 			Synth("player"++i,[\bufnum:sampleBuffKolor[i]], target:context.xg);
 		});
+
+    this.addCommand("delay", "f", { arg msg; synth.set(\delay, msg[1]); });
+    this.addCommand("volume", "f", { arg msg; synth.set(\volume, msg[1]);});
 
 		this.addCommand("kolorsample","is", { arg msg;
 			// lua is sending 1-index

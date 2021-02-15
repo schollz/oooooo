@@ -93,6 +93,15 @@ function Grido:toggle_grid(on)
   else
     self.grid_on = on 
   end
+  if self.grid_on then 
+    self.g=grid.connect()
+    self.g.key=function(x,y,z)
+      print("oooooo grid: ",x,y,z)
+      if self.grid_on then
+        self:grid_key(x,y,z)
+      end
+    end
+  end
 end
 
 function Grido:grid_key(x,y,z)
