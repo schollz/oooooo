@@ -1,4 +1,4 @@
--- oooooo v1.6.0
+-- oooooo v1.7.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -25,6 +25,7 @@
 
 local Formatters=require 'formatters'
 local grido=include("oooooo/lib/grido")
+oooooo_grid = nil 
 local MusicUtil = require "musicutil"
 
 -- engine.name="SimpleDelay"
@@ -462,6 +463,7 @@ function init()
     kolor_grid = kolor:new({grid_on=false})
   end  
 
+  oooooo_grid = grido:new()
   -- DEV comment this out
   -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
