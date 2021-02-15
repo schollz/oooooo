@@ -11,6 +11,8 @@ local page_volume = 3
 local page_pan = 4
 local page_rate = 5
 local page_frequency = 6
+local page_macro_record = 7 
+local page_macro_play = 8
 
 function Grido:new(args)
   local m=setmetatable({},{__index=Grido})
@@ -37,6 +39,13 @@ function Grido:new(args)
     m.periods = {60,30,15,7,4,2,1,0.3}
   end
   print("grid width: "..m.grid_width)
+
+  -- macros
+  m.macro_db = {}
+  m.macro_clock = {}
+  m.macro_current = {}
+  m.macro_play = false
+  m.macro_record = false
 
   -- selection 
   m.selection = 1
@@ -97,18 +106,37 @@ function Grido:key_press(row,col,on)
   end
 
   if row <= 6 and on then 
+    loopStart,loopEnder = self:get_touch_points(row)
     if self.selection == page_loops then 
-      self:change_loop(row)
+      self:change_loop(row,loopStart,loopEnder)
+      if self.macro_record then 
+        self:macro_add("oooooo_grid:change_loop("..row..","..loopStart..","..loopEnder..",false)")
+      end
     elseif self.selection == page_volume then
-      self:change_volume(row)
+      self:change_volume(row,loopStart,loopEnder)
+      if self.macro_record then 
+        self:macro_add("oooooo_grid:change_volume("..row..","..loopStart..","..loopEnder..",false)")
+      end
     elseif self.selection == page_pan then
-      self:change_pan(row)
+      self:change_pan(row,loopStart,loopEnder)
+      if self.macro_record then 
+        self:macro_add("oooooo_grid:change_pan("..row..","..loopStart..","..loopEnder..",false)")
+      end
     elseif self.selection == page_rate then
-      self:change_rate(row)
+      self:change_rate(row,loopStart,loopEnder)
+      if self.macro_record then 
+        self:macro_add("oooooo_grid:change_rate("..row..","..loopStart..","..loopEnder..",false)")
+      end
     elseif self.selection == page_frequency then
-      self:change_filter(row)
+      self:change_filter(row,loopStart,loopEnder)
+      if self.macro_record then 
+        self:macro_add("oooooo_grid:change_filter("..row..","..loopStart..","..loopEnder..",false)")
+      end
     elseif self.selection == page_tones then
       self:change_rate_ji(row,col)
+      if self.macro_record then 
+        self:macro_add("oooooo_grid:change_rate_ji("..row..","..col..",false)")
+      end
     end
   elseif row==7 and on then 
     if self.selection > 1 then 
@@ -167,11 +195,108 @@ function Grido:change_selection(selection)
       self:show_text("tone")
       self.shown_text[page_tones] = true
     end
+  elseif selection == page_macro_record then 
+    self:toggle_macro_record()
+  elseif selection == page_macro_play then 
+    self:toggle_macro_play()
   end
   if selection <= 6 then 
     self.selection = selection 
   end
 end
+
+
+function Grido:macro_add(fn_string)
+  table.insert(self.macro_current,{fn=fn_string,time=self:current_time()})
+end
+
+function Grido:macro_check_reset()
+  if self.pressed_buttons["8,8"]==true and self.pressed_buttons["8,7"]==true then
+    self:toggle_macro_play(false)
+    self:toggle_macro_record(false)
+    -- clear macro
+    self.macro_db = {}
+    return true
+  end 
+  return false
+end
+
+function Grido:toggle_macro_play(on)
+  print("toggle_macro_play")
+  if on == nil then 
+    if self:macro_check_reset() then 
+      print("reseting")
+      do return end 
+    end
+    on = not self.macro_play
+  end
+  if on and #self.macro_db == 0 then 
+    on = false 
+  end
+  if on then 
+    -- start co-routines of the macros
+    for i,macro_chain in ipairs(self.macro_db) do
+      print("starting macro "..i)
+      self.macro_clock[i] = clock.run(function()
+        while true do
+          for _,macro in ipairs(macro_chain) do 
+            print(macro.fn.." for "..macro.wait)
+            local f= load(macro.fn)
+            f()
+            clock.sleep(macro.wait)
+          end
+        end
+      end)  
+    end
+  else
+    -- destroy the macro clocks
+    for _,id in ipairs(self.macro_clock) do 
+      clock.cancel(id)
+    end
+    self.macro_clock = {}
+  end
+  -- WORK
+  self.macro_play = on 
+end
+
+
+function Grido:toggle_macro_record(on)
+  print("toggle_macro_record")
+  if on == nil then 
+    if self:macro_check_reset() then 
+      print("reseting")
+      do return end 
+    end
+    on = not self.macro_record
+  end
+  if not on then 
+    -- finish and add to the macro db
+    local macro_new = {}
+    local last_time = 0
+    self:macro_add("done")
+    local num_macros = #self.macro_current
+    print("have "..(num_macros-1).." macros")
+    if num_macros > 1 then
+      for i,macro in ipairs(self.macro_current) do 
+        if i < num_macros then 
+          local m = {wait=self.macro_current[i+1].time-macro.time,fn=macro.fn}
+          tab.print(m)
+          table.insert(macro_new,m)
+        end
+      end
+      table.insert(self.macro_db,macro_new)
+    end
+  else
+    self:toggle_macro_play(false)
+    self.macro_current = {}
+  end
+  self.macro_record = on 
+end
+
+function Grido:current_time()
+  return clock.get_beat_sec()*clock.get_beats()
+end
+
 
 function Grido:change_selection_scale(selection)
   self.selection_scale = selection
@@ -196,8 +321,7 @@ function Grido:get_touch_points(row)
   return loopStart,loopEnder
 end
 
-function Grido:change_volume(row)
-  loopStart,loopEnder = self:get_touch_points(row)
+function Grido:change_volume(row,loopStart,loopEnder,update_loop)
   if loopEnder > 0 then 
     loopCenter = (loopStart+loopEnder)/2
     params:set(row.."vol",util.linlin(1,self.grid_width+1,0,1,loopCenter))
@@ -208,12 +332,13 @@ function Grido:change_volume(row)
     params:set(row.."vol lfo amp",0)
     params:set(row.."vol",util.linlin(1,self.grid_width+1,0,1,loopStart))
   end
-  uS.loopNum = row
-  redraw()
+  if update_loop == nil or update_loop == true then
+    uS.loopNum = row
+    redraw()
+  end
 end
 
-function Grido:change_pan(row)
-  loopStart,loopEnder = self:get_touch_points(row)
+function Grido:change_pan(row,loopStart,loopEnder,update_loop)
   if loopEnder > 0 then 
     loopCenter = (loopStart+loopEnder)/2
     params:set(row.."pan",util.linlin(1,self.grid_width,-1,1,loopCenter))
@@ -224,12 +349,13 @@ function Grido:change_pan(row)
     params:set(row.."pan lfo amp",0)
     params:set(row.."pan",util.linlin(1,self.grid_width,-1,1,loopStart))
   end
-  uS.loopNum = row
-  redraw()
+  if update_loop == nil or update_loop == true then
+    uS.loopNum = row
+    redraw()
+  end
 end
 
-function Grido:change_filter(row)
-  loopStart,loopEnder = self:get_touch_points(row)
+function Grido:change_filter(row,loopStart,loopEnder,update_loop)
   if loopEnder > 0 then 
     loopCenter = (loopStart+loopEnder)/2
     params:set(row.."filter_frequency",util.linlin(1,self.grid_width,50,18000,loopCenter))
@@ -240,12 +366,13 @@ function Grido:change_filter(row)
     params:set(row.."filter lfo amp",0)
     params:set(row.."filter_frequency",util.linlin(1,self.grid_width,50,18000,loopStart))
   end
-  uS.loopNum = row
-  redraw()
+  if update_loop == nil or update_loop == true then
+    uS.loopNum = row
+    redraw()
+  end
 end
 
-function Grido:change_rate(row)
-  loopStart,loopEnder = self:get_touch_points(row)
+function Grido:change_rate(row,loopStart,loopEnder,update_loop)
   if loopEnder > 0 then 
     loopCenter = math.floor((loopStart+loopEnder)/2)
     params:set(row.."rate lfo center",self.rates_index[loopCenter])
@@ -256,11 +383,13 @@ function Grido:change_rate(row)
     params:set(row.."rate lfo amp",0)
   end
   params:set(row.."rate",self.rates_index[loopStart])
-  uS.loopNum = row
-  redraw()
+  if update_loop == nil or update_loop == true then
+    uS.loopNum = row
+    redraw()
+  end
 end
 
-function Grido:change_rate_ji(row,col)
+function Grido:change_rate_ji(row,col,update_loop)
   if col > 3 then 
     params:set(row.."rate tone",col-4)
   elseif col == 1 then 
@@ -275,19 +404,22 @@ function Grido:change_rate_ji(row,col)
     -- reverse
     params:set(row.."rate reverse",3-params:get(row.."rate reverse"))
   end
-  uS.loopNum = row
-  redraw()
+  if update_loop == nil or update_loop == true then
+    uS.loopNum = row
+    redraw()
+  end
 end
 
-function Grido:change_loop(row)
-  loopStart,loopEnder = self:get_touch_points(row)
+function Grido:change_loop(row,loopStart,loopEnder,update_loop)
   if loopEnder > 0 then 
     params:set(row.."start",(loopStart-1)/self.grid_width*self.loopMax)
     params:set(row.."length",(loopEnder-loopStart+1)/self.grid_width*self.loopMax)
   end
   softcut.position(row,(loopStart-1)/self.grid_width*self.loopMax+uC.bufferMinMax[row][2])
-  uS.loopNum = row 
-  redraw()
+  if update_loop == nil or update_loop == true then
+    uS.loopNum = row
+    redraw()
+  end
 end
 
 function Grido:get_visual()
@@ -398,6 +530,18 @@ function Grido:get_visual()
           self.visual[i][3]=15
         end
     end
+  end
+
+  if self.macro_record then 
+    self.visual[8][page_macro_record] = 15
+  else
+    self.visual[8][page_macro_record] = 4
+  end
+
+  if self.macro_play then 
+    self.visual[8][page_macro_play] = 15
+  else
+    self.visual[8][page_macro_play] = 4
   end
 
   -- show lfo period scale if selection > 1
