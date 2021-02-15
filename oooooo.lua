@@ -31,9 +31,9 @@ local MusicUtil = require "musicutil"
 
 -- import kolor
 engine.name="SimpleDelayKolor"
+local kolor = nil
 if util.file_exists(_path.code.."kolor") then 
-  local kolor = include("kolor/lib/kolor")
-  kolor_grid = kolor:new({grid_on=false})
+  kolor = include("kolor/lib/kolor")
 end  
 
 
@@ -458,6 +458,9 @@ function init()
   update_softcut_input_lag(false)
 
   ooooooo_grid = grido:new({grid_on=true})
+  if util.file_exists(_path.code.."kolor") then 
+    kolor_grid = kolor:new({grid_on=false})
+  end  
 
   -- DEV comment this out
   -- params:set("scale_mode",9)
