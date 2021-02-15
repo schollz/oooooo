@@ -25,6 +25,7 @@
 
 local Formatters=require 'formatters'
 local grido=include("oooooo/lib/grido")
+oooooo_grid = nil 
 local MusicUtil = require "musicutil"
 engine.name="SimpleDelay"
 
@@ -450,7 +451,7 @@ function init()
   update_softcut_input_lag(false)
 
 
-  grido:new()
+  oooooo_grid = grido:new()
   
   params:set("scale_mode",9)
   -- DEV comment this out
