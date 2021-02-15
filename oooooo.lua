@@ -449,13 +449,24 @@ function init()
   update_softcut_input()
   update_softcut_input_lag(false)
 
+  grido:new({grid_on=true})
+  -- import kolor
+  if util.file_exists(_path.code.."kolor") then 
+    local kolor = include("kolor/lib/kolor")
+    kolor:new({grid_on=false})
+  end  
 
-  grido:new()
-  
-  params:set("scale_mode",9)
   -- DEV comment this out
+  -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
   -- activate_mode()
+end
+
+-- switch between grids on kolor and oooooo
+function switch_kolor_oooooo()
+  local grido_on = grido.grid_on 
+  grido:toggle_grid(not grid_on)
+  kolor:toggle_grid(grid_on)
 end
 
 function init_loops(j,ignore_pan)

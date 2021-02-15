@@ -15,11 +15,14 @@ local page_frequency = 6
 function Grido:new(args)
   local m=setmetatable({},{__index=Grido})
   local args=args==nil and {} or args
+  m.grid_on = args.grid_on == nil and true or args.grid_on
 
   -- initiate the grid
   m.g=grid.connect()
   m.g.key=function(x,y,z)
-    m:grid_key(x,y,z)
+    if m.g.cols > 0 and m.grid_on then 
+      m:grid_key(x,y,z)
+    end
   end
   print("grid columns: "..m.g.cols)
 
@@ -75,13 +78,21 @@ function Grido:new(args)
   m.grid_refresh=metro.init()
   m.grid_refresh.time=0.05
   m.grid_refresh.event=function()
-    if m.g.cols > 0 then 
+    if m.g.cols > 0 and m.grid_on then 
       m:grid_redraw()
     end
   end
   m.grid_refresh:start()
 
   return m
+end
+
+function Grido:toggle_grid(on)
+  if on == nil then
+    self.grid_on = not self.grid_on 
+  else
+    self.grid_on = on 
+  end
 end
 
 function Grido:grid_key(x,y,z)
