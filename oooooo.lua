@@ -101,7 +101,6 @@ uC={
   timeUntilLagInitiates=0.1,
   availableModes={"select one","default","stereo looping","delaylaylay"}
 }
-ooooooo_grid = nil
 DATA_DIR=_path.data.."oooooo/"
 PATH=_path.audio..'oooooo/'
 local scale_names={}
@@ -458,12 +457,12 @@ function init()
   update_softcut_input()
   update_softcut_input_lag(false)
 
-  ooooooo_grid = grido:new({grid_on=true})
   if util.file_exists(_path.code.."kolor") then 
-    kolor_grid = kolor:new({grid_on=false})
+    kolor_grid = kolor:new({grid_on=false,toggle_callback=ooooooo_grid:toggle_grid()})
+    ooooooo_grid = grido:new({grid_on=true,toggle_callback=kolor_grid:toggle_grid()})
+  else
+    ooooooo_grid = grido:new({grid_on=true})
   end  
-
-  oooooo_grid = grido:new()
   -- DEV comment this out
   -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
