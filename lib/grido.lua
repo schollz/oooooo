@@ -18,7 +18,6 @@ function Grido:new(args)
   local m=setmetatable({},{__index=Grido})
   local args=args==nil and {} or args
   m.grid_on = args.grid_on == nil and true or args.grid_on
-  m.toggle_callback = args.toggle_callback 
 
   -- initiate the grid
   m.g=grid.connect()
@@ -121,6 +120,10 @@ function Grido:toggle_grid(on)
   end
 end
 
+function Grido:set_toggle_callback(fn)
+  self.toggle_callback = fn
+end
+
 function Grido:grid_key(x,y,z)
   self:key_press(y,x,z==1)
   self:grid_redraw()
@@ -130,13 +133,15 @@ function Grido:key_press(row,col,on)
   if on then
     self.pressed_buttons[row..","..col]=true
     if row == 8 and col == 2 then 
-      self.kill_timer = current_time()
+      print("holding kill timer")
+      self.kill_timer = self:current_time()
     end
   else
     self.pressed_buttons[row..","..col]=nil
     if row == 8 and col == 2 then 
-      self.kill_timer = current_time() - self.kill_timer
-      if self.kill_timer > 2 then 
+      self.kill_timer = self:current_time() - self.kill_timer
+      print(self.kill_timer)
+      if self.kill_timer > 0.5 then 
         self:toggle_grid(false)
       end
       self.kill_timer = 0

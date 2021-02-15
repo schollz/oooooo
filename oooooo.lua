@@ -457,11 +457,17 @@ function init()
   update_softcut_input()
   update_softcut_input_lag(false)
 
+  oooooo_grid = grido:new({grid_on=true})
   if util.file_exists(_path.code.."kolor") then 
-    kolor_grid = kolor:new({grid_on=false,toggle_callback=ooooooo_grid:toggle_grid()})
-    ooooooo_grid = grido:new({grid_on=true,toggle_callback=kolor_grid:toggle_grid()})
-  else
-    ooooooo_grid = grido:new({grid_on=true})
+    kolor_grid = kolor:new({grid_on=false})
+    kolor_grid:toggle_grid(false)
+    oooooo_grid:toggle_grid(true)
+    kolor_grid:set_toggle_callback(function()
+      oooooo_grid:toggle_grid()
+    end)
+    oooooo_grid:set_toggle_callback(function()
+      kolor_grid:toggle_grid()
+    end)
   end  
   -- DEV comment this out
   -- params:set("scale_mode",9)
@@ -471,8 +477,8 @@ end
 
 -- switch between grids on kolor and oooooo
 function switch_kolor_oooooo()
-  local on = ooooooo_grid.grid_on 
-  ooooooo_grid:toggle_grid(not on)
+  local on = oooooo_grid.grid_on 
+  oooooo_grid:toggle_grid(not on)
   kolor_grid:toggle_grid(on)
 end
 
