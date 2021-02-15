@@ -27,7 +27,15 @@ local Formatters=require 'formatters'
 local grido=include("oooooo/lib/grido")
 oooooo_grid = nil 
 local MusicUtil = require "musicutil"
-engine.name="SimpleDelay"
+
+-- engine.name="SimpleDelay"
+
+-- import kolor
+engine.name="SimpleDelayKolor"
+local kolor = nil
+if util.file_exists(_path.code.."kolor") then 
+  kolor = include("kolor/lib/kolor")
+end  
 
 
 -- from https://github.com/monome/norns/blob/main/lua/lib/intonation.lua
@@ -93,7 +101,7 @@ uC={
   timeUntilLagInitiates=0.1,
   availableModes={"select one","default","stereo looping","delaylaylay"}
 }
-
+ooooooo_grid = nil
 DATA_DIR=_path.data.."oooooo/"
 PATH=_path.audio..'oooooo/'
 local scale_names={}
@@ -450,13 +458,23 @@ function init()
   update_softcut_input()
   update_softcut_input_lag(false)
 
+  ooooooo_grid = grido:new({grid_on=true})
+  if util.file_exists(_path.code.."kolor") then 
+    kolor_grid = kolor:new({grid_on=false})
+  end  
 
   oooooo_grid = grido:new()
-  
-  params:set("scale_mode",9)
   -- DEV comment this out
+  -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
   -- activate_mode()
+end
+
+-- switch between grids on kolor and oooooo
+function switch_kolor_oooooo()
+  local on = ooooooo_grid.grid_on 
+  ooooooo_grid:toggle_grid(not on)
+  kolor_grid:toggle_grid(on)
 end
 
 function init_loops(j,ignore_pan)
