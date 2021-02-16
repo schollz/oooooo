@@ -25,10 +25,9 @@
 
 local Formatters=require 'formatters'
 local grido=include("oooooo/lib/grido")
-oooooo_grid = nil 
 local MusicUtil = require "musicutil"
-engine.name="SimpleDelay"
 
+engine.name="SimpleDelay"
 
 -- from https://github.com/monome/norns/blob/main/lua/lib/intonation.lua
 local intonation =  {1/1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 16/9, 15/8, 2*1/1, 2*16/15, 2*9/8, 2*6/5, 2*5/4, 2*4/3, 2*45/32, 2*3/2, 2*8/5, 2*5/3, 2*16/9, 2*15/8}
@@ -93,7 +92,6 @@ uC={
   timeUntilLagInitiates=0.1,
   availableModes={"select one","default","stereo looping","delaylaylay"}
 }
-
 DATA_DIR=_path.data.."oooooo/"
 PATH=_path.audio..'oooooo/'
 local scale_names={}
@@ -103,20 +101,11 @@ function init()
   engine.delay(0.1)
   engine.volume(0.0)
 
-  if util.file_exists("/home/we/dust/code/middy") then 
-    local middy=include("middy/lib/middy")
-    local m1 = middy:init()
-    -- these lines of code are if you want to autoload 
-    -- a specific file on startup:
-    -- m1:init_midi()
-    -- m1:init_map('/home/we/dust/data/middy/maps/nanokontrol-oooooo.json')
-  end
-
   setup_sharing("oooooo")
   params:add_separator("oooooo")
   -- add variables into main menu
 
-  params:add_group("startup",4)
+  params:add_group("startup",6)
   params:add_option("load on start","load on start",{"no","yes"},1)
   params:set_action("load on start",update_parameters)
   params:add_option("play on start","play on start",{"no","yes"},1)
@@ -125,6 +114,10 @@ function init()
   params:set_action("start lfos random",update_parameters)
   params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
   params:set_action("start length",update_parameters)
+  params:add_option("use kolor","use kolor (restart req)",{"no","yes"},1)
+  params:set_action("use kolor",update_parameters)
+  params:add_option("use middy","use middy (restart req)",{"no","yes"},1)
+  params:set_action("use middy",update_parameters)
 
   params:add_group("recording",9)
   params:add_control("pre level","pre level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
@@ -450,13 +443,51 @@ function init()
   update_softcut_input()
   update_softcut_input_lag(false)
 
+  -- setup middy 
 
-  oooooo_grid = grido:new()
-  
-  params:set("scale_mode",9)
+  if params:get("use middy") == 2 and util.file_exists("/home/we/dust/code/middy") then 
+    print("using middy")
+    local middy=include("middy/lib/middy")
+    local m1 = middy:init()
+    -- these lines of code are if you want to autoload 
+    -- a specific file on startup:
+    -- m1:init_midi()
+    -- m1:init_map('/home/we/dust/data/middy/maps/nanokontrol-oooooo.json')
+  end
+
+  -- setup grids
+  if params:get("use kolor")==2 and util.file_exists(_path.code.."kolor")then 
+    print("using kolor engine and allowing toggling")
+    engine.load("SimpleDelayKolor",function()
+      engine.name="SimpleDelayKolor"
+      local oooooo_grid = grido:new({grid_on=true,toggleable=true})
+      local kolor = include("kolor/lib/kolor")
+      kolor_grid = kolor:new({grid_on=false,toggleable=true})
+      kolor_grid:toggle_grid(false)
+      oooooo_grid:toggle_grid(true)
+      kolor_grid:set_toggle_callback(function()
+        oooooo_grid:toggle_grid()
+      end)
+      oooooo_grid:set_toggle_callback(function()
+        kolor_grid:toggle_grid()
+      end)
+      show_message("loaded kolor")
+    end)
+  else
+    -- simply setup oooooo grid
+    grido:new()
+  end  
   -- DEV comment this out
+  -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
   -- activate_mode()
+end
+
+-- switch between grids on kolor and oooooo
+function switch_kolor_oooooo()
+  local on = oooooo_grid.grid_on 
+  oooooo_grid:toggle_grid(not on)
+  kolor_grid:toggle_grid(on)
 end
 
 function init_loops(j,ignore_pan)

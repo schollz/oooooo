@@ -17,11 +17,15 @@ local page_macro_play = 8
 function Grido:new(args)
   local m=setmetatable({},{__index=Grido})
   local args=args==nil and {} or args
+  m.grid_on = args.grid_on == nil and true or args.grid_on
+  m.toggleable = args.toggleable == nil and false or args.toggleable
 
   -- initiate the grid
   m.g=grid.connect()
   m.g.key=function(x,y,z)
-    m:grid_key(x,y,z)
+    if m.g.cols > 0 and m.grid_on then 
+      m:grid_key(x,y,z)
+    end
   end
   print("grid columns: "..m.g.cols)
 
@@ -40,6 +44,9 @@ function Grido:new(args)
   end
   print("grid width: "..m.grid_width)
 
+  -- hold timers
+  m.kill_timer = 0 
+  
   -- macros
   m.macro_db = {}
   m.macro_clock = {}
@@ -84,13 +91,38 @@ function Grido:new(args)
   m.grid_refresh=metro.init()
   m.grid_refresh.time=0.05
   m.grid_refresh.event=function()
-    if m.g.cols > 0 then 
+    if m.g.cols > 0 and m.grid_on then 
       m:grid_redraw()
     end
   end
   m.grid_refresh:start()
 
   return m
+end
+
+function Grido:toggle_grid(on)
+  if on == nil then
+    self.grid_on = not self.grid_on 
+  else
+    self.grid_on = on 
+  end
+  if self.grid_on then 
+    self.g=grid.connect()
+    self.g.key=function(x,y,z)
+      print("oooooo grid: ",x,y,z)
+      if self.grid_on then
+        self:grid_key(x,y,z)
+      end
+    end
+  else
+    if self.toggle_callback ~= nil then 
+      self.toggle_callback()
+    end
+  end
+end
+
+function Grido:set_toggle_callback(fn)
+  self.toggle_callback = fn
 end
 
 function Grido:grid_key(x,y,z)
@@ -101,8 +133,20 @@ end
 function Grido:key_press(row,col,on)
   if on then
     self.pressed_buttons[row..","..col]=true
+    if row == 8 and col == 2 and self.toggleable then 
+      print("holding kill timer")
+      self.kill_timer = self:current_time()
+    end
   else
     self.pressed_buttons[row..","..col]=nil
+    if row == 8 and col == 2 and self.toggleable then 
+      self.kill_timer = self:current_time() - self.kill_timer
+      print(self.kill_timer)
+      if self.kill_timer > 0.5 then 
+        self:toggle_grid(false)
+      end
+      self.kill_timer = 0
+    end
   end
 
   if row <= 6 and on then 
