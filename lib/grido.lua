@@ -18,6 +18,7 @@ function Grido:new(args)
   local m=setmetatable({},{__index=Grido})
   local args=args==nil and {} or args
   m.grid_on = args.grid_on == nil and true or args.grid_on
+  m.toggleable = args.toggleable == nil and false or args.toggleable
 
   -- initiate the grid
   m.g=grid.connect()
@@ -132,13 +133,13 @@ end
 function Grido:key_press(row,col,on)
   if on then
     self.pressed_buttons[row..","..col]=true
-    if row == 8 and col == 2 then 
+    if row == 8 and col == 2 and self.toggleable then 
       print("holding kill timer")
       self.kill_timer = self:current_time()
     end
   else
     self.pressed_buttons[row..","..col]=nil
-    if row == 8 and col == 2 then 
+    if row == 8 and col == 2 and self.toggleable then 
       self.kill_timer = self:current_time() - self.kill_timer
       print(self.kill_timer)
       if self.kill_timer > 0.5 then 
