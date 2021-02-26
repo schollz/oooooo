@@ -274,6 +274,9 @@ function Grido:toggle_macro_play(on)
     end
     on = not self.macro_play
   end
+  if on and self.macro_record then 
+    self:toggle_macro_record(false)
+  end
   if on and #self.macro_db == 0 then 
     on = false 
   end

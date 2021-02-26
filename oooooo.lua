@@ -1,4 +1,4 @@
--- oooooo v1.8.0
+-- oooooo v1.8.1
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -31,7 +31,8 @@ engine.name="SimpleDelay"
 
 -- from https://github.com/monome/norns/blob/main/lua/lib/intonation.lua
 local intonation =  {1/1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 16/9, 15/8, 2*1/1, 2*16/15, 2*9/8, 2*6/5, 2*5/4, 2*4/3, 2*45/32, 2*3/2, 2*8/5, 2*5/3, 2*16/9, 2*15/8}
-
+oooooo_grid = nil 
+kolor_grid = nil
 -- user parameters
 uP={
   -- initialized in init
@@ -460,7 +461,7 @@ function init()
     print("using kolor engine and allowing toggling")
     engine.load("SimpleDelayKolor",function()
       engine.name="SimpleDelayKolor"
-      local oooooo_grid = grido:new({grid_on=true,toggleable=true})
+      oooooo_grid = grido:new({grid_on=true,toggleable=true})
       local kolor = include("kolor/lib/kolor")
       kolor_grid = kolor:new({grid_on=false,toggleable=true})
       kolor_grid:toggle_grid(false)
@@ -475,7 +476,7 @@ function init()
     end)
   else
     -- simply setup oooooo grid
-    grido:new()
+    oooooo_grid = grido:new()
   end  
   -- DEV comment this out
   -- params:set("scale_mode",9)
@@ -485,9 +486,11 @@ end
 
 -- switch between grids on kolor and oooooo
 function switch_kolor_oooooo()
-  local on = oooooo_grid.grid_on 
-  oooooo_grid:toggle_grid(not on)
-  kolor_grid:toggle_grid(on)
+  if oooooo_grid ~= nil and kolor_grid ~= nil then
+    local on = oooooo_grid.grid_on 
+    oooooo_grid:toggle_grid(not on)
+    kolor_grid:toggle_grid(on)
+  end
 end
 
 function init_loops(j,ignore_pan)
