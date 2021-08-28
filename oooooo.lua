@@ -99,8 +99,8 @@ local scale_names={}
 
 
 function init()
-  engine.delay(0.1)
-  engine.volume(0.0)
+  -- engine.delay(0.1)
+  -- engine.volume(0.0)
 
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -125,7 +125,7 @@ function init()
   params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
   params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k'))
   params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,30,'ms',1/1000))
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,3,'ms',1/1000))
   params:set_action("vol pinch",function(x)
     for i=1,6 do
       softcut.fade_time(i,x/1000+0.1)
@@ -374,43 +374,43 @@ function init()
   timer:start()
 
   -- -- osc input
-  -- osc.event = osc_in
+  osc.event = osc_in
 
   -- position poll
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
 
-  -- and initiate recording on incoming audio on input 1
-  p_amp_in=poll.set("amp_in_l")
-  -- set period low when primed, default 1 second
-  p_amp_in.time=1
-  p_amp_in.callback=function(val)
-    for i=1,6 do
-      if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
-        -- print("incoming signal = "..val)
-        if val>params:get("rec thresh")/10000 then
-          tape_rec(i)
-        end
-      end
-    end
-  end
-  p_amp_in:start()
+  -- -- and initiate recording on incoming audio on input 1
+  -- p_amp_in=poll.set("amp_in_l")
+  -- -- set period low when primed, default 1 second
+  -- p_amp_in.time=1
+  -- p_amp_in.callback=function(val)
+  --   for i=1,6 do
+  --     if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
+  --       -- print("incoming signal = "..val)
+  --       if val>params:get("rec thresh")/10000 then
+  --         tape_rec(i)
+  --       end
+  --     end
+  --   end
+  -- end
+  -- p_amp_in:start()
 
-  -- and initiate recording on incoming on audio input 2
-  p_amp_in2=poll.set("amp_in_r")
-  -- set period low when primed, default 1 second
-  p_amp_in2.time=1
-  p_amp_in2.callback=function(val)
-    for i=1,6 do
-      if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
-        -- print("incoming signal = "..val)
-        if val>params:get("rec thresh")/10000 then
-          tape_rec(i)
-        end
-      end
-    end
-  end
-  p_amp_in2:start()
+  -- -- and initiate recording on incoming on audio input 2
+  -- p_amp_in2=poll.set("amp_in_r")
+  -- -- set period low when primed, default 1 second
+  -- p_amp_in2.time=1
+  -- p_amp_in2.callback=function(val)
+  --   for i=1,6 do
+  --     if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
+  --       -- print("incoming signal = "..val)
+  --       if val>params:get("rec thresh")/10000 then
+  --         tape_rec(i)
+  --       end
+  --     end
+  --   end
+  -- end
+  -- p_amp_in2:start()
 
   for i=1,6 do
     params:set_action(i.."vol",function(x) uP[i].volUpdate=true end)
@@ -785,14 +785,14 @@ function update_softcut_input_lag(on)
   uS.lagActivated=on
   if on then
     print("update_softcut_input_lag: activated")
-    engine.volume(1.0)
+    -- engine.volume(1.0)
     -- add lag to recording using a simple delay engine
     audio.level_monitor(0) -- turn off monitor to keep from hearing doubled audio
     audio.level_eng_cut(1)
     audio.level_adc_cut(0)
   else
     print("update_softcut_input_lag: deactivated")
-    engine.volume(0.0)
+    -- engine.volume(0.0)
     audio.level_monitor(1) -- turn on monitor
     audio.level_eng_cut(0)
     audio.level_adc_cut(1)
@@ -1120,11 +1120,11 @@ function tape_stop_rec(i,change_loop)
     do return end
   end
   print("tape_stop_rec "..i)
-  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
-    p_amp_in.time=1
-  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
-    p_amp_in2.time=1
-  end
+  -- if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
+  --   p_amp_in.time=1
+  -- elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
+  --   p_amp_in2.time=1
+  -- end
   update_softcut_input_lag(false)
   still_armed=(uS.recording[i]==1)
   uS.recording[i]=0
@@ -1278,11 +1278,11 @@ function tape_arm_rec(i)
   uS.recordingLoopNum[i]=0
   uS.timeSinceArming=clock.get_beats()*clock.get_beat_sec()
   -- monitor input
-  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
-    p_amp_in.time=uC.pampfast
-  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
-    p_amp_in2.time=uC.pampfast
-  end
+  -- if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
+  --   p_amp_in.time=uC.pampfast
+  -- elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
+  --   p_amp_in2.time=uC.pampfast
+  -- end
 end
 
 function tape_rec(i)
@@ -1299,11 +1299,11 @@ function tape_rec(i)
     uP[i].volUpdate=true
     uP[i].isStopped=false
   end
-  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
-    p_amp_in.time=1
-  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
-    p_amp_in2.time=1
-  end
+  -- if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
+  --   p_amp_in.time=1
+  -- elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
+  --   p_amp_in2.time=1
+  -- end
   uS.recordingTime[i]=0
   uS.recording[i]=2 -- recording is live
   params:set(i.."isempty",1)
@@ -1955,19 +1955,14 @@ end
 -- --
 -- -- osc
 -- --
--- function osc_in(path, args, from)
---   if path == "onset" then
---     cur_onset = args[2]
---     print("onset "..cur_onset)
---     if (cur_onset-uS.lastOnset) < 0.5 then
---       do return end
---     end
---     print("onset detected")
---     uS.lastOnset = cur_onset
---     for i=1,6 do
---       if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
---           tape_rec(i)
---       end
---     end
---   end
--- end
+function osc_in(path, args, from)
+  print(path)
+  if path == "onset" then
+    for i=1,6 do
+      if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
+        -- print("incoming signal = "..val)
+        tape_rec(i)
+      end
+    end
+  end
+end
