@@ -1,4 +1,4 @@
--- oooooo v1.8.1
+-- oooooo v1.9.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -120,21 +120,22 @@ function init()
   params:add_option("use middy","use middy (restart req)",{"no","yes"},1)
   params:set_action("use middy",update_parameters)
 
-  params:add_group("recording",9)
+  params:add_group("recording",8)
   params:add_control("pre level","pre level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
-  params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
-  params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k'))
-  params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,3,'ms',1/1000))
+  params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,0.5,"",0.01))
+  params:add_control("rec thresh","rec thresh",controlspec.new(-70,-32,'lin',1,-60,'dB'))
+  params:set_action("rec thresh",function (x)
+	  engine.threshold(x)
+	  update_parameters()
+  end)
+  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,0,'ms',1/1000))
   params:set_action("vol pinch",function(x)
     for i=1,6 do
-      softcut.fade_time(i,x/1000+0.1)
+      softcut.fade_time(i,x/1000)
       softcut.recpre_slew_time(i,x/1000)
     end
     update_parameters()
   end)
-  params:add_option("catch transients w lag","catch transients w lag",{"no","yes"},1)
-  params:set_action("catch transients w lag",update_parameters)
   params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
@@ -360,7 +361,7 @@ function init()
   params_read_silent(DATA_DIR.."oooooo.pset")
   params:set('save_message',"")
   params:set('load_name',name_folder)
-
+ 
   init_loops(7)
 
   -- make data directory
@@ -478,6 +479,12 @@ function init()
     -- simply setup oooooo grid
     oooooo_grid = grido:new()
   end  
+
+  -- bang some special parameters
+  params:delta("rec thresh",1)
+  params:delta("rec thresh",-1)
+  params:delta("vol pinch",1)
+  params:delta("vol pinch",-1)
   -- DEV comment this out
   -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
@@ -667,7 +674,6 @@ function activate_mode_default()
     ["pre level"]=1,
     ["rec level"]=1,
     ["rec thresh"]=85,
-    ["catch transients w lag"]=1,
     ["rec thru loops"]=1,
     ["stop rec after"]=1,
     ["input type"]=4,
@@ -1272,17 +1278,8 @@ function tape_arm_rec(i)
   print("tape_arm_rec "..i)
   -- arm  recording
   uS.recording[i]=1
-  if params:get("catch transients w lag")==2 then
-    update_softcut_input_lag(true)
-  end
   uS.recordingLoopNum[i]=0
   uS.timeSinceArming=clock.get_beats()*clock.get_beat_sec()
-  -- monitor input
-  -- if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
-  --   p_amp_in.time=uC.pampfast
-  -- elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
-  --   p_amp_in2.time=uC.pampfast
-  -- end
 end
 
 function tape_rec(i)
