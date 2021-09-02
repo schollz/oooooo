@@ -20,7 +20,7 @@ Engine_SimpleDelay : CroneEngine {
     //   BufDelayC.ar([bufnum1,bufnum2], input, delayTime:0.03, mul:volume)
     // }.play(context.server);
 
-    synth = { arg threshold=(-36), volume=0.0;
+    synth = { arg threshold=(-60), volume=0.0;
       var input = Mix.new(SoundIn.ar([0, 1]));
       var onset = Trig.kr(Coyote.kr(input,fastLag:0.05,fastMul:0.9,thresh:threshold.dbamp,minDur:0.2));
       SendTrig.kr(onset,0,1);
