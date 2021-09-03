@@ -128,7 +128,7 @@ function init()
 	  engine.threshold(x)
 	  update_parameters()
   end)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,0,'ms',1/1000))
+  params:add_control("vol pinch","vol pinch",controlspec.new(1,1000,'exp',0.1,150,'ms'))
   params:set_action("vol pinch",function(x)
     for i=1,6 do
       softcut.fade_time(i,x/1000)
@@ -850,9 +850,9 @@ function update_timer()
           uS.recordingTime[i]=0
         end 
       elseif params:get("vol pinch") > 0 and uS.recordingTime[i]>=uP[i].loopLength/2 and previousRecordingTime<uP[i].loopLength/2 then 
-      	clock.run(function()
-      	   softcut_add_postroll(i)
-      	end)
+      	-- clock.run(function()
+      	--    softcut_add_postroll(i)
+      	-- end)
       end
     end
   end
@@ -1131,7 +1131,6 @@ function tape_stop_rec(i,change_loop)
   -- elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
   --   p_amp_in2.time=1
   -- end
-  update_softcut_input_lag(false)
   still_armed=(uS.recording[i]==1)
   uS.recording[i]=0
   uS.recordingLoopNum[i]=0
@@ -1142,10 +1141,13 @@ function tape_stop_rec(i,change_loop)
   end
   uS.recordingTime[i]=0
   -- slowly stop
-  softcut.rec_level(i,0)
-  softcut.pre_level(i,1)
   clock.run(function()
     -- allow pre level to go down
+    softcut.rec_level(i,0.5)
+    softcut.pre_level(i,1)
+    clock.sleep(params:get("vol pinch")/1000)
+    softcut.rec_level(i,0.0)
+    softcut.pre_level(i,1)
     clock.sleep(params:get("vol pinch")/1000)
     softcut.rec(i,0)
     -- DEBUGGING PURPOSES
@@ -1290,24 +1292,24 @@ function tape_rec(i)
     do return end
   end
   print("tape_rec "..i)
-  if uP[i].isStopped then
-    softcut.play(i,1)
-    softcut.rate(i,uP[i].rate)
-    uP[i].volUpdate=true
-    uP[i].isStopped=false
-  end
   -- if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
   --   p_amp_in.time=1
   -- elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
   --   p_amp_in2.time=1
   -- end
-  uS.recordingTime[i]=0
   uS.recording[i]=2 -- recording is live
   params:set(i.."isempty",1)
   -- start recording
   softcut.rec_level(i,params:get("rec level"))
   softcut.pre_level(i,params:get("pre level"))
   softcut.rec(i,1)
+  if uP[i].isStopped then
+    softcut.play(i,1)
+    softcut.rate(i,uP[i].rate)
+    uP[i].volUpdate=true
+    uP[i].isStopped=false
+  end
+  uS.recordingTime[i]=0
   redraw()
 end
 
