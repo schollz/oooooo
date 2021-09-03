@@ -1,4 +1,4 @@
--- oooooo v1.8.1
+-- oooooo v1.9.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -99,8 +99,8 @@ local scale_names={}
 
 
 function init()
-  engine.delay(0.1)
-  engine.volume(0.0)
+  -- engine.delay(0.1)
+  -- engine.volume(0.0)
 
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -120,21 +120,14 @@ function init()
   params:add_option("use middy","use middy (restart req)",{"no","yes"},1)
   params:set_action("use middy",update_parameters)
 
-  params:add_group("recording",9)
+  params:add_group("recording",7)
   params:add_control("pre level","pre level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
-  params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
-  params:add_control("rec thresh","rec thresh",controlspec.new(1,1000,'exp',1,85,'amp/10k'))
-  params:set_action("rec thresh",update_parameters)
-  params:add_control("vol pinch","vol pinch",controlspec.new(0,1000,'lin',1,30,'ms',1/1000))
-  params:set_action("vol pinch",function(x)
-    for i=1,6 do
-      softcut.fade_time(i,x/1000+0.1)
-      softcut.recpre_slew_time(i,x/1000)
-    end
-    update_parameters()
+  params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,0.5,"",0.01))
+  params:add_control("rec thresh","rec thresh",controlspec.new(-70,-32,'lin',1,-60,'dB'))
+  params:set_action("rec thresh",function (x)
+	  engine.threshold(x)
+	  update_parameters()
   end)
-  params:add_option("catch transients w lag","catch transients w lag",{"no","yes"},1)
-  params:set_action("catch transients w lag",update_parameters)
   params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
   params:set_action("rec thru loops",update_parameters)
   params:add_control("stop rec after","stop rec after",controlspec.new(1,64,"lin",1,1,"loops"))
@@ -223,7 +216,7 @@ function init()
   filter_resonance=controlspec.new(0.05,1,'lin',0,1,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,39)
+    params:add_group("loop "..i,40)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -280,6 +273,12 @@ function init()
     params:add_control(i.."filter lfo amp","filter lfo amp",controlspec.new(0,1,"lin",0.01,0.25,"",0.01))
     params:add_control(i.."filter lfo period","filter lfo period",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
     params:add_control(i.."filter lfo offset","filter lfo offset",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
+    params:add_control(i.."crossfade","crossfade",controlspec.new(1,1000,'exp',0.1,150,'ms'))
+    params:set_action(i.."crossfade",function(x)
+      softcut.fade_time(i,x/1000)
+      softcut.recpre_slew_time(i,x/1000)
+    end)
+
     params:add{type='binary',name="play trig",id=i..'play trig',behavior='momentary',
       action=function(v)
         if v==1 then
@@ -360,7 +359,7 @@ function init()
   params_read_silent(DATA_DIR.."oooooo.pset")
   params:set('save_message',"")
   params:set('load_name',name_folder)
-
+ 
   init_loops(7)
 
   -- make data directory
@@ -374,43 +373,43 @@ function init()
   timer:start()
 
   -- -- osc input
-  -- osc.event = osc_in
+  osc.event = osc_in
 
   -- position poll
   softcut.event_phase(update_positions)
   softcut.poll_start_phase()
 
-  -- and initiate recording on incoming audio on input 1
-  p_amp_in=poll.set("amp_in_l")
-  -- set period low when primed, default 1 second
-  p_amp_in.time=1
-  p_amp_in.callback=function(val)
-    for i=1,6 do
-      if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
-        -- print("incoming signal = "..val)
-        if val>params:get("rec thresh")/10000 then
-          tape_rec(i)
-        end
-      end
-    end
-  end
-  p_amp_in:start()
+  -- -- and initiate recording on incoming audio on input 1
+  -- p_amp_in=poll.set("amp_in_l")
+  -- -- set period low when primed, default 1 second
+  -- p_amp_in.time=1
+  -- p_amp_in.callback=function(val)
+  --   for i=1,6 do
+  --     if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
+  --       -- print("incoming signal = "..val)
+  --       if val>params:get("rec thresh")/10000 then
+  --         tape_rec(i)
+  --       end
+  --     end
+  --   end
+  -- end
+  -- p_amp_in:start()
 
-  -- and initiate recording on incoming on audio input 2
-  p_amp_in2=poll.set("amp_in_r")
-  -- set period low when primed, default 1 second
-  p_amp_in2.time=1
-  p_amp_in2.callback=function(val)
-    for i=1,6 do
-      if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
-        -- print("incoming signal = "..val)
-        if val>params:get("rec thresh")/10000 then
-          tape_rec(i)
-        end
-      end
-    end
-  end
-  p_amp_in2:start()
+  -- -- and initiate recording on incoming on audio input 2
+  -- p_amp_in2=poll.set("amp_in_r")
+  -- -- set period low when primed, default 1 second
+  -- p_amp_in2.time=1
+  -- p_amp_in2.callback=function(val)
+  --   for i=1,6 do
+  --     if uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
+  --       -- print("incoming signal = "..val)
+  --       if val>params:get("rec thresh")/10000 then
+  --         tape_rec(i)
+  --       end
+  --     end
+  --   end
+  -- end
+  -- p_amp_in2:start()
 
   for i=1,6 do
     params:set_action(i.."vol",function(x) uP[i].volUpdate=true end)
@@ -478,6 +477,10 @@ function init()
     -- simply setup oooooo grid
     oooooo_grid = grido:new()
   end  
+
+  -- bang some special parameters
+  params:delta("rec thresh",1)
+  params:delta("rec thresh",-1)
   -- DEV comment this out
   -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
@@ -586,7 +589,8 @@ function init_loops(j,ignore_pan)
       -- softcut.fade_time(i,params:get("vol pinch")/1000)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
-      softcut.recpre_slew_time(i,params:get("vol pinch")/1000)
+      softcut.recpre_slew_time(i,params:get(i.."crossfade")/1000)
+      softcut.fade_time(i,params:get(i.."crossfade")/1000)
 
       softcut.rec_level(i,params:get("rec level"))
       softcut.pre_level(i,params:get("pre level"))
@@ -667,7 +671,6 @@ function activate_mode_default()
     ["pre level"]=1,
     ["rec level"]=1,
     ["rec thresh"]=85,
-    ["catch transients w lag"]=1,
     ["rec thru loops"]=1,
     ["stop rec after"]=1,
     ["input type"]=4,
@@ -785,14 +788,14 @@ function update_softcut_input_lag(on)
   uS.lagActivated=on
   if on then
     print("update_softcut_input_lag: activated")
-    engine.volume(1.0)
+    -- engine.volume(1.0)
     -- add lag to recording using a simple delay engine
     audio.level_monitor(0) -- turn off monitor to keep from hearing doubled audio
     audio.level_eng_cut(1)
     audio.level_adc_cut(0)
   else
     print("update_softcut_input_lag: deactivated")
-    engine.volume(0.0)
+    -- engine.volume(0.0)
     audio.level_monitor(1) -- turn on monitor
     audio.level_eng_cut(0)
     audio.level_adc_cut(1)
@@ -843,10 +846,10 @@ function update_timer()
         else
           uS.recordingTime[i]=0
         end 
-      elseif params:get("vol pinch") > 0 and uS.recordingTime[i]>=uP[i].loopLength/2 and previousRecordingTime<uP[i].loopLength/2 then 
-      	clock.run(function()
-      	   softcut_add_postroll(i)
-      	end)
+      -- elseif params:get("vol pinch") > 0 and uS.recordingTime[i]>=uP[i].loopLength/2 and previousRecordingTime<uP[i].loopLength/2 then 
+      	-- clock.run(function()
+      	--    softcut_add_postroll(i)
+      	-- end)
       end
     end
   end
@@ -1120,12 +1123,11 @@ function tape_stop_rec(i,change_loop)
     do return end
   end
   print("tape_stop_rec "..i)
-  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
-    p_amp_in.time=1
-  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
-    p_amp_in2.time=1
-  end
-  update_softcut_input_lag(false)
+  -- if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
+  --   p_amp_in.time=1
+  -- elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
+  --   p_amp_in2.time=1
+  -- end
   still_armed=(uS.recording[i]==1)
   uS.recording[i]=0
   uS.recordingLoopNum[i]=0
@@ -1136,11 +1138,12 @@ function tape_stop_rec(i,change_loop)
   end
   uS.recordingTime[i]=0
   -- slowly stop
-  softcut.rec_level(i,0)
-  softcut.pre_level(i,1)
   clock.run(function()
     -- allow pre level to go down
-    clock.sleep(params:get("vol pinch")/1000)
+    clock.sleep(params:get(i.."crossfade")/1000*2)
+    softcut.rec_level(i,0.0)
+    softcut.pre_level(i,1)
+    clock.sleep(params:get(i.."crossfade")/1000)
     softcut.rec(i,0)
     -- DEBUGGING PURPOSES
     -- loop_save_wav(i,"/tmp/save1.wav")
@@ -1272,17 +1275,8 @@ function tape_arm_rec(i)
   print("tape_arm_rec "..i)
   -- arm  recording
   uS.recording[i]=1
-  if params:get("catch transients w lag")==2 then
-    update_softcut_input_lag(true)
-  end
   uS.recordingLoopNum[i]=0
   uS.timeSinceArming=clock.get_beats()*clock.get_beat_sec()
-  -- monitor input
-  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
-    p_amp_in.time=uC.pampfast
-  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
-    p_amp_in2.time=uC.pampfast
-  end
 end
 
 function tape_rec(i)
@@ -1293,24 +1287,24 @@ function tape_rec(i)
     do return end
   end
   print("tape_rec "..i)
-  if uP[i].isStopped then
-    softcut.play(i,1)
-    softcut.rate(i,uP[i].rate)
-    uP[i].volUpdate=true
-    uP[i].isStopped=false
-  end
-  if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
-    p_amp_in.time=1
-  elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
-    p_amp_in2.time=1
-  end
-  uS.recordingTime[i]=0
+  -- if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
+  --   p_amp_in.time=1
+  -- elseif uS.recording[i]==1 and (params:get("input type")==2 or params:get("input type")>=4) then
+  --   p_amp_in2.time=1
+  -- end
   uS.recording[i]=2 -- recording is live
   params:set(i.."isempty",1)
   -- start recording
   softcut.rec_level(i,params:get("rec level"))
   softcut.pre_level(i,params:get("pre level"))
   softcut.rec(i,1)
+  if uP[i].isStopped then
+    softcut.play(i,1)
+    softcut.rate(i,uP[i].rate)
+    uP[i].volUpdate=true
+    uP[i].isStopped=false
+  end
+  uS.recordingTime[i]=0
   redraw()
 end
 
@@ -1955,19 +1949,14 @@ end
 -- --
 -- -- osc
 -- --
--- function osc_in(path, args, from)
---   if path == "onset" then
---     cur_onset = args[2]
---     print("onset "..cur_onset)
---     if (cur_onset-uS.lastOnset) < 0.5 then
---       do return end
---     end
---     print("onset detected")
---     uS.lastOnset = cur_onset
---     for i=1,6 do
---       if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")==4) then
---           tape_rec(i)
---       end
---     end
---   end
--- end
+function osc_in(path, args, from)
+  print(path)
+  if path == "onset" then
+    for i=1,6 do
+      if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
+        -- print("incoming signal = "..val)
+        tape_rec(i)
+      end
+    end
+  end
+end
