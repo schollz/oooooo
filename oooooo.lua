@@ -120,21 +120,13 @@ function init()
   params:add_option("use middy","use middy (restart req)",{"no","yes"},1)
   params:set_action("use middy",update_parameters)
 
-  params:add_group("recording",8)
+  params:add_group("recording",7)
   params:add_control("pre level","pre level",controlspec.new(0,1,"lin",0.01,1,"",0.01))
   params:add_control("rec level","rec level",controlspec.new(0,1,"lin",0.01,0.5,"",0.01))
   params:add_control("rec thresh","rec thresh",controlspec.new(-70,-32,'lin',1,-60,'dB'))
   params:set_action("rec thresh",function (x)
 	  engine.threshold(x)
 	  update_parameters()
-  end)
-  params:add_control("vol pinch","vol pinch",controlspec.new(1,1000,'exp',0.1,150,'ms'))
-  params:set_action("vol pinch",function(x)
-    for i=1,6 do
-      softcut.fade_time(i,x/1000)
-      softcut.recpre_slew_time(i,x/1000)
-    end
-    update_parameters()
   end)
   params:add_option("rec thru loops","rec thru loops",{"no","yes"},1)
   params:set_action("rec thru loops",update_parameters)
@@ -224,7 +216,7 @@ function init()
   filter_resonance=controlspec.new(0.05,1,'lin',0,1,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,39)
+    params:add_group("loop "..i,40)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -281,6 +273,12 @@ function init()
     params:add_control(i.."filter lfo amp","filter lfo amp",controlspec.new(0,1,"lin",0.01,0.25,"",0.01))
     params:add_control(i.."filter lfo period","filter lfo period",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
     params:add_control(i.."filter lfo offset","filter lfo offset",controlspec.new(0,60,"lin",0,0,"s",0.1/60))
+    params:add_control(i.."crossfade","crossfade",controlspec.new(1,1000,'exp',0.1,150,'ms'))
+    params:set_action(i.."crossfade",function(x)
+      softcut.fade_time(i,x/1000)
+      softcut.recpre_slew_time(i,x/1000)
+    end)
+
     params:add{type='binary',name="play trig",id=i..'play trig',behavior='momentary',
       action=function(v)
         if v==1 then
@@ -483,8 +481,6 @@ function init()
   -- bang some special parameters
   params:delta("rec thresh",1)
   params:delta("rec thresh",-1)
-  params:delta("vol pinch",1)
-  params:delta("vol pinch",-1)
   -- DEV comment this out
   -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
@@ -593,7 +589,8 @@ function init_loops(j,ignore_pan)
       -- softcut.fade_time(i,params:get("vol pinch")/1000)
       softcut.level_slew_time(i,params:get("slew rate"))
       softcut.rate_slew_time(i,params:get("slew rate"))
-      softcut.recpre_slew_time(i,params:get("vol pinch")/1000)
+      softcut.recpre_slew_time(i,params:get(i.."crossfade")/1000)
+      softcut.fade_time(i,params:get(i.."crossfade")/1000)
 
       softcut.rec_level(i,params:get("rec level"))
       softcut.pre_level(i,params:get("pre level"))
@@ -849,7 +846,7 @@ function update_timer()
         else
           uS.recordingTime[i]=0
         end 
-      elseif params:get("vol pinch") > 0 and uS.recordingTime[i]>=uP[i].loopLength/2 and previousRecordingTime<uP[i].loopLength/2 then 
+      -- elseif params:get("vol pinch") > 0 and uS.recordingTime[i]>=uP[i].loopLength/2 and previousRecordingTime<uP[i].loopLength/2 then 
       	-- clock.run(function()
       	--    softcut_add_postroll(i)
       	-- end)
@@ -1143,12 +1140,10 @@ function tape_stop_rec(i,change_loop)
   -- slowly stop
   clock.run(function()
     -- allow pre level to go down
-    softcut.rec_level(i,0.5)
-    softcut.pre_level(i,1)
-    clock.sleep(params:get("vol pinch")/1000)
+    clock.sleep(params:get(i.."crossfade")/1000*2)
     softcut.rec_level(i,0.0)
     softcut.pre_level(i,1)
-    clock.sleep(params:get("vol pinch")/1000)
+    clock.sleep(params:get(i.."crossfade")/1000)
     softcut.rec(i,0)
     -- DEBUGGING PURPOSES
     -- loop_save_wav(i,"/tmp/save1.wav")
