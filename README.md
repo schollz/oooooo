@@ -82,12 +82,15 @@ all parameters are available via the global menu.
 - *lucid looper:* instead of overdubbing one loop, record six separate loops of the same size that have their own stereo field. change `startup -> start length` to `16` beats and `startup -> start lfos random` to `yes`. then change `recording -> rec thru loops` to `yes` and make sure `recording -> stop rec after` is `1`. then reload *oooooo*, and record. [video example](https://www.instagram.com/p/CFBjBxGhJXs/)
 - *dangerous delay:* tape delay with six tapes, that shapeshift. in `recording` menu set `pre level` and `rec level` to 0.5. set `stop rec after` to max. go to `A` loop. turn E2 to `rand lfo` and activate with K2. turn E2 to tape and press K1+K3 to record on all loops forever, making a stereo-field delay. (make it crazier by changing `all loops -> randomize on reset` to `yes` and `all loops -> reset all every` to `X beats`). [video example](https://www.instagram.com/p/CFFHUNmhxIf/)
 
-## demo 
+**grid docs:**
 
-<p align="center"><a href="https://www.instagram.com/p/CEb2CDQBXaz/"><img src="https://user-images.githubusercontent.com/6550035/91628605-30102a80-e976-11ea-9d0e-249e6219c411.png" alt="Demo of playing" width=80%></a></p>
+(*thank you @tyleretters for [this absolutely amazingly useful grid doc tool](https://tyleretters.github.io/GridStation/)!*)
 
+![oooooo_grid-03|690x407](https://user-images.githubusercontent.com/6550035/132006771-4fdd4e9e-3a02-48e9-b94a-7f6454d60399.png) 
 
-<p align="center"><a href="https://www.instagram.com/p/CEeMRPDhCt_/"><img src="https://user-images.githubusercontent.com/6550035/91628603-2be40d00-e976-11ea-93ee-6f58fc835142.png" alt="Demo of playing" width=80%></a></p>
+![oooooo_grid-01|690x407](https://user-images.githubusercontent.com/6550035/132006768-4a9554b8-dbe8-432c-a76d-a84b8e1c8ba1.png) 
+
+![oooooo_grid-02|690x407](https://user-images.githubusercontent.com/6550035/132006765-3fc245e9-f234-4b7a-a926-05ca6398a849.png) 
 
 
 ## license 
