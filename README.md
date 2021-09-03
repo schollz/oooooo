@@ -4,6 +4,8 @@ digital tape loops x 6.
 
 ![Image](https://user-images.githubusercontent.com/6550035/91628872-c47b8c80-e978-11ea-9d07-df79ef337a0f.gif)
 
+https://vimeo.com/590419704
+
 i call this script *"oooooo"* because it is composed of six loops. they are like digital tape loops - you can level, pan, speed, slow, shorten, lengthen, dub, overdub, destroy any loop at any time.
 
 i was inspired to make this after seeing tape loops circulating (pun sorta intended) all over the place. i like the idea of having multiple independent different loops, with different sizes, played on a different tape players with different eccentricities. i don't have any cassette tapes but i have norns so i wrote this script to try to make digital tape loops. 
@@ -50,7 +52,7 @@ all parameters are available via the global menu.
 - in tape mode, press K1+K3 to prime recording. when primed, recording will automatically begin when incoming audio rises above a threshold. the recording threshold can be set by global parameter "`recording -> rec thresh`". 
 - in tape mode, you can force recording by hitting K1+K3 a second time.
 - recording stops after traversing the whole loop. you can stop it earlier with K2 or K3 (in tape mode) and that will shrink the loop to that point. you can set recording to continue to the next loop by setting the global parameter "`recording -> rec thru loops`" to `yes`.
-- by default, volume in "pinched" when starting/stopping recording to avoid pops from discontinuous signals. you can lower/raise the pinching by adjusting the global parameter "`vol pinch`".
+- by default, loops will be recorded with a crossfade for gapless playback. if you are recording something with initial transients (like drums), I recommend reducing the crossfade (`loop X -> crossfade`) to 1 ms.
 - to record a loop over and over, infinitely, change `recording -> stop rec after` to its max value.
 
 **quick menu:**
@@ -62,6 +64,7 @@ all parameters are available via the global menu.
 
 **A loop:**
 
+- the "A" loop is found by turning E1 all the way to the right.
 - "A" loop can control all loops. the tape mode works as before, but affects all loops.
 - the quick menu differs from loops but is also activated by K2 or K3, and modulated with E3
 
@@ -86,11 +89,6 @@ all parameters are available via the global menu.
 
 <p align="center"><a href="https://www.instagram.com/p/CEeMRPDhCt_/"><img src="https://user-images.githubusercontent.com/6550035/91628603-2be40d00-e976-11ea-93ee-6f58fc835142.png" alt="Demo of playing" width=80%></a></p>
 
-## my other norns
-
-- [barcode](https://github.com/schollz/barcode): replays a buffer six times, at different levels & pans & rates & positions, modulated by lfos on every parameter.
-- [blndr](https://github.com/schollz/blndr): a quantized delay with time morphing
-- [clcks](https://github.com/schollz/clcks): a tempo-locked repeater for monome norns
 
 ## license 
 
