@@ -987,7 +987,7 @@ end
 function loop_save_wav(i,savename)
   buffernum=uC.bufferMinMax[i][1]
   pos_start=uC.bufferMinMax[i][2]+params:get(i.."start")
-  softcut.buffer_write_mono(savename,pos_start,params:get(i.."length"),buffernum)
+  softcut.buffer_write_mono(savename,pos_start,params:get(i.."length")+2,buffernum)
 end
 
 function backup_save(savename)
