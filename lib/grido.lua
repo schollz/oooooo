@@ -132,19 +132,26 @@ end
 
 function Grido:key_press(row,col,on)
   if on then
+    self.combo = false -- tracking double key press
     self.pressed_buttons[row..","..col]=true
     if row == 8 and col == 2 and self.toggleable then 
       print("holding kill timer")
       self.kill_timer = self:current_time()
+    elseif self.pressed_buttons["8,15"]==true and self.pressed_buttons["8,16"]==true then
+      self.kill_timer = self:current_time()
+      self.combo = true
     end
   else
     self.pressed_buttons[row..","..col]=nil
-    if row == 8 and col == 2 and self.toggleable then 
+    if self.combo and math.abs( self:current_time() - self.kill_timer) > 0.5 then
+      tape_clear(uS.loopNum)
+    elseif row == 8 and col == 2 and self.toggleable then 
       self.kill_timer = self:current_time() - self.kill_timer
       print(self.kill_timer)
       if self.kill_timer > 0.5 then 
         self:toggle_grid(false)
       end
+      self.combo = 0
       self.kill_timer = 0
     end
   end
@@ -601,6 +608,10 @@ function Grido:get_visual()
 
   -- illuminate selection 
   self.visual[8][self.selection] = 15 
+
+   -- illuminate combo buttons
+  self.visual[8][15] = 4
+  self.visual[8][16] = 4
 
   -- illuminate currently pressed button
   for k,_ in pairs(self.pressed_buttons) do
