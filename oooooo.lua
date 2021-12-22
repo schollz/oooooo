@@ -485,6 +485,11 @@ function init()
   -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
   -- activate_mode()
+
+  -- END INIT FUNCTION
+  monosong_=include("oooooo/lib/monosong")
+  monosong=monosong_:new()
+  monosong:play()
 end
 
 -- switch between grids on kolor and oooooo
