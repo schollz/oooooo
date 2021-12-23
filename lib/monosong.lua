@@ -9,11 +9,11 @@ function Monosong:new (o)
   o=o or {} -- create object if user does not provide one
   setmetatable(o,self)
   self.__index=self
-  self.root_note=48
+  self.root_note=36
   self.root_scale="Major"
-  -- self.chord_progression={"iii","vi","IV","I"}
   self.chord_progression={"vi","IV","V","I"}
   self.chord_progression={"vi","IV","ii","V"}
+  self.chord_progression={"iii","vi","IV","I"}
   -- self.chord_progression={"ii","vi","I","IV"}
   self.octave_seq=s{12,0,-12,24,12,0,s{36}:count(1000)}
   self.octave_current=0
@@ -98,6 +98,16 @@ function Monosong:play()
       end
     end,
     division=1,
+  }
+  -- crow output 2 is for synchronzing pocket operators
+  crow.output[2].action = "{ to(0,0), to(1,0.015), to(0,0) }"
+  self.pattern_posync=self.lattice:new_pattern{
+    action=function(x)
+      if phrase_count==5 or phrase_count==6 then 
+        crow.output[2]()
+      end
+    end,
+    division=1/8,
   }
   self.pattern_solo=self.lattice:new_pattern{
     action=function(x)
