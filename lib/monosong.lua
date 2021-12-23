@@ -12,7 +12,7 @@ function Monosong:new (o)
   self.root_note=32
   self.root_scale="Major"
   self.chord_progression={"vi","IV","I","V"}
-  self.octave_seq=s{12,0,-12,24,0}
+  self.octave_seq=s{12,0,-12,24,12,0,s{36}:count(1000)}
   self.octave_current=0
   self.lattice=lattice_:new()
   if pcall(function () params:get("1recording trig") end) then
@@ -44,6 +44,7 @@ function Monosong:play()
     table.insert(foo,i)
   end
   self.chord_index=s(foo)
+  self.chord_index_current=1
 
   -- create the chord sequences
   self.chord_seq={}
@@ -53,19 +54,28 @@ function Monosong:play()
 
   -- startup some lattices
   self.lattice=lattice_:new()
+  local phrase_count=0
+  local change_octave=false
   self.pattern_chord=self.lattice:new_pattern{
     action=function(x)
       -- iterate chord index
-      local ind=self.chord_index()
-      local note=self.chord_seq[ind]()+self.octave_current
-      print(ind,note)
+      self.chord_index_current=self.chord_index()
+      local note=self.chord_seq[self.chord_index_current]()+self.octave_current
+      if crow~=nil and phrase_count<7 then 
+        crow.output[1].volts=(note-24)/12
+      end
+      print("note",note)
+      if change_octave then 
+        self.octave_current=self.octave_seq()
+        print("octave",self.octave_current)
+        change_octave=false
+      end
     end,
-    division=1/2,
+    division=1,
   }
-  local phrase_count=0
   self.pattern_phrase=self.lattice:new_pattern{
     action=function(x)
-      self.octave_current=self.octave_seq()
+      change_octave=true
       phrase_count=phrase_count+1
       if self.oooooo then
         if phrase_count<7 then
@@ -79,10 +89,26 @@ function Monosong:play()
         end
       end
     end,
-    division=2,
+    division=4,
   }
-
-  self.lattice:hard_restart()
+  self.pattern_solo=self.lattice:new_pattern{
+    action=function(x)
+      if self.oooooo then
+        if phrase_count>6 and math.random()<0.05 then
+          self.octave_current=self.octave_seq()
+          local note=self.chord_seq[self.chord_index_current]()+self.octave_current
+          if crow~=nil then 
+            crow.output[1].volts=(note-24)/12
+          end
+        end
+      end
+    end,
+    division=1/16,
+  }
+  clock.run(function()
+    clock.sleep(1)
+    self.lattice:start()
+  end)
 end
 
 function Monosong:stop()
