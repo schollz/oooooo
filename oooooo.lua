@@ -730,6 +730,12 @@ function randomize_loops(j)
   end
 end
 
+function toggle_reverse()
+  for i=1,6 do
+    params:set(i.."rate reverse",3-params:get(i.."rate reverse"))
+  end
+end
+
 function randomize_lfos()
   for i=1,6 do
     -- params:set(i.."length lfo period",math.random()*30+5)
@@ -1327,7 +1333,7 @@ function enc(n,d)
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,7)
     else
       -- toggle between special parameters
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,5)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -1426,6 +1432,10 @@ function key(n,z)
       -- randomize lfos!
       show_message("randomizing lfos")
       randomize_lfos()
+    elseif uS.flagSpecial==5 then
+      -- randomize lfos!
+      show_message("toggling reverse")
+      toggle_reverse()
     end
   elseif uS.selectedPar>0 and uS.loopNum<7 then
     -- shit+K2 or shift+K3 activates parameters when parameter is selected
@@ -1573,6 +1583,8 @@ function redraw()
       screen.text("rand loop")
     elseif uS.flagSpecial==4 then
       screen.text("rand lfo")
+    elseif uS.flagSpecial==5 then
+      screen.text("toggle reverse")
     end
   elseif uS.selectedPar==0 and params:get("expert mode")==1 then
     screen.move(x+10,y)
