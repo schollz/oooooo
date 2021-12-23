@@ -11,7 +11,7 @@ function Monosong:new (o)
   self.__index=self
   self.root_note=32
   self.root_scale="Major"
-  self.chord_progression={"vi","IV","I","V"}
+  self.chord_progression={"iii","vi","IV","I"}
   self.octave_seq=s{12,0,-12,24,12,0,s{36}:count(1000)}
   self.octave_current=0
   self.lattice=lattice_:new()
