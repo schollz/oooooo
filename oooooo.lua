@@ -1,4 +1,4 @@
--- oooooo v1.9.1
+-- oooooo v1.10.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -26,6 +26,7 @@
 local Formatters=require 'formatters'
 local grido=include("oooooo/lib/grido")
 local MusicUtil = require "musicutil"
+local monosong_=include("oooooo/lib/monosong")
 
 engine.name="SimpleDelay"
 
@@ -100,7 +101,7 @@ local scale_names={}
 
 function init()
   -- engine.delay(0.1)
-  -- engine.volume(0.0)
+  -- engine.volume(0.0)  
 
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -111,9 +112,9 @@ function init()
   params:set_action("load on start",update_parameters)
   params:add_option("play on start","play on start",{"no","yes"},1)
   params:set_action("play on start",update_parameters)
-  params:add_option("start lfos random","start lfos random",{"no","yes"},1)
+  params:add_option("start lfos random","start lfos random",{"no","yes"},2)
   params:set_action("start lfos random",update_parameters)
-  params:add_control("start length","start length",controlspec.new(0,64,'lin',1,0,'beats'))
+  params:add_control("start length","start length",controlspec.new(0,64,'lin',1,16,'beats'))
   params:set_action("start length",update_parameters)
   params:add_option("use kolor","use kolor (restart req)",{"no","yes"},1)
   params:set_action("use kolor",update_parameters)
@@ -178,7 +179,7 @@ function init()
     table.insert(scale_names, string.lower(MusicUtil.SCALES[i].name))
   end
 
-  params:add_group("all loops",9)
+  params:add_group("all loops",10)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
   params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,0,'% prob'))
   params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0,'',0.01/2))
@@ -197,6 +198,7 @@ function init()
   params:add_option("continous rate","continous rate",{"no","yes"},1)
   params:set_action("continous rate",update_parameters)
   params:add_control("slew rate","slew rate",controlspec.new(0,30,'lin',0.1,(60/clock.get_tempo())*4,"s",0.1/30))
+  params:add_control("tape warble","tape warble",controlspec.new(0,100,'lin',1,0,'%'))
   params:set_action("slew rate",function(x)
     for i=1,6 do
       softcut.level_slew_time(i,x)
@@ -216,7 +218,7 @@ function init()
   filter_resonance=controlspec.new(0.05,1,'lin',0,1,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,40)
+    params:add_group("loop "..i,41)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -278,6 +280,7 @@ function init()
       softcut.fade_time(i,x/1000)
       softcut.recpre_slew_time(i,x/1000)
     end)
+    params:add_control(i.."warble seed","warble seed",controlspec.new(0,128,"lin",1,1,""))
 
     params:add{type='binary',name="play trig",id=i..'play trig',behavior='momentary',
       action=function(v)
@@ -355,6 +358,9 @@ function init()
     end
   }
 
+  -- setup monosong parameters
+  monosong=monosong_:new()
+  params:set("root note",48)
 
   params_read_silent(DATA_DIR.."oooooo.pset")
   params:set('save_message',"")
@@ -485,6 +491,9 @@ function init()
   -- params:set("scale_mode",9)
   -- params:set("choose mode",3)
   -- activate_mode()
+
+  -- END INIT FUNCTION
+
 end
 
 -- switch between grids on kolor and oooooo
@@ -725,6 +734,12 @@ function randomize_loops(j)
   end
 end
 
+function toggle_reverse()
+  for i=1,6 do
+    params:set(i.."rate reverse",3-params:get(i.."rate reverse"))
+  end
+end
+
 function randomize_lfos()
   for i=1,6 do
     -- params:set(i.."length lfo period",math.random()*30+5)
@@ -907,7 +922,7 @@ function update_timer()
       end
       softcut.level(i,uP[i].vol)
     end
-    if uP[i].rateUpdate or (params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."rate lfo amp")>0) or
+    if uP[i].rateUpdate or (params:get("tape warble")>0 and params:get(i.."warble seed")>0) or (params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."rate lfo amp")>0) or
       uP[i].rate~=(uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust"))*(params:get(i.."rate reverse")*2-3)/100.0 then
       uS.updateUI=true
       uP[i].rateUpdate=false
@@ -918,7 +933,17 @@ function update_timer()
       end
       local toneRate = uS.toneRates[params:get(i.."rate tone")%#uS.toneRates+1]
       uP[i].rate=(uC.discreteRates[currentRateIndex]+params:get(i.."rate adjust"))*(params:get(i.."rate reverse")*2-3)/100.0*toneRate
-      softcut.rate(i,uP[i].rate)
+      if params:get("tape warble")>0 and params:get(i.."warble seed")>0 then
+        local warbleAmount=0
+        math.randomseed(params:get(i.."warble seed"))
+        for j=1,4 do
+          warbleAmount=warbleAmount+math.sin(2*math.pi*uS.currentTime/math.random(1,60))*math.random()/4
+        end
+        math.randomseed( os.time() )
+        softcut.rate(i,uP[i].rate*(1+params:get("tape warble")/200*warbleAmount))
+      else
+        softcut.rate(i,uP[i].rate)
+      end
     end
     if uP[i].panUpdate or (params:get(i.."pan lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."pan lfo amp")>0) then
       uS.updateUI=true
@@ -1322,7 +1347,7 @@ function enc(n,d)
       uS.selectedPar=util.clamp(uS.selectedPar+d,0,7)
     else
       -- toggle between special parameters
-      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,4)
+      uS.flagSpecial=util.clamp(uS.flagSpecial+d,0,5)
     end
   elseif n==3 then
     if uS.loopNum~=7 then
@@ -1421,6 +1446,10 @@ function key(n,z)
       -- randomize lfos!
       show_message("randomizing lfos")
       randomize_lfos()
+    elseif uS.flagSpecial==5 then
+      -- randomize lfos!
+      show_message("toggling reverse")
+      toggle_reverse()
     end
   elseif uS.selectedPar>0 and uS.loopNum<7 then
     -- shit+K2 or shift+K3 activates parameters when parameter is selected
@@ -1568,6 +1597,8 @@ function redraw()
       screen.text("rand loop")
     elseif uS.flagSpecial==4 then
       screen.text("rand lfo")
+    elseif uS.flagSpecial==5 then
+      screen.text("toggle reverse")
     end
   elseif uS.selectedPar==0 and params:get("expert mode")==1 then
     screen.move(x+10,y)
@@ -1950,7 +1981,6 @@ end
 -- -- osc
 -- --
 function osc_in(path, args, from)
-  print(path)
   if path == "onset" then
     for i=1,6 do
       if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then
