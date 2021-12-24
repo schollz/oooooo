@@ -1,4 +1,4 @@
--- oooooo v1.9.1 - monosong
+-- oooooo v1.10.0
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
@@ -26,6 +26,7 @@
 local Formatters=require 'formatters'
 local grido=include("oooooo/lib/grido")
 local MusicUtil = require "musicutil"
+local monosong_=include("oooooo/lib/monosong")
 
 engine.name="SimpleDelay"
 
@@ -101,6 +102,7 @@ local scale_names={}
 function init()
   -- engine.delay(0.1)
   -- engine.volume(0.0)
+  
 
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -355,6 +357,9 @@ function init()
     end
   }
 
+  -- setup monosong parameters
+  monosong=monosong_:new()
+  params:set("root note",48)
 
   params_read_silent(DATA_DIR.."oooooo.pset")
   params:set('save_message',"")
@@ -487,9 +492,7 @@ function init()
   -- activate_mode()
 
   -- END INIT FUNCTION
-  monosong_=include("oooooo/lib/monosong")
-  monosong=monosong_:new()
-  monosong:play()
+
 end
 
 -- switch between grids on kolor and oooooo
@@ -1967,7 +1970,6 @@ end
 -- -- osc
 -- --
 function osc_in(path, args, from)
-  print(path)
   if path == "onset" then
     for i=1,6 do
       if uS.recording[i]==1 and (params:get("input type")==1 or params:get("input type")>=4) then

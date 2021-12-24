@@ -19,6 +19,15 @@ function table.get_rotation(t)
   return t2
 end
 
+function table.average(t)
+  local sum = 0
+  for _,v in pairs(t) do
+    sum = sum + v
+  end
+  return sum / #t
+end
+
+
 function table.rotate(t)
   for i,v in ipairs(table.get_rotation(t)) do
     t[i]=v
