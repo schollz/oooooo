@@ -101,8 +101,7 @@ local scale_names={}
 
 function init()
   -- engine.delay(0.1)
-  -- engine.volume(0.0)
-  
+  -- engine.volume(0.0)  
 
   setup_sharing("oooooo")
   params:add_separator("oooooo")
@@ -180,7 +179,7 @@ function init()
     table.insert(scale_names, string.lower(MusicUtil.SCALES[i].name))
   end
 
-  params:add_group("all loops",9)
+  params:add_group("all loops",10)
   params:add_option("pause lfos","pause lfos",{"no","yes"},1)
   params:add_control("destroy loops","destroy loops",controlspec.new(0,100,'lin',1,0,'% prob'))
   params:add_control("vol ramp","vol ramp",controlspec.new(-1,1,'lin',0,0,'',0.01/2))
@@ -199,6 +198,7 @@ function init()
   params:add_option("continous rate","continous rate",{"no","yes"},1)
   params:set_action("continous rate",update_parameters)
   params:add_control("slew rate","slew rate",controlspec.new(0,30,'lin',0.1,(60/clock.get_tempo())*4,"s",0.1/30))
+  params:add_control("tape warble","tape warble",controlspec.new(0,100,'lin',1,0,'%'))
   params:set_action("slew rate",function(x)
     for i=1,6 do
       softcut.level_slew_time(i,x)
@@ -218,7 +218,7 @@ function init()
   filter_resonance=controlspec.new(0.05,1,'lin',0,1,'')
   filter_freq=controlspec.new(20,20000,'exp',0,20000,'Hz')
   for i=1,6 do
-    params:add_group("loop "..i,40)
+    params:add_group("loop "..i,41)
     --                 id      name min max default k units
     params:add_control(i.."start","start",controlspec.new(0,uC.loopMinMax[2],"lin",0.01,0,"s",0.01/uC.loopMinMax[2]))
     params:add_control(i.."start lfo amp","start lfo amp",controlspec.new(0,1,"lin",0.01,0.2,"",0.01))
@@ -280,6 +280,7 @@ function init()
       softcut.fade_time(i,x/1000)
       softcut.recpre_slew_time(i,x/1000)
     end)
+    params:add_control(i.."warble seed","warble seed",controlspec.new(0,128,"lin",1,1,""))
 
     params:add{type='binary',name="play trig",id=i..'play trig',behavior='momentary',
       action=function(v)
@@ -921,7 +922,7 @@ function update_timer()
       end
       softcut.level(i,uP[i].vol)
     end
-    if uP[i].rateUpdate or warble_amt~=nil or (params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."rate lfo amp")>0) or
+    if uP[i].rateUpdate or (params:get("tape warble")>0 and params:get(i.."warble seed")>0) or (params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."rate lfo amp")>0) or
       uP[i].rate~=(uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust"))*(params:get(i.."rate reverse")*2-3)/100.0 then
       uS.updateUI=true
       uP[i].rateUpdate=false
@@ -932,12 +933,14 @@ function update_timer()
       end
       local toneRate = uS.toneRates[params:get(i.."rate tone")%#uS.toneRates+1]
       uP[i].rate=(uC.discreteRates[currentRateIndex]+params:get(i.."rate adjust"))*(params:get(i.."rate reverse")*2-3)/100.0*toneRate
-      if warble_amt~=nil then
-        warblePercent=0
-        for j=1,3 do
-          warblePercent=warblePercent+math.sin(2*math.pi*uC.lfoTime/uP[i].lfoWarble[j])
+      if params:get("tape warble")>0 and params:get(i.."warble seed")>0 then
+        local warbleAmount=0
+        math.randomseed(params:get(i.."warble seed"))
+        for j=1,4 do
+          warbleAmount=warbleAmount+math.sin(2*math.pi*uS.currentTime/math.random(1,60))*math.random()/4
         end
-        softcut.rate(i,uP[i].rate*(1+warblePercent*warble_amt))
+        math.randomseed( os.time() )
+        softcut.rate(i,uP[i].rate*(1+params:get("tape warble")/200*warbleAmount))
       else
         softcut.rate(i,uP[i].rate)
       end
