@@ -921,7 +921,7 @@ function update_timer()
       end
       softcut.level(i,uP[i].vol)
     end
-    if uP[i].rateUpdate or (params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."rate lfo amp")>0) or
+    if uP[i].rateUpdate or warble_amt~=nil or (params:get(i.."rate lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."rate lfo amp")>0) or
       uP[i].rate~=(uC.discreteRates[params:get(i.."rate")]+params:get(i.."rate adjust"))*(params:get(i.."rate reverse")*2-3)/100.0 then
       uS.updateUI=true
       uP[i].rateUpdate=false
@@ -932,7 +932,15 @@ function update_timer()
       end
       local toneRate = uS.toneRates[params:get(i.."rate tone")%#uS.toneRates+1]
       uP[i].rate=(uC.discreteRates[currentRateIndex]+params:get(i.."rate adjust"))*(params:get(i.."rate reverse")*2-3)/100.0*toneRate
-      softcut.rate(i,uP[i].rate)
+      if warble_amt~=nil then
+        warblePercent=0
+        for j=1,3 do
+          warblePercent=warblePercent+math.sin(2*math.pi*uC.lfoTime/uP[i].lfoWarble[j])
+        end
+        softcut.rate(i,uP[i].rate*(1+warblePercent*warble_amt))
+      else
+        softcut.rate(i,uP[i].rate)
+      end
     end
     if uP[i].panUpdate or (params:get(i.."pan lfo period")>0 and params:get("pause lfos")==1 and params:get(i.."pan lfo amp")>0) then
       uS.updateUI=true
