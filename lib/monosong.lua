@@ -28,6 +28,7 @@ function Monosong:new (o)
           params:set(i.."length",(60/clock.get_tempo())*16)
         end
         monosong:play()
+        randomize_lfos()
       else
         monosong:stop()
       end
