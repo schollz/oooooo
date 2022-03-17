@@ -608,15 +608,15 @@ function init_loops(j,ignore_pan)
       softcut.enable(i,1)
       softcut.phase_quant(i,0.025)
 
-      softcut.post_filter_dry(i,0.0)
-      softcut.post_filter_lp(i,1.0)
+      softcut.post_filter_dry(i,1.0)
+      softcut.post_filter_lp(i,0.0)
       softcut.post_filter_rq(i,1.0)
-      softcut.post_filter_fc(i,20100)
+      softcut.post_filter_fc(i,18000)
 
       softcut.pre_filter_dry(i,1.0)
       softcut.pre_filter_lp(i,1.0)
       softcut.pre_filter_rq(i,1.0)
-      softcut.pre_filter_fc(i,20100)
+      softcut.pre_filter_fc(i,18000)
     end
   end
 
