@@ -1,4 +1,4 @@
--- oooooo v1.10.0
+-- oooooo v1.10.1
 -- 6 x digital tape loops
 --
 -- llllllll.co/t/oooooo
