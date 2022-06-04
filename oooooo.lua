@@ -142,6 +142,7 @@ function init()
       params:get("tape"..p.eng.."modperiod"))
     end)
   end
+  audio.level_eng_cut(0)
   reroute_audio(false)
 
   params:add_separator("oooooo")
