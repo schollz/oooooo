@@ -1057,6 +1057,7 @@ function backup_load(savename)
     uP[i].rateUpdate=true
     uP[i].volUpdate=true
   end
+  build_ji_rates()
 end
 
 --
