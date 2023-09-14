@@ -53,11 +53,11 @@ in `loop X` menus you can modify all lfos, and several other parameters of each 
 
 the grid lets you manipulate loops quickly with a key press and presents an alternative tactile way to interact with looping. (*thank you @tyleretters for [this absolutely amazingly useful grid doc tool](https://tyleretters.github.io/GridStation/)!*)
 
-![oooooo_grid-03|690x407](https://user-images.githubusercontent.com/6550035/132006771-4fdd4e9e-3a02-48e9-b94a-7f6454d60399.png) 
+![oooooo_grid-03](https://user-images.githubusercontent.com/6550035/132006771-4fdd4e9e-3a02-48e9-b94a-7f6454d60399.png) 
 
-![oooooo_grid-01|690x407](https://user-images.githubusercontent.com/6550035/132006768-4a9554b8-dbe8-432c-a76d-a84b8e1c8ba1.png) 
+![oooooo_grid-01](https://user-images.githubusercontent.com/6550035/132006768-4a9554b8-dbe8-432c-a76d-a84b8e1c8ba1.png) 
 
-![oooooo_grid-02|690x407](https://user-images.githubusercontent.com/6550035/132006765-3fc245e9-f234-4b7a-a926-05ca6398a849.png) 
+![oooooo_grid-02](https://user-images.githubusercontent.com/6550035/132006765-3fc245e9-f234-4b7a-a926-05ca6398a849.png) 
 
 https://vimeo.com/512237665
 
